@@ -1,0 +1,691 @@
+/* ============================================================
+   Fred Dispense simulator styles — ALL rules scoped under
+   .fred-root so they never bleed to marketing / dashboard pages
+   ============================================================ */
+
+/* ─── CSS VARIABLES & ROOT ───────────────────────────────────── */
+.fred-root {
+  --fred-green:        #008000;
+  --fred-grey:         #d4d0c8;
+  --fred-darkblue:     #00008b;
+  --fred-label-yellow: #ffffc0;
+  --fred-case-cream:   #fffbf0;
+  --fred-case-border:  #cc8800;
+  --fred-error-red:    #cc0000;
+  --fred-success-green:#006600;
+  --fred-input-blue:   #0000cc;
+
+  background: var(--fred-green);
+  font-family: 'Segoe UI', Tahoma, Geneva, sans-serif;
+  font-size: 12px;
+  color: #000;
+  min-height: calc(100vh - 64px); /* 64px = AppNav h-16 */
+}
+
+/* ─── NARROW-SCREEN BANNER ───────────────────────────────────── */
+.fred-root .fred-narrow-banner {
+  display: none;
+  background: #fff3cd;
+  border-bottom: 2px solid #ffc107;
+  padding: 8px 16px;
+  font-size: 13px;
+  color: #856404;
+  text-align: center;
+}
+@media (max-width: 1023px) {
+  .fred-root .fred-narrow-banner { display: block; }
+}
+
+/* ─── TITLE BAR ──────────────────────────────────────────────── */
+.fred-root .fred-titlebar {
+  background: linear-gradient(to bottom, #4a90d9, #2060a0);
+  color: white;
+  padding: 3px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  user-select: none;
+}
+.fred-root .fred-titlebar-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.fred-root .fred-titlebar-icon {
+  width: 16px;
+  height: 16px;
+  background: #00aaff;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.fred-root .fred-titlebar-btns {
+  display: flex;
+  gap: 2px;
+}
+.fred-root .fred-titlebar-btn {
+  background: #c0c0c0;
+  border: 1px solid #888;
+  width: 16px;
+  height: 14px;
+  font-size: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #000;
+  line-height: 1;
+}
+.fred-root .fred-titlebar-btn.close {
+  background: #cc0000;
+  color: white;
+}
+
+/* ─── MENU BAR ───────────────────────────────────────────────── */
+.fred-root .fred-menubar {
+  background: #d4d0c8;
+  border-bottom: 1px solid #888;
+  padding: 2px 4px;
+  display: flex;
+  gap: 0;
+  font-size: 12px;
+  user-select: none;
+}
+.fred-root .fred-menubar-item {
+  cursor: pointer;
+  padding: 1px 6px;
+}
+.fred-root .fred-menubar-item:hover {
+  background: #0a246a;
+  color: white;
+}
+
+/* ─── TOOLBAR ────────────────────────────────────────────────── */
+.fred-root .fred-toolbar {
+  background: #d4d0c8;
+  border-bottom: 2px solid #888;
+  padding: 3px 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  user-select: none;
+}
+.fred-root .fred-tb-btn {
+  background: linear-gradient(to bottom, #f0f0e8, #d4d0c8);
+  border: 1px solid #888;
+  border-radius: 2px;
+  padding: 2px 6px;
+  cursor: pointer;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 32px;
+  height: 24px;
+  font-family: 'Segoe UI', Tahoma, sans-serif;
+}
+.fred-root .fred-tb-btn:hover {
+  background: linear-gradient(to bottom, #e8f4ff, #c8dcf0);
+}
+.fred-root .fred-tb-btn.tb-blue   { background: #0000cc; color: white; font-weight: bold; }
+.fred-root .fred-tb-btn.tb-green  { background: #006600; color: white; }
+.fred-root .fred-tb-btn.tb-navy   { background: #003087; color: white; font-size: 9px; }
+.fred-root .fred-tb-btn.tb-erx    { background: #006600; color: white; font-size: 10px; }
+.fred-root .fred-tb-btn.tb-check  { background: #00aa00; color: white; }
+.fred-root .fred-tb-sep {
+  width: 1px;
+  height: 28px;
+  background: #888;
+  margin: 0 2px;
+  flex-shrink: 0;
+}
+.fred-root .fred-tb-msg {
+  background: #ffffc0;
+  border: 1px solid #888;
+  padding: 2px 8px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.fred-root .fred-case-select {
+  font-size: 11px;
+  border: 1px solid #888;
+  padding: 1px 4px;
+  background: white;
+  font-family: 'Segoe UI', Tahoma, sans-serif;
+  max-width: 260px;
+}
+
+/* ─── MAIN WINDOW ────────────────────────────────────────────── */
+.fred-root .fred-main-win {
+  background: #d4d0c8;
+  margin: 4px;
+  padding: 4px;
+  border: 2px inset #888;
+}
+
+/* ─── CASE PANEL ─────────────────────────────────────────────── */
+.fred-root .fred-case-panel {
+  background: #fffbf0;
+  border: 1px solid #cc8800;
+  padding: 8px;
+  margin-bottom: 4px;
+  border-radius: 2px;
+  font-size: 11px;
+}
+.fred-root .fred-case-title {
+  font-weight: bold;
+  color: #cc4400;
+  font-size: 12px;
+  border-bottom: 1px solid #cc8800;
+  padding-bottom: 4px;
+  margin-bottom: 6px;
+}
+.fred-root .fred-case-section-title {
+  font-weight: bold;
+  color: #00008b;
+  font-size: 10px;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+.fred-root .fred-case-text {
+  color: #333;
+  line-height: 1.5;
+}
+.fred-root .fred-case-task {
+  color: #cc0000;
+  font-weight: bold;
+  line-height: 1.5;
+}
+
+/* ─── PATIENT HEADER ─────────────────────────────────────────── */
+.fred-root .fred-patient-header {
+  background: #d4d0c8;
+  padding: 4px 6px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: start;
+  margin-bottom: 4px;
+}
+.fred-root .fred-ph-label {
+  font-size: 10px;
+  color: #00008b;
+  font-weight: bold;
+  display: block;
+  margin-bottom: 2px;
+}
+.fred-root .fred-ph-name {
+  background: white;
+  border: 2px inset #888;
+  padding: 2px 6px;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+  display: inline-block;
+}
+.fred-root .fred-ph-addr {
+  font-size: 11px;
+  color: #333;
+  display: inline-block;
+  margin-left: 10px;
+}
+.fred-root .fred-ph-price {
+  color: #006600;
+  font-weight: bold;
+  font-size: 12px;
+  margin-top: 2px;
+}
+.fred-root .fred-ph-mcare {
+  color: #008800;
+  font-size: 11px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* ─── SCRIPT LEFT PANEL ──────────────────────────────────────── */
+.fred-root .fred-script-left {
+  background: #d4d0c8;
+}
+.fred-root .fred-script-title {
+  background: #00008b;
+  color: white;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+.fred-root .fred-field-label {
+  font-size: 10px;
+  color: #00008b;
+  font-weight: bold;
+  display: block;
+  margin-bottom: 1px;
+}
+.fred-root .fred-field-input {
+  background: white;
+  border: 2px inset #888;
+  padding: 2px 4px;
+  font-size: 12px;
+  width: 100%;
+  font-family: 'Segoe UI', Tahoma, sans-serif;
+  color: #000;
+  box-sizing: border-box;
+}
+.fred-root .fred-field-input:focus {
+  outline: 2px solid #0000ff;
+}
+.fred-root .fred-field-input:disabled {
+  background: #f5f5f0;
+  color: #888;
+  cursor: not-allowed;
+}
+.fred-root .fred-field-select {
+  background: white;
+  border: 2px inset #888;
+  padding: 2px 4px;
+  font-size: 12px;
+  width: 100%;
+  font-family: 'Segoe UI', Tahoma, sans-serif;
+  color: #000;
+  box-sizing: border-box;
+}
+.fred-root .fred-field-select:disabled {
+  background: #f5f5f0;
+  color: #888;
+  cursor: not-allowed;
+}
+.fred-root .fred-drug-info-row {
+  display: flex;
+  gap: 10px;
+  font-size: 10px;
+  color: #333;
+  padding: 1px 4px;
+  flex-wrap: wrap;
+}
+.fred-root .fred-dir-textarea {
+  background: white;
+  border: 2px inset #888;
+  padding: 2px 4px;
+  font-size: 12px;
+  width: 100%;
+  height: 44px;
+  font-family: 'Segoe UI', Tahoma, sans-serif;
+  resize: none;
+  box-sizing: border-box;
+}
+.fred-root .fred-dir-textarea:disabled {
+  background: #f5f5f0;
+  color: #888;
+  cursor: not-allowed;
+}
+.fred-root .fred-dir-col-input {
+  background: white;
+  border: 2px inset #888;
+  padding: 2px 4px;
+  font-size: 12px;
+  width: 70px;
+  font-family: 'Segoe UI', Tahoma, sans-serif;
+  box-sizing: border-box;
+}
+.fred-root .fred-dir-col-input:disabled {
+  background: #f5f5f0;
+  color: #888;
+  cursor: not-allowed;
+}
+.fred-root .fred-abbrev-ref {
+  background: #e8f4ff;
+  border: 1px solid #aaccff;
+  padding: 4px 8px;
+  font-size: 10px;
+  line-height: 1.6;
+}
+.fred-root .fred-abbrev-ref strong {
+  color: #00008b;
+}
+.fred-root .fred-initials-box {
+  background: #0000cc;
+  color: white;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  cursor: pointer;
+  border: 1px solid #000;
+  display: inline-block;
+  min-width: 40px;
+  text-align: center;
+}
+.fred-root .fred-pharmacist-row {
+  padding: 2px 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  flex-wrap: wrap;
+}
+
+/* ─── DRUG DETAILS BOX (right of script) ─────────────────────── */
+.fred-root .fred-drug-details {
+  background: #d4d0c8;
+  border: 2px inset #888;
+  padding: 6px;
+  font-size: 11px;
+}
+.fred-root .fred-dd-title {
+  text-align: center;
+  font-weight: bold;
+  font-size: 12px;
+  border-bottom: 1px solid #888;
+  padding-bottom: 3px;
+  margin-bottom: 4px;
+}
+.fred-root .fred-dd-row {
+  margin-bottom: 2px;
+  line-height: 1.4;
+}
+.fred-root .fred-dd-green  { color: #006600; font-weight: bold; }
+.fred-root .fred-dd-red    { color: #cc0000; font-weight: bold; }
+.fred-root .fred-dd-blue   { color: #0000cc; }
+.fred-root .fred-dd-warn   { color: #cc6600; font-size: 10px; margin-bottom: 1px; }
+.fred-root .fred-dd-allergy { color: #cc0000; font-weight: bold; font-size: 10px; margin-top: 4px; }
+
+/* ─── WARNINGS BOX ───────────────────────────────────────────── */
+.fred-root .fred-warn-box {
+  border: 1px solid #888;
+  background: #d4d0c8;
+  display: flex;
+  flex-direction: column;
+}
+.fred-root .fred-warn-title {
+  background: #d4d0c8;
+  padding: 2px 4px;
+  font-size: 10px;
+  border-bottom: 1px solid #888;
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.fred-root .fred-warn-title-red {
+  color: #cc0000;
+  font-weight: bold;
+}
+.fred-root .fred-warn-subtitle {
+  font-size: 10px;
+  padding: 2px 4px;
+  color: #555;
+  margin-bottom: 2px;
+  flex-shrink: 0;
+}
+.fred-root .fred-warn-item {
+  display: flex;
+  gap: 4px;
+  align-items: flex-start;
+  margin-bottom: 1px;
+  cursor: pointer;
+  font-size: 10px;
+  padding: 1px 4px;
+  line-height: 1.3;
+}
+.fred-root .fred-warn-item:hover {
+  background: #e8e8e0;
+}
+.fred-root .fred-warn-lbl {
+  min-width: 16px;
+  color: #666;
+  flex-shrink: 0;
+}
+.fred-root .fred-warn-sig {
+  min-width: 28px;
+  color: #0000aa;
+  flex-shrink: 0;
+}
+
+/* ─── LABEL PREVIEW ──────────────────────────────────────────── */
+.fred-root .fred-label-section-title {
+  font-size: 10px;
+  font-weight: bold;
+  color: #00008b;
+  padding: 2px 4px;
+  border-bottom: 1px solid #888;
+  margin-bottom: 4px;
+}
+.fred-root .fred-label-box {
+  border: 2px solid #888;
+  background: #ffffc0;
+  padding: 6px;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.fred-root .fred-label-drug {
+  font-weight: bold;
+  font-size: 12px;
+}
+.fred-root .fred-label-bottom {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  margin-top: 4px;
+  border-top: 1px solid #888;
+  padding-top: 2px;
+}
+
+/* ─── API BOX ────────────────────────────────────────────────── */
+.fred-root .fred-api-box {
+  border: 1px solid #888;
+  background: #d4d0c8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  text-align: center;
+  color: #555;
+  padding: 4px;
+}
+
+/* ─── ACTION BUTTONS ─────────────────────────────────────────── */
+.fred-root .fred-btn-row {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  flex-wrap: wrap;
+}
+.fred-root .fred-main-btn {
+  background: linear-gradient(to bottom, #f0f0e8, #d4d0c8);
+  border: 2px outset #fff;
+  padding: 3px 12px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: bold;
+  font-family: 'Segoe UI', Tahoma, sans-serif;
+  white-space: nowrap;
+}
+.fred-root .fred-main-btn:hover {
+  background: linear-gradient(to bottom, #dde8f8, #b8c8e0);
+}
+.fred-root .fred-main-btn:active {
+  border: 2px inset #888;
+}
+.fred-root .fred-main-btn.btn-green {
+  background: linear-gradient(to bottom, #ccffcc, #88cc88);
+}
+.fred-root .fred-main-btn.btn-red {
+  background: linear-gradient(to bottom, #ffcccc, #cc8888);
+}
+.fred-root .fred-main-btn-next {
+  margin-left: auto;
+}
+
+/* ─── MESSAGE AREA ───────────────────────────────────────────── */
+.fred-root .fred-msg-area {
+  border: 2px inset #888;
+  background: white;
+}
+.fred-root .fred-msg-header {
+  display: grid;
+  grid-template-columns: 80px 120px 1fr 1fr 80px;
+  background: #d4d0c8;
+  border-bottom: 1px solid #888;
+}
+.fred-root .fred-msg-header-cell {
+  padding: 2px 4px;
+  font-size: 10px;
+  font-weight: bold;
+  border-right: 1px solid #888;
+}
+.fred-root .fred-msg-rows {
+  min-height: 50px;
+}
+.fred-root .fred-msg-empty {
+  padding: 4px 6px;
+  font-size: 10px;
+  color: #888;
+}
+
+/* ─── STATUS BAR ─────────────────────────────────────────────── */
+.fred-root .fred-statusbar {
+  background: #d4d0c8;
+  border-top: 2px solid #888;
+  padding: 2px 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: #333;
+}
+
+/* ─── HISTORY PANEL (right sidebar) ─────────────────────────── */
+.fred-root .fred-history-panel {
+  background: #d4d0c8;
+  border-left: 2px solid #888;
+  overflow-y: auto;
+  position: sticky;
+  top: 0;
+  align-self: start;
+  max-height: calc(100vh - 64px);
+  font-size: 11px;
+}
+.fred-root .fred-hp-header {
+  background: #00008b;
+  color: white;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: bold;
+}
+.fred-root .fred-hp-table-header {
+  display: grid;
+  grid-template-columns: 52px 32px 26px 26px;
+  gap: 2px;
+  background: #c0c0c0;
+  padding: 2px 4px;
+  font-size: 9px;
+  font-weight: bold;
+  border-bottom: 1px solid #888;
+}
+.fred-root .fred-hp-drug-col-header {
+  background: #c0c0c0;
+  padding: 0 4px 2px;
+  font-size: 9px;
+  font-weight: bold;
+  border-bottom: 1px solid #888;
+}
+.fred-root .fred-hp-item {
+  border-bottom: 1px solid #aaa;
+  padding: 4px 6px;
+  font-size: 10px;
+  cursor: pointer;
+}
+.fred-root .fred-hp-item:hover { background: #c0d8f0; }
+.fred-root .fred-hp-item-grid {
+  display: grid;
+  grid-template-columns: 52px 32px 26px 26px;
+  gap: 2px;
+}
+.fred-root .fred-hp-date  { color: #0000aa; font-weight: bold; }
+.fred-root .fred-hp-drug  { font-weight: bold; font-size: 11px; margin-top: 1px; }
+.fred-root .fred-hp-section {
+  padding: 4px 6px;
+  border-top: 1px solid #888;
+  margin-top: 4px;
+}
+.fred-root .fred-hp-section-label {
+  font-size: 10px;
+  font-weight: bold;
+  color: #00008b;
+  margin-bottom: 2px;
+}
+.fred-root .fred-hp-allergy { font-size: 11px; padding: 2px 0; }
+.fred-root .fred-hp-allergy.has-allergy  { color: #cc0000; }
+.fred-root .fred-hp-allergy.no-allergy   { color: #006600; }
+.fred-root .fred-hp-meds   { font-size: 11px; padding: 2px 0; color: #333; }
+
+/* ─── RESULT OVERLAY ─────────────────────────────────────────── */
+.fred-root .fred-result-overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+}
+.fred-root .fred-result-overlay.show {
+  display: flex;
+}
+.fred-root .fred-result-box {
+  background: #d4d0c8;
+  border: 3px outset #fff;
+  min-width: 400px;
+  max-width: 520px;
+  width: 90vw;
+}
+.fred-root .fred-result-title {
+  background: #00008b;
+  color: white;
+  padding: 4px 10px;
+  font-weight: bold;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+}
+.fred-root .fred-result-close {
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+}
+.fred-root .fred-result-body {
+  padding: 12px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+.fred-root .fred-result-footer {
+  padding: 8px;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  border-top: 1px solid #888;
+}
+.fred-root .fred-result-btn {
+  background: linear-gradient(to bottom, #f0f0e8, #d4d0c8);
+  border: 2px outset #fff;
+  padding: 4px 16px;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: 'Segoe UI', Tahoma, sans-serif;
+}
+.fred-root .fred-result-btn:hover {
+  background: linear-gradient(to bottom, #e0e8f8, #b0c8e0);
+}
+
+/* ─── INITIALS ERROR ANIMATION ───────────────────────────────────── */
+@keyframes fred-shake {
+  0%, 100% { transform: translateX(0); }
+  20%       { transform: translateX(-4px); }
+  60%       { transform: translateX(4px); }
+  80%       { transform: translateX(-2px); }
+}
+.fred-root .fred-initials-shake {
+  animation: fred-shake 0.35s ease;
+}

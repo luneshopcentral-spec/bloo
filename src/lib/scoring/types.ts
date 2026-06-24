@@ -1,0 +1,28 @@
+export type CheckCategory =
+  | "drug"
+  | "directions"
+  | "quantity"
+  | "repeats"
+  | "warnings"
+  | "errors";
+
+export interface CheckResult {
+  category: CheckCategory;
+  label: string;
+  passed: boolean;
+  isWarning?: boolean;
+  expected?: string;
+  actual?: string;
+  detail: string;
+}
+
+export interface DispenseResult {
+  checks: CheckResult[];
+  pointsEarned: number;
+  pointsTotal: number;
+  passed: boolean;
+  passThreshold: number;
+  tip: string;
+}
+
+export const POINTS_TO_PASS = 4;

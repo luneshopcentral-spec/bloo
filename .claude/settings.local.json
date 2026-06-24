@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-next-app@latest *)",
+      "Read(//usr/local/**)",
+      "Read(//opt/homebrew/**)",
+      "Read(//Users/tanvisharma6445/.nvm/**)",
+      "Read(//Users/tanvisharma6445/.volta/**)",
+      "Read(//usr/**)",
+      "Bash(npm install *)"
+    ]
+  }
+}
