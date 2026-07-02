@@ -1,5 +1,6 @@
 import type { FormState } from "@/components/simulator/state";
 import type { PracticeCase } from "@/lib/types/case";
+import type { Patient } from "@/lib/types/patient";
 import { expandAbbrevs } from "./abbreviations";
 import type { CheckResult, DispenseResult } from "./types";
 import { POINTS_TO_PASS } from "./types";
@@ -8,6 +9,7 @@ export interface ValidateInput {
   formState: FormState;
   selectedWarnings: Set<string>;
   caseData: PracticeCase;
+  selectedPatient?: Patient | null;
 }
 
 function extractDigits(s: string): string {
@@ -18,8 +20,57 @@ export function validateDispense({
   formState,
   selectedWarnings,
   caseData,
+  selectedPatient = null,
 }: ValidateInput): DispenseResult {
   const checks: CheckResult[] = [];
+
+  // ── 0. Patient ────────────────────────────────────────────────────
+  const spec = caseData.patientLookup;
+  const norm = (s?: string | null) =>
+    (s ?? "").trim().toUpperCase().replace(/[-\s]/g, "");
+  let patientPassed = false;
+  let patientDetail = "";
+
+  if (spec.requiresNewPatient) {
+    const exp = spec.expectedNewPatient;
+    if (!exp) {
+      patientPassed = !!selectedPatient;
+      patientDetail = patientPassed
+        ? "New patient added"
+        : "No patient added";
+    } else {
+      patientPassed =
+        !!selectedPatient &&
+        norm(selectedPatient.surname) === norm(exp.surname) &&
+        norm(selectedPatient.firstname) === norm(exp.firstname) &&
+        norm(selectedPatient.medicare_card) === norm(exp.medicareCard);
+      patientDetail = patientPassed
+        ? "New patient entered correctly"
+        : `Expected new patient: ${exp.surname}, ${exp.firstname} (Medicare: ${exp.medicareCard})${
+            selectedPatient
+              ? ` — got: ${selectedPatient.surname}, ${selectedPatient.firstname} (Medicare: ${selectedPatient.medicare_card ?? "none"})`
+              : " — no patient added"
+          }`;
+    }
+  } else {
+    patientPassed =
+      !!selectedPatient &&
+      selectedPatient.seed_id === spec.existingPatientSeedId;
+    patientDetail = patientPassed
+      ? "Correct patient selected"
+      : `Expected patient with id "${spec.existingPatientSeedId ?? "—"}"${
+          selectedPatient
+            ? ` — got: ${selectedPatient.surname}, ${selectedPatient.firstname} (id: ${selectedPatient.seed_id ?? "none"})`
+            : " — no patient selected"
+        }`;
+  }
+
+  checks.push({
+    category: "patient",
+    label: "Patient selected",
+    passed: patientPassed,
+    detail: patientDetail,
+  });
 
   // ── a. Drug ──────────────────────────────────────────────────────
   const drugEntered = formState.drug.trim().toLowerCase();
@@ -133,7 +184,7 @@ export function validateDispense({
   }
 
   const pointsEarned = checks.filter((c) => c.passed && !c.isWarning).length;
-  const pointsTotal = 6;
+  const pointsTotal = 7;
 
   return {
     checks,

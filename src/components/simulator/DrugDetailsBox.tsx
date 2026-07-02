@@ -3,9 +3,10 @@ import type { PracticeCase } from "@/lib/types/case";
 interface DrugDetailsBoxProps {
   typedDrug: string;
   caseData: PracticeCase;
+  patientAllergies?: string[];
 }
 
-export function DrugDetailsBox({ typedDrug, caseData }: DrugDetailsBoxProps) {
+export function DrugDetailsBox({ typedDrug, caseData, patientAllergies = [] }: DrugDetailsBoxProps) {
   const firstWord = caseData.drug.toLowerCase().split(" ")[0];
   const isMatched =
     typedDrug.trim() !== "" &&
@@ -68,8 +69,10 @@ export function DrugDetailsBox({ typedDrug, caseData }: DrugDetailsBoxProps) {
           )}
           {d.warn1 && <div className="fred-dd-warn">{d.warn1}</div>}
           {d.warn2 && <div className="fred-dd-warn">{d.warn2}</div>}
-          {caseData.allergyAlert && (
-            <div className="fred-dd-allergy">⚠ {caseData.allergyAlert}</div>
+          {patientAllergies.length > 0 && (
+            <div className="fred-dd-allergy">
+              ⚠ Patient allergies: {patientAllergies.join(", ")}
+            </div>
           )}
         </>
       )}

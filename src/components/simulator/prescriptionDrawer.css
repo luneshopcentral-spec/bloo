@@ -1,0 +1,191 @@
+/* ====================================================================
+   Prescription Drawer — prescriptionDrawer.css
+   Modern slide-out panel. Does NOT inherit .fred-root retro styles.
+   ==================================================================== */
+
+/* ── System wrapper: trigger tab + drawer panel side-by-side ── */
+.presc-system {
+  /* CSS custom properties for responsive widths */
+  --drawer-w: 480px;
+  --system-w: 512px; /* 480px drawer + 32px trigger tab */
+
+  position: fixed;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: var(--system-w);
+  display: flex;
+  align-items: stretch;
+  z-index: 40;
+  transition: transform 250ms ease-out;
+}
+
+/* Open/closed states via data-open attribute */
+.presc-system[data-open="false"] {
+  transform: translateX(var(--drawer-w));
+}
+
+.presc-system[data-open="true"] {
+  transform: translateX(0);
+}
+
+/* Smaller screens: narrower drawer */
+@media (max-width: 1279px) {
+  .presc-system {
+    --drawer-w: 400px;
+    --system-w: 432px;
+  }
+}
+
+/* Mobile: full-width drawer (trigger hides off-screen when open — use X to close) */
+@media (max-width: 767px) {
+  .presc-system {
+    --drawer-w: 100vw;
+    --system-w: calc(100vw + 32px);
+  }
+}
+
+/* ── Trigger tab (32px wide, left side of system) ──────────── */
+.presc-trigger {
+  width: 32px;
+  flex-shrink: 0;
+  background: #1a3a5c;
+  border: none;
+  border-radius: 6px 0 0 6px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  color: #fff;
+  padding: 0;
+  transition: background 150ms ease;
+}
+
+.presc-trigger:hover {
+  background: #254e7a;
+}
+
+.presc-trigger:focus-visible {
+  outline: 2px solid #7aafdc;
+  outline-offset: -2px;
+  border-radius: 6px 0 0 6px;
+}
+
+.presc-trigger-label {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-size: 8px;
+  letter-spacing: 1.5px;
+  font-weight: bold;
+  font-family: Helvetica, Arial, sans-serif;
+  user-select: none;
+}
+
+/* ── Drawer panel (right side of system) ───────────────────── */
+.presc-panel {
+  flex: 1;
+  background: #fff;
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.28);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+/* ── Drawer header bar ──────────────────────────────────────── */
+.presc-header {
+  background: #1a3a5c;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  padding: 0 10px 0 12px;
+  height: 40px;
+  flex-shrink: 0;
+  gap: 8px;
+  font-family: Helvetica, Arial, sans-serif;
+}
+
+.presc-title {
+  flex: 1;
+  font-size: 13px;
+  font-weight: bold;
+  letter-spacing: 0.2px;
+}
+
+.presc-zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.presc-zoom-pct {
+  font-size: 11px;
+  min-width: 36px;
+  text-align: center;
+  font-family: monospace;
+  color: #d0e8ff;
+}
+
+.presc-zoom-btn {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #fff;
+  cursor: pointer;
+  border-radius: 3px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: monospace;
+  line-height: 1;
+  padding: 0 6px;
+  transition: background 120ms;
+}
+
+.presc-zoom-btn:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.presc-zoom-btn:focus-visible {
+  outline: 2px solid #7aafdc;
+}
+
+.presc-zoom-icon {
+  font-size: 15px;
+}
+
+.presc-zoom-reset {
+  font-size: 9px;
+}
+
+.presc-close-btn {
+  background: transparent;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  padding: 4px 6px;
+  display: flex;
+  align-items: center;
+  border-radius: 3px;
+  transition: background 120ms;
+  flex-shrink: 0;
+}
+
+.presc-close-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.presc-close-btn:focus-visible {
+  outline: 2px solid #7aafdc;
+}
+
+/* ── Scrollable prescription area ───────────────────────────── */
+.presc-scroll {
+  flex: 1;
+  overflow: auto;
+  background: #cccccc;
+  padding: 14px;
+  /* CSS zoom on the inner wrapper creates natural scroll expansion */
+}

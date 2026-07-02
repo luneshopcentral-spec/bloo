@@ -689,3 +689,361 @@
 .fred-root .fred-initials-shake {
   animation: fred-shake 0.35s ease;
 }
+
+/* ─── DISABLED SCRIPT FORM ─────────────────────────────────────── */
+.fred-root .fred-script-disabled {
+  opacity: 0.5;
+  pointer-events: none;
+  position: relative;
+}
+.fred-root .fred-script-disabled::after {
+  content: "Select a patient above to enable entry";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 11px;
+  color: #888;
+  font-style: italic;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+/* ─── PATIENT LOOKUP FIELD ─────────────────────────────────────── */
+.fred-root .fred-patient-lookup-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+.fred-root .fred-patient-lookup-input {
+  flex: 1;
+  border: 2px inset #888;
+  background: #fff;
+  font-size: 12px;
+  font-family: inherit;
+  padding: 2px 4px;
+  color: #000;
+}
+.fred-root .fred-patient-lookup-input:focus {
+  outline: none;
+  border-color: #0000cc;
+}
+.fred-root .fred-patient-selected-name {
+  font-weight: bold;
+  font-size: 12px;
+  cursor: default;
+  flex: 1;
+}
+.fred-root .fred-patient-change-btn {
+  font-size: 10px;
+  background: #d4d0c8;
+  border: 2px outset #fff;
+  cursor: pointer;
+  padding: 1px 6px;
+  font-family: inherit;
+}
+.fred-root .fred-patient-change-btn:hover {
+  background: #c0bdb5;
+}
+
+/* ─── PATIENT SELECTION MODAL ──────────────────────────────────── */
+.fred-root .fred-psel-backdrop {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.fred-root .fred-psel-dialog {
+  background: #d4d0c8;
+  border: 3px outset #fff;
+  width: 660px;
+  max-width: 95vw;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 12px;
+}
+.fred-root .fred-psel-title {
+  background: #00008b;
+  color: #fff;
+  padding: 3px 8px;
+  font-weight: bold;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: 'Segoe UI', Tahoma, sans-serif;
+  font-size: 12px;
+}
+.fred-root .fred-psel-close {
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 2px;
+}
+.fred-root .fred-psel-search-row {
+  padding: 6px 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-bottom: 1px solid #888;
+  font-family: 'Segoe UI', Tahoma, sans-serif;
+  font-size: 11px;
+}
+.fred-root .fred-psel-search-input {
+  flex: 1;
+  border: 2px inset #888;
+  padding: 2px 4px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 12px;
+}
+.fred-root .fred-psel-col-headers {
+  display: grid;
+  grid-template-columns: 20px 140px 110px 1fr 90px 70px;
+  gap: 0;
+  background: #bbb;
+  border-bottom: 2px solid #555;
+  padding: 2px 4px;
+  font-size: 10px;
+  font-family: 'Segoe UI', Tahoma, sans-serif;
+  font-weight: bold;
+  color: #000;
+}
+.fred-root .fred-psel-body {
+  overflow-y: auto;
+  flex: 1;
+}
+.fred-root .fred-psel-row {
+  display: grid;
+  grid-template-columns: 20px 140px 110px 1fr 90px 70px;
+  gap: 0;
+  padding: 2px 4px;
+  cursor: pointer;
+  border-bottom: 1px solid #aaa;
+  min-height: 20px;
+  align-items: center;
+}
+.fred-root .fred-psel-row:hover,
+.fred-root .fred-psel-row.selected {
+  background: #0000aa;
+  color: #fff;
+}
+.fred-root .fred-psel-add-row {
+  background: #e8f0e8;
+  font-style: italic;
+  color: #006600;
+  border-bottom: 2px solid #888;
+}
+.fred-root .fred-psel-add-row:hover,
+.fred-root .fred-psel-add-row.selected {
+  background: #006600;
+  color: #fff;
+}
+.fred-root .fred-psel-empty {
+  padding: 12px;
+  color: #888;
+  font-style: italic;
+  text-align: center;
+}
+.fred-root .fred-psel-letter {
+  color: #006600;
+  font-weight: bold;
+  font-size: 10px;
+}
+.fred-root .fred-psel-row:hover .fred-psel-letter,
+.fred-root .fred-psel-row.selected .fred-psel-letter {
+  color: #99ff99;
+}
+.fred-root .fred-psel-footer {
+  padding: 4px 8px;
+  border-top: 1px solid #888;
+  font-size: 10px;
+  color: #555;
+  font-family: 'Segoe UI', Tahoma, sans-serif;
+}
+
+/* ─── PATIENT DETAILS MODAL ────────────────────────────────────── */
+.fred-root .fred-pdtl-backdrop {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.fred-root .fred-pdtl-dialog {
+  background: #d4d0c8;
+  border: 3px outset #fff;
+  width: 700px;
+  max-width: 96vw;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  font-size: 11px;
+  font-family: 'Segoe UI', Tahoma, sans-serif;
+}
+.fred-root .fred-pdtl-title {
+  background: #00008b;
+  color: #fff;
+  padding: 3px 8px;
+  font-weight: bold;
+  font-size: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.fred-root .fred-pdtl-yellow-bar {
+  background: #ffffc0;
+  border-bottom: 1px solid #aaa;
+  border-top: 1px solid #aaa;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: bold;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+.fred-root .fred-pdtl-body {
+  padding: 8px 12px;
+  overflow-y: auto;
+  flex: 1;
+}
+.fred-root .fred-pdtl-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 12px;
+  margin-bottom: 6px;
+}
+.fred-root .fred-pdtl-grid-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 4px 8px;
+  margin-bottom: 6px;
+}
+.fred-root .fred-pdtl-grid-4 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 4px 8px;
+  margin-bottom: 6px;
+}
+.fred-root .fred-pdtl-field {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.fred-root .fred-pdtl-label {
+  font-size: 10px;
+  color: #444;
+}
+.fred-root .fred-pdtl-input {
+  border: 2px inset #888;
+  background: #fff;
+  padding: 2px 4px;
+  font-size: 11px;
+  font-family: inherit;
+  color: #000;
+  width: 100%;
+  box-sizing: border-box;
+}
+.fred-root .fred-pdtl-input:focus {
+  outline: none;
+  border-color: #0000cc;
+}
+.fred-root .fred-pdtl-input.error {
+  border-color: #cc0000;
+  background: #fff0f0;
+}
+.fred-root .fred-pdtl-select {
+  border: 2px inset #888;
+  background: #fff;
+  padding: 2px 2px;
+  font-size: 11px;
+  font-family: inherit;
+  color: #000;
+  width: 100%;
+  box-sizing: border-box;
+}
+.fred-root .fred-pdtl-textarea {
+  border: 2px inset #888;
+  background: #fff;
+  padding: 2px 4px;
+  font-size: 11px;
+  font-family: inherit;
+  color: #000;
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  min-height: 40px;
+}
+.fred-root .fred-pdtl-section {
+  background: #ffffc0;
+  border: 1px solid #aaa;
+  padding: 4px 6px;
+  margin-bottom: 6px;
+}
+.fred-root .fred-pdtl-section-title {
+  font-size: 10px;
+  font-weight: bold;
+  color: #000080;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.fred-root .fred-pdtl-deco-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+.fred-root .fred-pdtl-deco-btn {
+  background: linear-gradient(to bottom, #f0f0e8, #d4d0c8);
+  border: 2px outset #fff;
+  padding: 2px 8px;
+  font-size: 10px;
+  cursor: default;
+  font-family: inherit;
+  color: #555;
+}
+.fred-root .fred-pdtl-footer {
+  padding: 6px 12px;
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+  border-top: 1px solid #888;
+}
+.fred-root .fred-pdtl-btn {
+  background: linear-gradient(to bottom, #f0f0e8, #d4d0c8);
+  border: 2px outset #fff;
+  padding: 4px 18px;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: inherit;
+}
+.fred-root .fred-pdtl-btn:hover {
+  background: linear-gradient(to bottom, #e0e8f8, #b0c8e0);
+}
+.fred-root .fred-pdtl-btn-primary {
+  background: linear-gradient(to bottom, #6090d8, #3060b8);
+  color: #fff;
+  border: 2px outset #80a0e8;
+}
+.fred-root .fred-pdtl-btn-primary:hover {
+  background: linear-gradient(to bottom, #7aa0e8, #4070c8);
+}
+.fred-root .fred-pdtl-err-msg {
+  font-size: 10px;
+  color: #cc0000;
+  margin-top: 1px;
+}
+
+/* ─── NO-PATIENT PLACEHOLDER ────────────────────────────────────── */
+.fred-root .fred-no-patient-msg {
+  color: #888;
+  font-style: italic;
+  font-size: 11px;
+  padding: 2px 0;
+}

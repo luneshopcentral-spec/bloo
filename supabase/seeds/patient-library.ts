@@ -1,0 +1,298 @@
+// All patients are fictional. Data is used for dispensing practice only.
+
+export interface SeedPatient {
+  seed_id: string;
+  surname: string;
+  firstname: string;
+  title: string;
+  sex: string;
+  date_of_birth: string;   // ISO "YYYY-MM-DD"
+  address: string;
+  suburb: string;
+  postcode: string;
+  phone: string;
+  medicare_card: string;
+  medicare_valid_to: string;
+  concession_type: string | null;
+  concession_number: string | null;
+  allergies: string[];
+  patient_notes: string | null;
+}
+
+export const SEED_PATIENTS: SeedPatient[] = [
+  // ── SMITH cluster (4) — Case 1's correct patient + 3 decoys ─────────
+  {
+    seed_id: "patient-john-smith-abbotsford",
+    surname: "SMITH", firstname: "JOHN", title: "MR", sex: "M",
+    date_of_birth: "1965-03-14",
+    address: "20 TRENERRY CRESCENT", suburb: "ABBOTSFORD", postcode: "3067",
+    phone: "(03) 9417 2211",
+    medicare_card: "3333-00000-11", medicare_valid_to: "11/2020",
+    concession_type: null, concession_number: null,
+    allergies: ["PENICILLIN (rash)"],
+    patient_notes: "Hypertension — on Amlodipine 5mg od",
+  },
+  {
+    seed_id: "patient-john-smith-richmond",
+    surname: "SMITH", firstname: "JOHN", title: "MR", sex: "M",
+    date_of_birth: "1978-11-02",
+    address: "15 BRIDGE ROAD", suburb: "RICHMOND", postcode: "3121",
+    phone: "(03) 9428 5599",
+    medicare_card: "3412-56789-2", medicare_valid_to: "08/2023",
+    concession_type: null, concession_number: null,
+    allergies: [],
+    patient_notes: null,
+  },
+  {
+    seed_id: "patient-jane-smith-fitzroy",
+    surname: "SMITH", firstname: "JANE", title: "MS", sex: "F",
+    date_of_birth: "1990-07-25",
+    address: "88 GERTRUDE STREET", suburb: "FITZROY", postcode: "3065",
+    phone: "(03) 9419 3344",
+    medicare_card: "2987-11234-5", medicare_valid_to: "03/2025",
+    concession_type: "C", concession_number: "C 401 234 567A",
+    allergies: [],
+    patient_notes: null,
+  },
+  {
+    seed_id: "patient-james-smith-melbourne",
+    surname: "SMITH", firstname: "JAMES", title: "MR", sex: "M",
+    date_of_birth: "1952-05-18",
+    address: "6 COLLINS STREET", suburb: "MELBOURNE", postcode: "3000",
+    phone: "(03) 9650 1122",
+    medicare_card: "4122-33445-9", medicare_valid_to: "05/2022",
+    concession_type: "C", concession_number: "C 402 876 112B",
+    allergies: ["NSAIDS (GI bleed)"],
+    patient_notes: "Type 2 diabetes",
+  },
+
+  // ── HEALTH cluster (4) — classic Fred demo names ─────────────────────
+  {
+    seed_id: "patient-fred-health",
+    surname: "HEALTH", firstname: "FRED", title: "MR", sex: "M",
+    date_of_birth: "1958-01-30",
+    address: "27 JAMES STREET", suburb: "ADELAIDE", postcode: "5000",
+    phone: "(08) 8211 4455",
+    medicare_card: "1234-56789-1", medicare_valid_to: "06/2024",
+    concession_type: null, concession_number: null,
+    allergies: [],
+    patient_notes: null,
+  },
+  {
+    seed_id: "patient-frances-health",
+    surname: "HEALTH", firstname: "FRANCES", title: "MRS", sex: "F",
+    date_of_birth: "1961-09-14",
+    address: "27 JAMES STREET", suburb: "ADELAIDE", postcode: "5000",
+    phone: "(08) 8211 4455",
+    medicare_card: "1234-56789-2", medicare_valid_to: "06/2024",
+    concession_type: null, concession_number: null,
+    allergies: ["CODEINE (nausea)"],
+    patient_notes: null,
+  },
+  {
+    seed_id: "patient-homer-health",
+    surname: "HEALTH", firstname: "HOMER", title: "MR", sex: "M",
+    date_of_birth: "1966-04-12",
+    address: "127 BARKER ROAD", suburb: "PROSPECT", postcode: "5082",
+    phone: "(08) 8344 7788",
+    medicare_card: "2345-67890-3", medicare_valid_to: "02/2025",
+    concession_type: "C", concession_number: "C 501 234 789C",
+    allergies: [],
+    patient_notes: null,
+  },
+  {
+    seed_id: "patient-winifred-health",
+    surname: "HEALTH", firstname: "WINIFRED", title: "MRS", sex: "F",
+    date_of_birth: "1969-11-03",
+    address: "127 BARKER ROAD", suburb: "PROSPECT", postcode: "5082",
+    phone: "(08) 8344 7788",
+    medicare_card: "2345-67890-4", medicare_valid_to: "02/2025",
+    concession_type: "S", concession_number: "S 601 234 001D",
+    allergies: ["SULFA"],
+    patient_notes: null,
+  },
+
+  // ── JONES cluster (3) — Case 2's patient + 2 decoys ──────────────────
+  {
+    seed_id: "patient-margaret-jones-fitzroy",
+    surname: "JONES", firstname: "MARGARET", title: "MRS", sex: "F",
+    date_of_birth: "1948-06-22",
+    address: "44 OAK STREET", suburb: "FITZROY", postcode: "3065",
+    phone: "(03) 9417 8899",
+    medicare_card: "4444-11111-22", medicare_valid_to: "06/2021",
+    concession_type: "C", concession_number: "C 403 211 001E",
+    allergies: [],
+    patient_notes: "Atrial fibrillation — on warfarin, INR monitored monthly",
+  },
+  {
+    seed_id: "patient-peter-jones-richmond",
+    surname: "JONES", firstname: "PETER", title: "MR", sex: "M",
+    date_of_birth: "1955-02-14",
+    address: "12 ALBERT STREET", suburb: "RICHMOND", postcode: "3121",
+    phone: "(03) 9428 6677",
+    medicare_card: "5512-34567-3", medicare_valid_to: "04/2022",
+    concession_type: null, concession_number: null,
+    allergies: ["LATEX"],
+    patient_notes: null,
+  },
+  {
+    seed_id: "patient-sarah-jones-carlton",
+    surname: "JONES", firstname: "SARAH", title: "MS", sex: "F",
+    date_of_birth: "1987-09-06",
+    address: "55 LYGON STREET", suburb: "CARLTON", postcode: "3053",
+    phone: "(03) 9347 5566",
+    medicare_card: "6623-45678-7", medicare_valid_to: "09/2024",
+    concession_type: null, concession_number: null,
+    allergies: [],
+    patient_notes: null,
+  },
+
+  // ── NGUYEN cluster (3) ────────────────────────────────────────────────
+  {
+    seed_id: "patient-minh-nguyen",
+    surname: "NGUYEN", firstname: "MINH", title: "MR", sex: "M",
+    date_of_birth: "1980-03-28",
+    address: "33 SWANSTON STREET", suburb: "MELBOURNE", postcode: "3000",
+    phone: "(03) 9663 1122",
+    medicare_card: "7734-56789-1", medicare_valid_to: "12/2023",
+    concession_type: null, concession_number: null,
+    allergies: [],
+    patient_notes: null,
+  },
+  {
+    seed_id: "patient-thuy-nguyen",
+    surname: "NGUYEN", firstname: "THUY", title: "MS", sex: "F",
+    date_of_birth: "1975-12-11",
+    address: "77 SYDNEY ROAD", suburb: "BRUNSWICK", postcode: "3056",
+    phone: "(03) 9387 4455",
+    medicare_card: "8845-67890-2", medicare_valid_to: "07/2025",
+    concession_type: "C", concession_number: "C 404 567 002F",
+    allergies: ["PENICILLIN (anaphylaxis)"],
+    patient_notes: null,
+  },
+  {
+    seed_id: "patient-anh-nguyen",
+    surname: "NGUYEN", firstname: "ANH", title: "MRS", sex: "F",
+    date_of_birth: "1968-07-04",
+    address: "15 HIGH STREET", suburb: "PRAHRAN", postcode: "3181",
+    phone: "(03) 9510 2233",
+    medicare_card: "9956-78901-3", medicare_valid_to: "03/2023",
+    concession_type: null, concession_number: null,
+    allergies: [],
+    patient_notes: null,
+  },
+
+  // ── PATEL cluster (3) ─────────────────────────────────────────────────
+  {
+    seed_id: "patient-anita-patel",
+    surname: "PATEL", firstname: "ANITA", title: "DR", sex: "F",
+    date_of_birth: "1972-05-19",
+    address: "22 CHAPEL STREET", suburb: "PRAHRAN", postcode: "3181",
+    phone: "(03) 9510 8877",
+    medicare_card: "1123-45678-4", medicare_valid_to: "11/2024",
+    concession_type: null, concession_number: null,
+    allergies: [],
+    patient_notes: null,
+  },
+  {
+    seed_id: "patient-rajesh-patel",
+    surname: "PATEL", firstname: "RAJESH", title: "MR", sex: "M",
+    date_of_birth: "1969-08-30",
+    address: "90 PUNT ROAD", suburb: "WINDSOR", postcode: "3181",
+    phone: "(03) 9521 3344",
+    medicare_card: "2234-56789-5", medicare_valid_to: "08/2023",
+    concession_type: null, concession_number: null,
+    allergies: [],
+    patient_notes: "Hypertension, Type 2 diabetes",
+  },
+  {
+    seed_id: "patient-priya-patel",
+    surname: "PATEL", firstname: "PRIYA", title: "MRS", sex: "F",
+    date_of_birth: "1983-02-16",
+    address: "4 SOUTH ROAD", suburb: "KINGSFORD", postcode: "2032",
+    phone: "(02) 9663 5566",
+    medicare_card: "3345-67890-6", medicare_valid_to: "02/2026",
+    concession_type: null, concession_number: null,
+    allergies: ["NSAIDS (asthma)"],
+    patient_notes: null,
+  },
+
+  // ── Singletons for Cases 4 and 5 + extras ────────────────────────────
+  {
+    seed_id: "patient-david-park-hawthorn",
+    surname: "PARK", firstname: "DAVID", title: "MR", sex: "M",
+    date_of_birth: "1971-11-08",
+    address: "31 RIVERVIEW RD", suburb: "HAWTHORN", postcode: "3122",
+    phone: "(03) 9818 6655",
+    medicare_card: "6622-33441-1", medicare_valid_to: "09/2020",
+    concession_type: null, concession_number: null,
+    allergies: [],
+    patient_notes: "Anxiety disorder — on Sertraline. Previous alcohol dependency (in remission).",
+  },
+  {
+    seed_id: "patient-carol-simmons-carlton",
+    surname: "SIMMONS", firstname: "CAROL", title: "MRS", sex: "F",
+    date_of_birth: "1959-04-23",
+    address: "78 LYGON ST", suburb: "CARLTON", postcode: "3053",
+    phone: "(03) 9347 2211",
+    medicare_card: "7733-44552-3", medicare_valid_to: "04/2023",
+    concession_type: null, concession_number: null,
+    allergies: ["SULFONAMIDES (anaphylaxis)"],
+    patient_notes: "Type 2 diabetes, hypertension, mild CKD (eGFR 58)",
+  },
+  {
+    seed_id: "patient-abebe-tadesse",
+    surname: "TADESSE", firstname: "ABEBE", title: "MR", sex: "M",
+    date_of_birth: "1985-07-17",
+    address: "19 BRUNSWICK ROAD", suburb: "BRUNSWICK", postcode: "3056",
+    phone: "(03) 9387 7788",
+    medicare_card: "4456-78901-8", medicare_valid_to: "06/2025",
+    concession_type: null, concession_number: null,
+    allergies: [],
+    patient_notes: null,
+  },
+  {
+    seed_id: "patient-maria-costa",
+    surname: "COSTA", firstname: "MARIA", title: "MRS", sex: "F",
+    date_of_birth: "1944-12-03",
+    address: "45 FITZROY STREET", suburb: "ST KILDA", postcode: "3182",
+    phone: "(03) 9534 3322",
+    medicare_card: "5567-89012-9", medicare_valid_to: "12/2022",
+    concession_type: "C", concession_number: "C 405 678 003G",
+    allergies: ["PENICILLIN (rash)", "CODEINE (confusion)"],
+    patient_notes: "Osteoporosis, osteoarthritis",
+  },
+  {
+    seed_id: "patient-olga-petrov",
+    surname: "PETROV", firstname: "OLGA", title: "MS", sex: "F",
+    date_of_birth: "1976-09-30",
+    address: "12 SMITH STREET", suburb: "COLLINGWOOD", postcode: "3066",
+    phone: "(03) 9417 9900",
+    medicare_card: "6678-90123-7", medicare_valid_to: "09/2024",
+    concession_type: null, concession_number: null,
+    allergies: [],
+    patient_notes: null,
+  },
+  {
+    seed_id: "patient-kerry-walsh",
+    surname: "WALSH", firstname: "KERRY", title: "MR", sex: "M",
+    date_of_birth: "1963-01-19",
+    address: "56 MILITARY ROAD", suburb: "NEUTRAL BAY", postcode: "2089",
+    phone: "(02) 9953 4411",
+    medicare_card: "7789-01234-4", medicare_valid_to: "01/2023",
+    concession_type: "S", concession_number: "S 602 345 002H",
+    allergies: [],
+    patient_notes: null,
+  },
+  {
+    seed_id: "patient-amy-wong",
+    surname: "WONG", firstname: "AMY", title: "MS", sex: "F",
+    date_of_birth: "1991-06-05",
+    address: "33 OXFORD STREET", suburb: "PADDINGTON", postcode: "2021",
+    phone: "(02) 9360 5566",
+    medicare_card: "8890-12345-5", medicare_valid_to: "06/2026",
+    concession_type: null, concession_number: null,
+    allergies: [],
+    patient_notes: null,
+  },
+];

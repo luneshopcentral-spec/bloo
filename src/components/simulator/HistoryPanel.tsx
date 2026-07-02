@@ -1,16 +1,24 @@
-import type { PracticeCase, PatientHistoryItem } from "@/lib/types/case";
+import type { Patient, PatientScript } from "@/lib/types/patient";
 
 interface HistoryPanelProps {
-  caseData: PracticeCase;
+  patient: Patient | null;
+  patientScripts: PatientScript[];
   onStatusUpdate: (msg: string) => void;
 }
 
-export function HistoryPanel({ caseData, onStatusUpdate }: HistoryPanelProps) {
-  const hasAllergy = caseData.allergies !== "NKDA";
+export function HistoryPanel({
+  patient,
+  patientScripts,
+  onStatusUpdate,
+}: HistoryPanelProps) {
+  const allergies = patient?.allergies ?? [];
+  const hasAllergy = allergies.length > 0;
 
-  function handleItemClick(h: PatientHistoryItem) {
+  function handleItemClick(s: PatientScript) {
     onStatusUpdate(
-      `Viewing history: ${h.drug} from ${h.date} — Qty ${h.qty}, ${h.rpt} repeats`
+      `Script: ${s.drug} from ${s.script_date} — Qty ${s.qty ?? "—"}, ${
+        s.repeats ?? 0
+      } repeats`
     );
   }
 
@@ -18,7 +26,6 @@ export function HistoryPanel({ caseData, onStatusUpdate }: HistoryPanelProps) {
     <div className="fred-history-panel">
       <div className="fred-hp-header">Patient History</div>
 
-      {/* Column headers */}
       <div className="fred-hp-table-header">
         <span>Date</span>
         <span>Rx</span>
@@ -27,24 +34,31 @@ export function HistoryPanel({ caseData, onStatusUpdate }: HistoryPanelProps) {
       </div>
       <div className="fred-hp-drug-col-header">Drug Description</div>
 
-      {/* History rows */}
-      {caseData.patientHistory.map((h, i) => (
+      {patientScripts.length === 0 && (
+        <div
+          className="fred-no-patient-msg"
+          style={{ padding: "6px 6px", borderBottom: "1px solid #ccc" }}
+        >
+          {patient ? "No history on file" : "No patient selected"}
+        </div>
+      )}
+
+      {patientScripts.map((s, i) => (
         <div
           key={i}
           className="fred-hp-item"
-          onClick={() => handleItemClick(h)}
+          onClick={() => handleItemClick(s)}
         >
           <div className="fred-hp-item-grid">
-            <span className="fred-hp-date">{h.date}</span>
-            <span>{h.rx}</span>
-            <span>{h.qty}</span>
-            <span>{h.rpt}</span>
+            <span className="fred-hp-date">{s.script_date}</span>
+            <span>{s.rx_number ?? "—"}</span>
+            <span>{s.qty ?? "—"}</span>
+            <span>{String(s.repeats ?? 0)}</span>
           </div>
-          <div className="fred-hp-drug">{h.drug}</div>
+          <div className="fred-hp-drug">{s.drug}</div>
         </div>
       ))}
 
-      {/* Allergies */}
       <div className="fred-hp-section">
         <div className="fred-hp-section-label">Allergies</div>
         <div
@@ -52,18 +66,20 @@ export function HistoryPanel({ caseData, onStatusUpdate }: HistoryPanelProps) {
             hasAllergy ? "has-allergy" : "no-allergy"
           }`}
         >
-          {hasAllergy ? `⚠ ${caseData.allergies}` : "No known allergies"}
+          {hasAllergy
+            ? `⚠ ${allergies.join(", ")}`
+            : patient
+            ? "No known allergies"
+            : "—"}
         </div>
       </div>
 
-      {/* Current medications */}
-      <div className="fred-hp-section">
-        <div className="fred-hp-section-label">Current Medications</div>
-        <div
-          className="fred-hp-meds"
-          dangerouslySetInnerHTML={{ __html: caseData.currentMeds }}
-        />
-      </div>
+      {patient?.patient_notes && (
+        <div className="fred-hp-section">
+          <div className="fred-hp-section-label">Patient Notes</div>
+          <div className="fred-hp-meds">{patient.patient_notes}</div>
+        </div>
+      )}
     </div>
   );
 }

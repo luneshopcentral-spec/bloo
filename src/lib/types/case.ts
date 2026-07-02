@@ -14,27 +14,43 @@ export interface DrugDetails {
   warn2: string;
 }
 
-export interface PatientHistoryItem {
-  date: string;
-  rx: string;
-  qty: number | string;
-  rpt: number;
-  drug: string;
+export interface ExpectedPatient {
+  surname: string;
+  firstname: string;
+  title?: string;
+  sex?: "M" | "F";
+  dateOfBirth?: string;    // "DD/MM/YYYY"
+  address?: string;        // street only, e.g. "7 MAPLE DRIVE"
+  suburb?: string;
+  postcode?: string;
+  phone?: string;
+  medicareCard: string;    // e.g. "5511-22233-1"
+  medicareValidTo?: string; // "MM/YYYY"
+  concessionType?: string;
+  concessionNumber?: string;
+  allergies?: string[];
+}
+
+export interface PatientLookupSpec {
+  requiresNewPatient: boolean;
+  // For existing-patient cases: must match the seeded patient's seed_id
+  existingPatientSeedId?: string;
+  // For new-patient cases: details student must transcribe from the script
+  expectedNewPatient?: ExpectedPatient;
+  // Patient info as printed on the paper script (fixed regardless of student choice)
+  prescriptionPatient: {
+    name: string;
+    address: string;
+    mcare: string;
+  };
 }
 
 export interface PracticeCase {
   id: string;
   caseNumber: number;
   title: string;
-  complaint: string;
-  history: string;
-  allergies: string;
-  currentMeds: string;
-  task: string;
-  patient: string;
-  addr: string;
+  patientLookup: PatientLookupSpec;
   price: string;
-  mcare: string;
   doctor: string;
   prescriberNo: string;
   date: string;
@@ -46,9 +62,7 @@ export interface PracticeCase {
   price2: string;
   correctWarnings: string[];
   errors: string[];
-  allergyAlert: string;
   drugDetails: DrugDetails;
-  patientHistory: PatientHistoryItem[];
   tip: string;
 }
 

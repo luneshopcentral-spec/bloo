@@ -5,6 +5,7 @@ interface ScriptFormProps {
   formState: FormState;
   dispatch: React.Dispatch<FormAction>;
   initialsError: boolean;
+  disabled?: boolean;
 }
 
 function onChange(
@@ -16,13 +17,13 @@ function onChange(
   ) => dispatch({ type: "SET_FIELD", field: name, value: e.target.value });
 }
 
-export function ScriptForm({ formState, dispatch, initialsError }: ScriptFormProps) {
+export function ScriptForm({ formState, dispatch, initialsError, disabled = false }: ScriptFormProps) {
 
   const initialsDisplay = formState.pharmacistInitials.trim() || "__";
   const expandedDirections = expandAbbrevs(formState.directions);
 
   return (
-    <div className="fred-script-left">
+    <div className={`fred-script-left${disabled ? " fred-script-disabled" : ""}`}>
       <div className="fred-script-title">New Script</div>
 
       {/* Row 1: Date / Type / Hospital */}
@@ -34,6 +35,7 @@ export function ScriptForm({ formState, dispatch, initialsError }: ScriptFormPro
             placeholder="DD/MM/YY"
             value={formState.scriptDate}
             onChange={onChange(dispatch, "scriptDate")}
+            disabled={disabled}
           />
         </div>
         <div>
@@ -42,6 +44,7 @@ export function ScriptForm({ formState, dispatch, initialsError }: ScriptFormPro
             className="fred-field-select"
             value={formState.scriptType}
             onChange={onChange(dispatch, "scriptType")}
+            disabled={disabled}
           >
             <option>N — NHS</option>
             <option>P — Private</option>
@@ -57,6 +60,7 @@ export function ScriptForm({ formState, dispatch, initialsError }: ScriptFormPro
             placeholder=""
             value={formState.hospitalProvNo}
             onChange={onChange(dispatch, "hospitalProvNo")}
+            disabled={disabled}
           />
         </div>
       </div>
@@ -70,6 +74,7 @@ export function ScriptForm({ formState, dispatch, initialsError }: ScriptFormPro
             placeholder="Doctor surname, first"
             value={formState.doctor}
             onChange={onChange(dispatch, "doctor")}
+            disabled={disabled}
           />
         </div>
         <div>
@@ -79,6 +84,7 @@ export function ScriptForm({ formState, dispatch, initialsError }: ScriptFormPro
             placeholder="Prescriber No."
             value={formState.prescriberNo}
             onChange={onChange(dispatch, "prescriberNo")}
+            disabled={disabled}
           />
         </div>
       </div>
@@ -91,6 +97,7 @@ export function ScriptForm({ formState, dispatch, initialsError }: ScriptFormPro
           placeholder="Type drug name, strength and form..."
           value={formState.drug}
           onChange={onChange(dispatch, "drug")}
+          disabled={disabled}
         />
         <div className="fred-drug-info-row">
           <span>
@@ -126,6 +133,7 @@ export function ScriptForm({ formState, dispatch, initialsError }: ScriptFormPro
             placeholder="e.g. Take ONE capsule tds pc"
             value={formState.directions}
             onChange={onChange(dispatch, "directions")}
+            disabled={disabled}
           />
           {formState.directions && (
             <div
@@ -147,6 +155,7 @@ export function ScriptForm({ formState, dispatch, initialsError }: ScriptFormPro
             placeholder="0"
             value={formState.repeats}
             onChange={onChange(dispatch, "repeats")}
+            disabled={disabled}
           />
           <div style={{ fontSize: "9px", color: "#888" }}>Max —</div>
         </div>
@@ -157,6 +166,7 @@ export function ScriptForm({ formState, dispatch, initialsError }: ScriptFormPro
             placeholder="0"
             value={formState.qty}
             onChange={onChange(dispatch, "qty")}
+            disabled={disabled}
           />
         </div>
         <div className="flex flex-col gap-0.5">
@@ -166,6 +176,7 @@ export function ScriptForm({ formState, dispatch, initialsError }: ScriptFormPro
             placeholder="0.00"
             value={formState.price}
             onChange={onChange(dispatch, "price")}
+            disabled={disabled}
           />
         </div>
       </div>

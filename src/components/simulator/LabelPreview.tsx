@@ -6,9 +6,10 @@ interface LabelPreviewProps {
   caseData: PracticeCase;
   formState: FormState;
   selectedWarnings: Set<string>;
+  patientName?: string;
 }
 
-export function LabelPreview({ caseData, formState, selectedWarnings }: LabelPreviewProps) {
+export function LabelPreview({ caseData, formState, selectedWarnings, patientName }: LabelPreviewProps) {
   const drug = formState.drug || "—";
   const directions = formState.directions
     ? expandAbbrevs(formState.directions)
@@ -28,7 +29,7 @@ export function LabelPreview({ caseData, formState, selectedWarnings }: LabelPre
         <div style={{ marginTop: "2px", fontSize: "11px" }}>{directions}</div>
         <div className="fred-label-bottom">
           <div>
-            <div style={{ fontWeight: "bold" }}>{caseData.patient}</div>
+            <div style={{ fontWeight: "bold" }}>{patientName || "—"}</div>
             <div style={{ fontSize: "10px", color: "#555" }}>
               {date} &nbsp; Dr {doctor}
             </div>
