@@ -35,22 +35,55 @@ export function validateDispense({
     const exp = spec.expectedNewPatient;
     if (!exp) {
       patientPassed = !!selectedPatient;
-      patientDetail = patientPassed
-        ? "New patient added"
-        : "No patient added";
+      patientDetail = patientPassed ? "New patient added" : "No patient added";
+    } else if (!selectedPatient) {
+      patientPassed = false;
+      patientDetail = `No patient added. Expected new patient: ${exp.surname}, ${exp.firstname}`;
     } else {
-      patientPassed =
-        !!selectedPatient &&
-        norm(selectedPatient.surname) === norm(exp.surname) &&
-        norm(selectedPatient.firstname) === norm(exp.firstname) &&
-        norm(selectedPatient.medicare_card) === norm(exp.medicareCard);
-      patientDetail = patientPassed
-        ? "New patient entered correctly"
-        : `Expected new patient: ${exp.surname}, ${exp.firstname} (Medicare: ${exp.medicareCard})${
-            selectedPatient
-              ? ` — got: ${selectedPatient.surname}, ${selectedPatient.firstname} (Medicare: ${selectedPatient.medicare_card ?? "none"})`
-              : " — no patient added"
-          }`;
+      const normStr = (s?: string | null) => (s ?? "").trim().toUpperCase();
+      const normDigits = (s?: string | null) => (s ?? "").replace(/\D/g, "");
+
+      // Scored fields (content must match)
+      const surnameOk = normStr(selectedPatient.surname) === normStr(exp.surname);
+      const firstnameOk = normStr(selectedPatient.firstname) === normStr(exp.firstname);
+      const expAddr = normStr(exp.address);
+      const gotAddr = normStr(selectedPatient.address);
+      const addressOk =
+        !exp.address ||
+        gotAddr.includes(expAddr) ||
+        expAddr.includes(gotAddr);
+      const medicareOk =
+        normDigits(selectedPatient.medicare_card) === normDigits(exp.medicareCard);
+
+      // Required but not scored (must be non-empty)
+      const requiredMissing = (
+        [
+          [!selectedPatient.title?.trim(), "title"],
+          [!selectedPatient.sex?.trim(), "sex"],
+          [!selectedPatient.date_of_birth?.trim(), "date of birth"],
+          [!selectedPatient.suburb?.trim(), "suburb"],
+          [!selectedPatient.postcode?.trim(), "postcode"],
+        ] as [boolean, string][]
+      )
+        .filter(([missing]) => missing)
+        .map(([, field]) => field);
+
+      const mismatches = [
+        !surnameOk && `Surname expected "${exp.surname}", got "${selectedPatient.surname}"`,
+        !firstnameOk && `Firstname expected "${exp.firstname}", got "${selectedPatient.firstname}"`,
+        !addressOk && `Address expected "${exp.address}", got "${selectedPatient.address ?? "(empty)"}"`,
+        !medicareOk && `Medicare expected "${exp.medicareCard}", got "${selectedPatient.medicare_card ?? "(empty)"}"`,
+      ].filter(Boolean) as string[];
+
+      patientPassed = requiredMissing.length === 0 && mismatches.length === 0;
+
+      if (patientPassed) {
+        patientDetail = "New patient entered correctly";
+      } else if (requiredMissing.length > 0) {
+        patientDetail = `New patient added but missing required fields: ${requiredMissing.join(", ")}`;
+      } else {
+        patientDetail = `New patient added, but details don't match. ${mismatches.join(". ")}`;
+      }
     }
   } else {
     patientPassed =

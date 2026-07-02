@@ -294,23 +294,24 @@ export default function PracticePage() {
           onClose={() => setOverlayOpen(false)}
           onNext={handleNextFromOverlay}
         />
+
+        {/* PatientDetailsModal INSIDE .fred-root so its CSS selectors match */}
+        <PatientDetailsModal
+          key={`${addPatientInitialSurname}-${currentCaseIndex}`}
+          open={addPatientModalOpen}
+          mode="add"
+          initialSurname={addPatientInitialSurname}
+          onSave={handlePatientSaved}
+          onClose={() => setAddPatientModalOpen(false)}
+        />
       </div>
 
-      {/* Prescription drawer — outside .fred-root */}
+      {/* Prescription drawer — outside .fred-root (has its own non-.fred-root CSS) */}
       <PrescriptionDrawer
         caseData={current}
         open={drawerOpen}
         onOpenChange={setDrawerOpen}
         overlayOpen={overlayOpen}
-      />
-
-      {/* Add New Patient modal */}
-      <PatientDetailsModal
-        open={addPatientModalOpen}
-        mode="add"
-        initialSurname={addPatientInitialSurname}
-        onSave={handlePatientSaved}
-        onClose={() => setAddPatientModalOpen(false)}
       />
     </>
   );

@@ -6,7 +6,7 @@ export interface SeedPatient {
   firstname: string;
   title: string;
   sex: string;
-  date_of_birth: string;   // ISO "YYYY-MM-DD"
+  date_of_birth: string;   // stored as text (e.g. "1965-03-14")
   address: string;
   suburb: string;
   postcode: string;
@@ -18,6 +18,142 @@ export interface SeedPatient {
   allergies: string[];
   patient_notes: string | null;
 }
+
+// ── Random patient generation ─────────────────────────────────────────────────
+
+const SURNAMES = [
+  "SMITH", "JONES", "BROWN", "WILSON", "TAYLOR", "JOHNSON", "WHITE", "LEE",
+  "MARTIN", "ANDERSON", "THOMPSON", "GARCIA", "CLARK", "WALKER", "HALL",
+  "YOUNG", "KING", "WRIGHT", "LOPEZ", "HILL", "GREEN", "ADAMS", "BAKER",
+  "CAMPBELL", "NELSON", "MITCHELL", "ROBERTS", "CARTER", "PHILLIPS", "EVANS",
+  "TURNER", "DIAZ", "PARKER", "EDWARDS", "COLLINS", "STEWART", "MORRIS",
+  "ROGERS", "REED", "COOK", "BAILEY", "RIVERA", "COOPER", "RICHARDSON", "COX",
+  "HOWARD", "WARD", "TORRES", "PETERSON", "GRAY",
+  "NGUYEN", "PATEL", "WANG", "LI", "KHAN", "SINGH", "KUMAR", "SHARMA",
+  "CHEN", "ZHANG", "KIM", "TRAN", "LE",
+];
+
+const FIRSTNAMES_M = [
+  "JAMES", "JOHN", "MICHAEL", "DAVID", "ANDREW", "ROBERT", "PETER", "CHRIS",
+  "DANIEL", "MATTHEW", "MARK", "PAUL", "TOM", "BEN", "ALEX", "NICK",
+  "SAM", "JACK", "LUKE", "RYAN", "JASON", "KEVIN", "STEVE", "SIMON",
+  "ANTHONY", "ADAM", "AARON", "NATHAN", "JOSH", "JAKE",
+];
+
+const FIRSTNAMES_F = [
+  "SARAH", "EMMA", "JESSICA", "ANNA", "REBECCA", "MICHELLE", "NICOLE",
+  "EMILY", "RACHEL", "AMANDA", "LISA", "KATE", "MELISSA", "JULIA",
+  "LAURA", "AMY", "HANNAH", "OLIVIA", "SOPHIE", "CHLOE", "GRACE",
+  "CHARLOTTE", "ELLA", "ZOE", "MIA", "ISABELLA", "AVA", "LILY",
+  "RUBY", "GEORGIA",
+];
+
+const STREETS = [
+  "SMITH ST", "MAIN RD", "KING ST", "VICTORIA RD", "GEORGE ST",
+  "CHURCH ST", "PARK AVE", "HIGH ST", "STATION RD", "QUEEN ST",
+  "OXFORD ST", "ELIZABETH ST", "WILLIAM ST", "CLARENCE ST", "BRIDGE RD",
+  "ALBERT ST", "CHAPEL ST", "BAY RD", "HILL ST", "RIVER RD",
+];
+
+// suburb + matching postcode tuples
+const SUBURBS: [string, string][] = [
+  ["ABBOTSFORD", "3067"], ["CARLTON", "3053"], ["FITZROY", "3065"], ["RICHMOND", "3121"],
+  ["KENSINGTON", "5068"], ["NORWOOD", "5067"], ["UNLEY", "5061"], ["GLENELG", "5045"],
+  ["NEWTOWN", "2042"], ["BONDI", "2026"], ["PARRAMATTA", "2150"], ["MANLY", "2095"],
+  ["ST LUCIA", "4067"], ["TOOWONG", "4066"], ["PADDINGTON", "4064"],
+  ["SOUTH PERTH", "6151"], ["FREMANTLE", "6160"],
+];
+
+const AREA_CODES = ["02", "03", "07", "08"];
+
+/** Deterministic LCG — same inputs always yield the same output. */
+function seededInt(seed: number, max: number): number {
+  const h = ((seed * 1664525 + 1013904223) >>> 0);
+  return h % max;
+}
+
+function pick<T>(arr: T[], seed: number): T {
+  return arr[seededInt(seed, arr.length)];
+}
+
+function generateAddress(base: number): string {
+  const num = 1 + seededInt(base, 99);
+  const street = pick(STREETS, base + 1);
+  return `${num} ${street}`;
+}
+
+function generatePhone(base: number): string {
+  const area = pick(AREA_CODES, base + 4);
+  const a = String(1000 + seededInt(base + 5, 9000));
+  const b = String(1000 + seededInt(base + 6, 9000));
+  return `(${area}) ${a} ${b}`;
+}
+
+function generateMedicare(base: number): string {
+  const p1 = String(2000 + seededInt(base + 10, 8000));
+  const p2 = String(10000 + seededInt(base + 11, 89999));
+  const p3 = 1 + seededInt(base + 12, 9);
+  return `${p1}-${p2}-${p3}`;
+}
+
+function generateDob(base: number): string {
+  const year = 1940 + seededInt(base + 20, 70);
+  const month = 1 + seededInt(base + 21, 12);
+  const day = 1 + seededInt(base + 22, 28);
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+function generateConcession(base: number): string {
+  const types = ["C", "S", "P"];
+  const t = pick(types, base + 30);
+  const n1 = String(400 + seededInt(base + 31, 600)).padStart(3, "0");
+  const n2 = String(seededInt(base + 32, 999)).padStart(3, "0");
+  const n3 = String(seededInt(base + 33, 999)).padStart(3, "0");
+  const ch = String.fromCharCode(65 + seededInt(base + 34, 26));
+  return `${t} ${n1} ${n2} ${n3}${ch}`;
+}
+
+function generateRandomPatients(): SeedPatient[] {
+  const patients: SeedPatient[] = [];
+
+  SURNAMES.forEach((surname, i) => {
+    const count = 2 + (i % 3); // 2, 3, or 4 per surname
+    for (let n = 0; n < count; n++) {
+      const base = i * 100 + n * 7; // unique per patient, no collisions
+      const isMale = n % 2 === 0;
+      const firstname = isMale
+        ? pick(FIRSTNAMES_M, base)
+        : pick(FIRSTNAMES_F, base);
+      const [suburb, postcode] = pick(SUBURBS, base + 3) as [string, string];
+      const isConc = seededInt(base + 40, 3) === 0;
+
+      patients.push({
+        seed_id: `random-${surname.toLowerCase()}-${n}`,
+        surname,
+        firstname,
+        title: isMale ? "MR" : "MRS",
+        sex: isMale ? "M" : "F",
+        date_of_birth: generateDob(base),
+        address: generateAddress(base),
+        suburb,
+        postcode,
+        phone: generatePhone(base),
+        medicare_card: generateMedicare(base),
+        medicare_valid_to: "12/28",
+        concession_type: isConc ? "C" : null,
+        concession_number: isConc ? generateConcession(base) : null,
+        allergies: [],
+        patient_notes: null,
+      });
+    }
+  });
+
+  return patients;
+}
+
+export const RANDOM_PATIENTS: SeedPatient[] = generateRandomPatients();
+
+// ── Fixture patients (used by specific cases — keep UNCHANGED) ────────────────
 
 export const SEED_PATIENTS: SeedPatient[] = [
   // ── SMITH cluster (4) — Case 1's correct patient + 3 decoys ─────────
@@ -66,7 +202,7 @@ export const SEED_PATIENTS: SeedPatient[] = [
     patient_notes: "Type 2 diabetes",
   },
 
-  // ── HEALTH cluster (4) — classic Fred demo names ─────────────────────
+  // ── HEALTH cluster (4) ─────────────────────────────────────────────────
   {
     seed_id: "patient-fred-health",
     surname: "HEALTH", firstname: "FRED", title: "MR", sex: "M",
@@ -217,7 +353,7 @@ export const SEED_PATIENTS: SeedPatient[] = [
     patient_notes: null,
   },
 
-  // ── Singletons for Cases 4 and 5 + extras ────────────────────────────
+  // ── Singletons for Cases 4 & 5 + extras ──────────────────────────────
   {
     seed_id: "patient-david-park-hawthorn",
     surname: "PARK", firstname: "DAVID", title: "MR", sex: "M",
@@ -296,3 +432,6 @@ export const SEED_PATIENTS: SeedPatient[] = [
     patient_notes: null,
   },
 ];
+
+/** Combined pool: 25 fixtures + ~189 random = ~214 total */
+export const ALL_PATIENTS: SeedPatient[] = [...SEED_PATIENTS, ...RANDOM_PATIENTS];

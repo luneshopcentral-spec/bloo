@@ -10,7 +10,7 @@
  */
 import * as dotenv from "dotenv";
 import { createClient } from "@supabase/supabase-js";
-import { SEED_PATIENTS } from "./patient-library";
+import { ALL_PATIENTS } from "./patient-library";
 
 dotenv.config({ path: ".env.local" });
 
@@ -65,7 +65,7 @@ async function run() {
   let upsertedCount = 0;
   let scriptCount = 0;
 
-  for (const patient of SEED_PATIENTS) {
+  for (const patient of ALL_PATIENTS) {
     const { data, error } = await supabase
       .from("patients")
       .upsert(
@@ -115,7 +115,7 @@ async function run() {
     }
   }
 
-  console.log(`Seeded ${upsertedCount}/${SEED_PATIENTS.length} patients, ${scriptCount} scripts.`);
+  console.log(`Seeded ${upsertedCount}/${ALL_PATIENTS.length} patients, ${scriptCount} scripts.`);
 }
 
 run().catch((err) => {

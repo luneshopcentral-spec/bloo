@@ -25,7 +25,17 @@ function mockPatient(overrides: Partial<Patient>): Patient {
 
 const case1Patient = mockPatient({ seed_id: "patient-john-smith-abbotsford", surname: "SMITH", firstname: "JOHN" });
 const case2Patient = mockPatient({ seed_id: "patient-margaret-jones-fitzroy", surname: "JONES", firstname: "MARGARET" });
-const case3Patient = mockPatient({ surname: "HENDERSON", firstname: "LIAM", medicare_card: "5511-22233-1" });
+const case3Patient = mockPatient({
+  surname: "HENDERSON",
+  firstname: "LIAM",
+  medicare_card: "5511-22233-1",
+  address: "7 MAPLE DRIVE",
+  title: "MASTER",
+  sex: "M",
+  date_of_birth: "12/05/2009",
+  suburb: "NORTHCOTE",
+  postcode: "3070",
+});
 
 describe("validateDispense", () => {
   it("all-correct Case 1 (Erythromycin) → 7/7 pass", () => {
@@ -213,15 +223,26 @@ describe("validateDispense", () => {
     expect(pc?.detail).toContain("correctly");
   });
 
-  it("new patient case: patient check fails when medicare card does not match", () => {
-    const wrongMcare = mockPatient({ surname: "HENDERSON", firstname: "LIAM", medicare_card: "9999-00000-0" });
+  it("new patient case: patient check fails when address does not match", () => {
+    const wrongAddr = mockPatient({
+      surname: "HENDERSON",
+      firstname: "LIAM",
+      medicare_card: "5511-22233-1",
+      address: "99 WRONG STREET",
+      title: "MASTER",
+      sex: "M",
+      date_of_birth: "12/05/2009",
+      suburb: "NORTHCOTE",
+      postcode: "3070",
+    });
     const result = validateDispense({
       formState: EMPTY_FORM_STATE,
       selectedWarnings: new Set(),
       caseData: case3,
-      selectedPatient: wrongMcare,
+      selectedPatient: wrongAddr,
     });
     const pc = result.checks.find((c) => c.category === "patient");
     expect(pc?.passed).toBe(false);
+    expect(pc?.detail).toContain("Address");
   });
 });

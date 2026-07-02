@@ -83,6 +83,10 @@ export function PatientDetailsModal({
     const errs: Record<string, string> = {};
     if (!form.surname.trim()) errs.surname = "Required";
     if (!form.firstname.trim()) errs.firstname = "Required";
+    if (!form.address?.trim()) errs.address = "Required";
+    if (!form.suburb?.trim()) errs.suburb = "Required";
+    if (!form.postcode?.trim()) errs.postcode = "Required";
+    if (!form.dateOfBirth?.trim()) errs.dateOfBirth = "Required (from prescription)";
     setErrors(errs);
     return Object.keys(errs).length === 0;
   }

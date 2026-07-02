@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Patient } from "@/lib/types/patient";
 
@@ -21,55 +21,58 @@ export function PatientSelectionModal({
   const [query, setQuery] = useState(initialSurname);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(false);
+  const [fetchError, setFetchError] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const supabase = createClient();
 
   useEffect(() => {
     if (open) {
       setQuery(initialSurname);
       setSelectedIndex(0);
+      setPatients([]);
+      setFetchError("");
       setTimeout(() => inputRef.current?.focus(), 30);
     }
   }, [open, initialSurname]);
 
-  const search = useCallback(
-    async (q: string) => {
-      if (!q.trim()) {
-        setPatients([]);
-        setLoading(false);
-        return;
-      }
-      setLoading(true);
-      const { data } = await supabase
-        .from("patients")
-        .select("*")
-        .ilike("surname", `${q}%`)
-        .order("surname")
-        .order("firstname")
-        .limit(25);
-      setPatients((data as Patient[]) ?? []);
+  async function search(q: string) {
+    if (!q.trim()) {
+      setPatients([]);
       setLoading(false);
-      setSelectedIndex(0);
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
-  );
+      setFetchError("");
+      return;
+    }
+    setLoading(true);
+    setFetchError("");
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from("patients")
+      .select("*")
+      .ilike("surname", `${q}%`)
+      .order("surname")
+      .order("firstname")
+      .limit(25);
+    setLoading(false);
+    if (error) {
+      setFetchError(error.message);
+      return;
+    }
+    setPatients((data as Patient[]) ?? []);
+    setSelectedIndex(0);
+  }
 
   useEffect(() => {
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => search(query), 200);
     return () => clearTimeout(debounceRef.current);
-  }, [query, search]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query]);
 
   const totalRows = 1 + patients.length;
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "Escape") {
-      onClose();
-      return;
-    }
+    if (e.key === "Escape") { onClose(); return; }
     if (e.key === "ArrowDown") {
       e.preventDefault();
       setSelectedIndex((i) => Math.min(i + 1, totalRows - 1));
@@ -101,9 +104,7 @@ export function PatientSelectionModal({
       <div className="fred-psel-dialog">
         <div className="fred-psel-title">
           <span>Patient Selection</span>
-          <button className="fred-psel-close" onClick={onClose}>
-            ✕
-          </button>
+          <button className="fred-psel-close" onClick={onClose}>✕</button>
         </div>
 
         <div className="fred-psel-search-row">
@@ -132,21 +133,29 @@ export function PatientSelectionModal({
         </div>
 
         <div className="fred-psel-body">
-          {/* Add New Patient row always first */}
+          {/* Add New Patient — always first */}
           <div
-            className={`fred-psel-row fred-psel-add-row${
-              selectedIndex === 0 ? " selected" : ""
-            }`}
+            className={`fred-psel-row fred-psel-add-row${selectedIndex === 0 ? " selected" : ""}`}
             onClick={() => onAddNew(query)}
             onMouseEnter={() => setSelectedIndex(0)}
           >
             <span />
-            <span style={{ gridColumn: "2 / -1" }}>
-              &lt; Add New Patient &gt;
-            </span>
+            <span style={{ gridColumn: "2 / -1" }}>&lt; Add New Patient &gt;</span>
           </div>
 
-          {query.trim() && !loading && patients.length === 0 && (
+          {fetchError && (
+            <div style={{ padding: "8px 6px", color: "#cc0000", fontSize: "11px" }}>
+              Search failed — {fetchError}
+              <button
+                style={{ marginLeft: "8px", fontSize: "10px", cursor: "pointer" }}
+                onClick={() => search(query)}
+              >
+                Retry
+              </button>
+            </div>
+          )}
+
+          {!fetchError && query.trim() && !loading && patients.length === 0 && (
             <div className="fred-psel-empty">
               No patients found for &ldquo;{query}&rdquo;
             </div>
@@ -159,9 +168,7 @@ export function PatientSelectionModal({
             return (
               <div
                 key={p.id}
-                className={`fred-psel-row${
-                  selectedIndex === rowIdx ? " selected" : ""
-                }`}
+                className={`fred-psel-row${selectedIndex === rowIdx ? " selected" : ""}`}
                 onClick={() => onSelect(p)}
                 onMouseEnter={() => setSelectedIndex(rowIdx)}
               >
