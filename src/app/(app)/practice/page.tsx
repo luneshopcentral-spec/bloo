@@ -9,55 +9,59 @@ import { validateDispense } from "@/lib/scoring/validate";
 import type { DispenseResult } from "@/lib/scoring/types";
 import type { MessageRow } from "@/lib/types/case";
 import type { Patient, PatientScript } from "@/lib/types/patient";
+import type { DrugRow } from "@/lib/types/drug";
 import { createClient } from "@/lib/supabase/client";
 
-import { TitleBar }           from "@/components/simulator/TitleBar";
-import { MenuBar }            from "@/components/simulator/MenuBar";
-import { Toolbar }            from "@/components/simulator/Toolbar";
-import { PatientHeader }      from "@/components/simulator/PatientHeader";
-import { ScriptForm }         from "@/components/simulator/ScriptForm";
-import { DrugDetailsBox }     from "@/components/simulator/DrugDetailsBox";
-import { WarningsBox }        from "@/components/simulator/WarningsBox";
-import { LabelPreview }       from "@/components/simulator/LabelPreview";
-import { ApiBox }             from "@/components/simulator/ApiBox";
-import { ActionButtons }      from "@/components/simulator/ActionButtons";
-import { MessagesPanel }      from "@/components/simulator/MessagesPanel";
-import { StatusBar }          from "@/components/simulator/StatusBar";
-import { HistoryPanel }       from "@/components/simulator/HistoryPanel";
-import { ResultOverlay }      from "@/components/simulator/ResultOverlay";
-import { PrescriptionDrawer } from "@/components/simulator/PrescriptionDrawer";
+import { TitleBar }            from "@/components/simulator/TitleBar";
+import { MenuBar }             from "@/components/simulator/MenuBar";
+import { Toolbar }             from "@/components/simulator/Toolbar";
+import { PatientHeader }       from "@/components/simulator/PatientHeader";
+import { ScriptForm }          from "@/components/simulator/ScriptForm";
+import { DrugDetailsBox }      from "@/components/simulator/DrugDetailsBox";
+import { WarningsBox }         from "@/components/simulator/WarningsBox";
+import { LabelPreview }        from "@/components/simulator/LabelPreview";
+import { ApiBox }              from "@/components/simulator/ApiBox";
+import { ActionButtons }       from "@/components/simulator/ActionButtons";
+import { MessagesPanel }       from "@/components/simulator/MessagesPanel";
+import { StatusBar }           from "@/components/simulator/StatusBar";
+import { HistoryPanel }        from "@/components/simulator/HistoryPanel";
+import { ResultOverlay }       from "@/components/simulator/ResultOverlay";
+import { PrescriptionDrawer }  from "@/components/simulator/PrescriptionDrawer";
 import { PatientDetailsModal } from "@/components/simulator/PatientDetailsModal";
+import { DrugSelectionModal }  from "@/components/simulator/DrugSelectionModal";
 
 const DEFAULT_STATUS =
   "Search for patient by surname, then enter drug details and complete the label.";
 
 export default function PracticePage() {
-  const [currentCaseIndex, setCurrentCaseIndex] = useState(0);
-  const [formState, dispatch] = useReducer(formReducer, EMPTY_FORM_STATE);
-  const [selectedWarnings, setSelectedWarnings] = useState<Set<string>>(
-    new Set()
-  );
-  const [statusMessage, setStatusMessage] = useState(DEFAULT_STATUS);
-  const [messages, setMessages] = useState<MessageRow[]>([]);
+  const [currentCaseIndex, setCurrentCaseIndex]   = useState(0);
+  const [formState, dispatch]                      = useReducer(formReducer, EMPTY_FORM_STATE);
+  const [selectedWarnings, setSelectedWarnings]    = useState<Set<string>>(new Set());
+  const [statusMessage, setStatusMessage]          = useState(DEFAULT_STATUS);
+  const [messages, setMessages]                    = useState<MessageRow[]>([]);
 
-  // Phase 4 additions
-  const [sessionScore, setSessionScore] = useState({ correct: 0, total: 0 });
-  const [lastResult, setLastResult] = useState<DispenseResult | null>(null);
-  const [overlayOpen, setOverlayOpen] = useState(false);
+  const [sessionScore, setSessionScore]   = useState({ correct: 0, total: 0 });
+  const [lastResult, setLastResult]       = useState<DispenseResult | null>(null);
+  const [overlayOpen, setOverlayOpen]     = useState(false);
   const [initialsError, setInitialsError] = useState(false);
 
-  // Phase 4.5 — prescription drawer; auto-opens on case change
+  // Prescription drawer — auto-opens on case change
   const [drawerOpen, setDrawerOpen] = useState(true);
 
-  // Phase 4.6 — patient state
-  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
-  const [patientScripts, setPatientScripts] = useState<PatientScript[]>([]);
+  // Patient state
+  const [selectedPatient, setSelectedPatient]         = useState<Patient | null>(null);
+  const [patientScripts, setPatientScripts]           = useState<PatientScript[]>([]);
   const [addPatientModalOpen, setAddPatientModalOpen] = useState(false);
   const [addPatientInitialSurname, setAddPatientInitialSurname] = useState("");
 
+  // Drug state
+  const [selectedDrug, setSelectedDrug]     = useState<DrugRow | null>(null);
+  const [drugModalOpen, setDrugModalOpen]   = useState(false);
+  const [drugModalQuery, setDrugModalQuery] = useState("");
+
   const current = STATIC_CASES[currentCaseIndex];
 
-  // ── Reset form and patient whenever the case changes ──────────────
+  // ── Reset form + patient + drug whenever the case changes ─────────
   useEffect(() => {
     const c = STATIC_CASES[currentCaseIndex];
 
@@ -71,11 +75,14 @@ export default function PracticePage() {
     setStatusMessage(DEFAULT_STATUS);
     setDrawerOpen(true);
 
-    // Clear patient state
     setSelectedPatient(null);
     setPatientScripts([]);
     setAddPatientModalOpen(false);
     setAddPatientInitialSurname("");
+
+    setSelectedDrug(null);
+    setDrugModalOpen(false);
+    setDrugModalQuery("");
 
     const msgs: MessageRow[] = c.errors.map((err, i) => ({
       id: `E${String(i + 1).padStart(3, "0")}`,
@@ -89,10 +96,7 @@ export default function PracticePage() {
 
   // ── Load patient scripts when a patient is selected ───────────────
   useEffect(() => {
-    if (!selectedPatient) {
-      setPatientScripts([]);
-      return;
-    }
+    if (!selectedPatient) { setPatientScripts([]); return; }
     const supabase = createClient();
     supabase
       .from("patient_scripts")
@@ -100,9 +104,7 @@ export default function PracticePage() {
       .eq("patient_id", selectedPatient.id)
       .order("script_date", { ascending: false })
       .limit(20)
-      .then(({ data }) => {
-        setPatientScripts((data as PatientScript[]) ?? []);
-      });
+      .then(({ data }) => setPatientScripts((data as PatientScript[]) ?? []));
   }, [selectedPatient]);
 
   // ── Status nudge when pharmacist initials reach ≥2 chars ─────────
@@ -113,31 +115,32 @@ export default function PracticePage() {
   }, [formState.pharmacistInitials]);
 
   // ── Handlers ──────────────────────────────────────────────────────
-  function handleCaseChange(n: number) {
-    setCurrentCaseIndex(n);
-  }
-
-  function handleNext() {
-    setCurrentCaseIndex((i) => (i + 1) % STATIC_CASES.length);
-  }
-
-  function handleNextFromOverlay() {
-    setCurrentCaseIndex((i) => (i + 1) % STATIC_CASES.length);
-  }
+  function handleCaseChange(n: number) { setCurrentCaseIndex(n); }
+  function handleNext() { setCurrentCaseIndex((i) => (i + 1) % STATIC_CASES.length); }
+  function handleNextFromOverlay() { setCurrentCaseIndex((i) => (i + 1) % STATIC_CASES.length); }
 
   function handleClear() {
     dispatch({ type: "RESET" });
     setSelectedWarnings(new Set());
+    setSelectedDrug(null);
     setStatusMessage("Form cleared. Enter the next script.");
     setMessages([]);
   }
 
-  function handleShowAnswers() {
+  async function handleShowAnswers() {
     dispatch({ type: "FILL_FROM_CASE", case: current });
     setSelectedWarnings(new Set(current.correctWarnings));
-    setStatusMessage(
-      "Answers shown — study the label and warnings, then try the next case."
-    );
+    setStatusMessage("Answers shown — study the label and warnings, then try the next case.");
+
+    if (current.correctDrugSeedId) {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("drugs")
+        .select("*")
+        .eq("seed_id", current.correctDrugSeedId)
+        .single();
+      if (data) setSelectedDrug(data as DrugRow);
+    }
   }
 
   function handleDispense() {
@@ -153,12 +156,13 @@ export default function PracticePage() {
       selectedWarnings,
       caseData: STATIC_CASES[currentCaseIndex],
       selectedPatient,
+      selectedDrug,
     });
 
     setLastResult(result);
     setSessionScore((prev) => ({
       correct: prev.correct + (result.passed ? 1 : 0),
-      total: prev.total + 1,
+      total:   prev.total + 1,
     }));
     setStatusMessage(
       result.passed
@@ -171,18 +175,12 @@ export default function PracticePage() {
   function handleToggleWarning(warningText: string) {
     setSelectedWarnings((prev) => {
       const next = new Set(prev);
-      if (next.has(warningText)) {
-        next.delete(warningText);
-      } else {
-        next.add(warningText);
-      }
+      if (next.has(warningText)) next.delete(warningText); else next.add(warningText);
       return next;
     });
   }
 
-  function handlePatientSelect(patient: Patient) {
-    setSelectedPatient(patient);
-  }
+  function handlePatientSelect(patient: Patient) { setSelectedPatient(patient); }
 
   function handleAddNew(surname: string) {
     setAddPatientInitialSurname(surname);
@@ -192,22 +190,28 @@ export default function PracticePage() {
   function handlePatientSaved(patient: Patient) {
     setAddPatientModalOpen(false);
     setSelectedPatient(patient);
-    setStatusMessage(
-      `New patient added: ${patient.surname}, ${patient.firstname}`
-    );
+    setStatusMessage(`New patient added: ${patient.surname}, ${patient.firstname}`);
   }
 
-  const patientName = selectedPatient
-    ? `${selectedPatient.surname}, ${selectedPatient.firstname}`
-    : "";
+  function handleOpenDrugModal(query: string) {
+    setDrugModalQuery(query);
+    setDrugModalOpen(true);
+  }
 
+  function handleDrugSelected(drug: DrugRow) {
+    setSelectedDrug(drug);
+    setDrugModalOpen(false);
+    dispatch({ type: "SET_FIELD", field: "drug", value: `${drug.generic_name} ${drug.form} ${drug.strength}` });
+    setStatusMessage(`Drug selected: ${drug.full_display_name}`);
+  }
+
+  const patientName      = selectedPatient ? `${selectedPatient.surname}, ${selectedPatient.firstname}` : "";
   const patientAllergies = selectedPatient?.allergies ?? [];
   const scriptFormDisabled = !selectedPatient;
 
   return (
     <>
       <div className="fred-root">
-        {/* Narrow-screen notice */}
         <div className="fred-narrow-banner">
           DispenseRx Practice is designed for laptops and desktops. For the
           best experience, switch to a larger screen.
@@ -222,7 +226,6 @@ export default function PracticePage() {
           sessionScore={sessionScore}
         />
 
-        {/* Two-column layout: main content | history panel */}
         <div className="grid grid-cols-[1fr_220px] items-start">
           {/* ── LEFT: main content ── */}
           <div>
@@ -235,22 +238,22 @@ export default function PracticePage() {
                 onStatusUpdate={setStatusMessage}
               />
 
-              {/* Script form + drug details */}
               <div className="grid grid-cols-[1fr_220px] gap-1 mb-1">
                 <ScriptForm
                   formState={formState}
                   dispatch={dispatch}
                   initialsError={initialsError}
                   disabled={scriptFormDisabled}
+                  selectedDrug={selectedDrug}
+                  onOpenDrugModal={handleOpenDrugModal}
                 />
                 <DrugDetailsBox
-                  typedDrug={formState.drug}
+                  selectedDrug={selectedDrug}
                   caseData={current}
                   patientAllergies={patientAllergies}
                 />
               </div>
 
-              {/* Warnings + label + API */}
               <div className="grid grid-cols-[160px_1fr_100px] gap-1 mb-1">
                 <WarningsBox
                   warnings={ALL_WARNINGS}
@@ -274,7 +277,6 @@ export default function PracticePage() {
               />
 
               <MessagesPanel messages={messages} />
-
               <StatusBar message={statusMessage} />
             </div>
           </div>
@@ -295,7 +297,7 @@ export default function PracticePage() {
           onNext={handleNextFromOverlay}
         />
 
-        {/* PatientDetailsModal INSIDE .fred-root so its CSS selectors match */}
+        {/* Patient details modal — INSIDE .fred-root so CSS selectors match */}
         <PatientDetailsModal
           key={`${addPatientInitialSurname}-${currentCaseIndex}`}
           open={addPatientModalOpen}
@@ -304,9 +306,17 @@ export default function PracticePage() {
           onSave={handlePatientSaved}
           onClose={() => setAddPatientModalOpen(false)}
         />
+
+        {/* Drug selection modal — INSIDE .fred-root */}
+        <DrugSelectionModal
+          open={drugModalOpen}
+          query={drugModalQuery}
+          onDrugSelected={handleDrugSelected}
+          onClose={() => setDrugModalOpen(false)}
+        />
       </div>
 
-      {/* Prescription drawer — outside .fred-root (has its own non-.fred-root CSS) */}
+      {/* Prescription drawer — outside .fred-root (own CSS) */}
       <PrescriptionDrawer
         caseData={current}
         open={drawerOpen}

@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "test": "vitest",
-    "seed:patients": "tsx --env-file=.env.local supabase/seeds/seed-patients.ts"
+    "seed:patients": "tsx --env-file=.env.local supabase/seeds/seed-patients.ts",
+    "seed:drugs": "tsx --env-file=.env.local supabase/seeds/seed-drugs.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",

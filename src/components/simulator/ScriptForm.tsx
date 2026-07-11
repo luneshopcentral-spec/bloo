@@ -1,26 +1,46 @@
+import { useRef } from "react";
 import { expandAbbrevs } from "@/lib/scoring/abbreviations";
 import type { FormState, FormAction } from "@/components/simulator/state";
+import type { DrugRow } from "@/lib/types/drug";
 
 interface ScriptFormProps {
   formState: FormState;
   dispatch: React.Dispatch<FormAction>;
   initialsError: boolean;
   disabled?: boolean;
+  selectedDrug: DrugRow | null;
+  onOpenDrugModal: (query: string) => void;
 }
 
-function onChange(
-  dispatch: React.Dispatch<FormAction>,
-  name: keyof FormState
-) {
-  return (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
-  ) => dispatch({ type: "SET_FIELD", field: name, value: e.target.value });
+function onChange(dispatch: React.Dispatch<FormAction>, name: keyof FormState) {
+  return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
+    dispatch({ type: "SET_FIELD", field: name, value: e.target.value });
 }
 
-export function ScriptForm({ formState, dispatch, initialsError, disabled = false }: ScriptFormProps) {
-
-  const initialsDisplay = formState.pharmacistInitials.trim() || "__";
+export function ScriptForm({
+  formState,
+  dispatch,
+  initialsError,
+  disabled = false,
+  selectedDrug,
+  onOpenDrugModal,
+}: ScriptFormProps) {
+  const initialsDisplay  = formState.pharmacistInitials.trim() || "__";
   const expandedDirections = expandAbbrevs(formState.directions);
+  const drugDebounceRef  = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  function handleDrugInput(e: React.ChangeEvent<HTMLInputElement>) {
+    const val = e.target.value;
+    dispatch({ type: "SET_FIELD", field: "drug", value: val });
+    clearTimeout(drugDebounceRef.current);
+    if (val.trim().length >= 2) {
+      drugDebounceRef.current = setTimeout(() => onOpenDrugModal(val.trim()), 200);
+    }
+  }
+
+  const drugInfoLine = selectedDrug
+    ? `→ ${selectedDrug.full_display_name} · ${selectedDrug.manufacturer_full ?? selectedDrug.manufacturer_code ?? "—"} · ${selectedDrug.supply_type}${selectedDrug.pbs_code ? ` ${selectedDrug.pbs_code}` : ""} · $${(selectedDrug.retail_price ?? 0).toFixed(2)}`
+    : null;
 
   return (
     <div className={`fred-script-left${disabled ? " fred-script-disabled" : ""}`}>
@@ -30,22 +50,13 @@ export function ScriptForm({ formState, dispatch, initialsError, disabled = fals
       <div className="grid grid-cols-3 gap-1.5 mb-1 px-1">
         <div>
           <label className="fred-field-label">Script Date</label>
-          <input
-            className="fred-field-input"
-            placeholder="DD/MM/YY"
-            value={formState.scriptDate}
-            onChange={onChange(dispatch, "scriptDate")}
-            disabled={disabled}
-          />
+          <input className="fred-field-input" placeholder="DD/MM/YY"
+            value={formState.scriptDate} onChange={onChange(dispatch, "scriptDate")} disabled={disabled} />
         </div>
         <div>
           <label className="fred-field-label">Script Type</label>
-          <select
-            className="fred-field-select"
-            value={formState.scriptType}
-            onChange={onChange(dispatch, "scriptType")}
-            disabled={disabled}
-          >
+          <select className="fred-field-select" value={formState.scriptType}
+            onChange={onChange(dispatch, "scriptType")} disabled={disabled}>
             <option>N — NHS</option>
             <option>P — Private</option>
             <option>R — Repeat</option>
@@ -55,13 +66,8 @@ export function ScriptForm({ formState, dispatch, initialsError, disabled = fals
         </div>
         <div>
           <label className="fred-field-label">Hospital Prov. No.</label>
-          <input
-            className="fred-field-input"
-            placeholder=""
-            value={formState.hospitalProvNo}
-            onChange={onChange(dispatch, "hospitalProvNo")}
-            disabled={disabled}
-          />
+          <input className="fred-field-input" value={formState.hospitalProvNo}
+            onChange={onChange(dispatch, "hospitalProvNo")} disabled={disabled} />
         </div>
       </div>
 
@@ -69,46 +75,51 @@ export function ScriptForm({ formState, dispatch, initialsError, disabled = fals
       <div className="grid grid-cols-2 gap-1.5 mb-1 px-1">
         <div>
           <label className="fred-field-label">Medical Doctor</label>
-          <input
-            className="fred-field-input"
-            placeholder="Doctor surname, first"
-            value={formState.doctor}
-            onChange={onChange(dispatch, "doctor")}
-            disabled={disabled}
-          />
+          <input className="fred-field-input" placeholder="Doctor surname, first"
+            value={formState.doctor} onChange={onChange(dispatch, "doctor")} disabled={disabled} />
         </div>
         <div>
           <label className="fred-field-label">Prescriber No.</label>
-          <input
-            className="fred-field-input"
-            placeholder="Prescriber No."
-            value={formState.prescriberNo}
-            onChange={onChange(dispatch, "prescriberNo")}
-            disabled={disabled}
-          />
+          <input className="fred-field-input" placeholder="Prescriber No."
+            value={formState.prescriberNo} onChange={onChange(dispatch, "prescriberNo")} disabled={disabled} />
         </div>
       </div>
 
       {/* Drug field */}
       <div className="px-1 mb-1">
         <label className="fred-field-label">Drug or Repeat No</label>
-        <input
-          className="fred-field-input"
-          placeholder="Type drug name, strength and form..."
-          value={formState.drug}
-          onChange={onChange(dispatch, "drug")}
-          disabled={disabled}
-        />
+
+        {selectedDrug ? (
+          <div className="fred-drug-selected-wrap">
+            <span className="fred-drug-selected-name">
+              {selectedDrug.generic_name} {selectedDrug.form} {selectedDrug.strength}
+            </span>
+            <button
+              className="fred-drug-change-btn"
+              onClick={() => !disabled && onOpenDrugModal(selectedDrug.generic_name)}
+              disabled={disabled}
+            >
+              Change
+            </button>
+          </div>
+        ) : (
+          <input
+            className="fred-field-input"
+            placeholder="Type drug name to search directory…"
+            value={formState.drug}
+            onChange={handleDrugInput}
+            disabled={disabled}
+          />
+        )}
+
+        {drugInfoLine && (
+          <div className="fred-drug-info-line">{drugInfoLine}</div>
+        )}
+
         <div className="fred-drug-info-row">
-          <span>
-            On Hand: <span>—</span>
-          </span>
-          <span>
-            Committed: <span>0.00</span>
-          </span>
-          <span>
-            Avail Stock: <span>—</span>
-          </span>
+          <span>On Hand: <span>—</span></span>
+          <span>Committed: <span>0.00</span></span>
+          <span>Avail Stock: <span>—</span></span>
           <span style={{ color: "#006600", fontWeight: "bold" }}>$0.00</span>
         </div>
       </div>
@@ -122,91 +133,53 @@ export function ScriptForm({ formState, dispatch, initialsError, disabled = fals
       </div>
 
       {/* Directions / Repeats / Qty / Price */}
-      <div
-        className="grid gap-1.5 mb-1 px-1"
-        style={{ gridTemplateColumns: "1fr auto auto auto" }}
-      >
+      <div className="grid gap-1.5 mb-1 px-1" style={{ gridTemplateColumns: "1fr auto auto auto" }}>
         <div className="flex flex-col gap-0.5">
           <label className="fred-field-label">Directions</label>
-          <textarea
-            className="fred-dir-textarea"
-            placeholder="e.g. Take ONE capsule tds pc"
-            value={formState.directions}
-            onChange={onChange(dispatch, "directions")}
-            disabled={disabled}
-          />
+          <textarea className="fred-dir-textarea" placeholder="e.g. Take ONE capsule tds pc"
+            value={formState.directions} onChange={onChange(dispatch, "directions")} disabled={disabled} />
           {formState.directions && (
-            <div
-              style={{
-                fontSize: "10px",
-                color: "#555",
-                fontStyle: "italic",
-                marginTop: "1px",
-              }}
-            >
+            <div style={{ fontSize: "10px", color: "#555", fontStyle: "italic", marginTop: "1px" }}>
               {expandedDirections}
             </div>
           )}
         </div>
         <div className="flex flex-col gap-0.5">
           <label className="fred-field-label">Repeats</label>
-          <input
-            className="fred-dir-col-input"
-            placeholder="0"
-            value={formState.repeats}
-            onChange={onChange(dispatch, "repeats")}
-            disabled={disabled}
-          />
+          <input className="fred-dir-col-input" placeholder="0"
+            value={formState.repeats} onChange={onChange(dispatch, "repeats")} disabled={disabled} />
           <div style={{ fontSize: "9px", color: "#888" }}>Max —</div>
         </div>
         <div className="flex flex-col gap-0.5">
           <label className="fred-field-label">Quantity</label>
-          <input
-            className="fred-dir-col-input"
-            placeholder="0"
-            value={formState.qty}
-            onChange={onChange(dispatch, "qty")}
-            disabled={disabled}
-          />
+          <input className="fred-dir-col-input" placeholder="0"
+            value={formState.qty} onChange={onChange(dispatch, "qty")} disabled={disabled} />
         </div>
         <div className="flex flex-col gap-0.5">
           <label className="fred-field-label">Price</label>
-          <input
-            className="fred-dir-col-input"
-            placeholder="0.00"
-            value={formState.price}
-            onChange={onChange(dispatch, "price")}
-            disabled={disabled}
-          />
+          <input className="fred-dir-col-input" placeholder="0.00"
+            value={formState.price} onChange={onChange(dispatch, "price")} disabled={disabled} />
         </div>
       </div>
 
       {/* Pharmacist initials */}
       <div className="fred-pharmacist-row">
         <span>Pharmacist Initials OK</span>
-        <div
-          className={`fred-initials-box${initialsError ? " fred-initials-shake" : ""}`}
-        >
+        <div className={`fred-initials-box${initialsError ? " fred-initials-shake" : ""}`}>
           {initialsDisplay}
         </div>
         <span>to proceed</span>
         <input
           style={{
-            width: "50px",
-            fontSize: "12px",
+            width: "50px", fontSize: "12px",
             border: initialsError ? "2px solid #cc0000" : "2px inset #888",
-            padding: "2px 4px",
-            fontFamily: "inherit",
+            padding: "2px 4px", fontFamily: "inherit",
           }}
           placeholder="Initials"
           maxLength={3}
           value={formState.pharmacistInitials}
           onChange={(e) =>
-            dispatch({
-              type: "SET_FIELD",
-              field: "pharmacistInitials",
-              value: e.target.value.toUpperCase(),
-            })
+            dispatch({ type: "SET_FIELD", field: "pharmacistInitials", value: e.target.value.toUpperCase() })
           }
         />
       </div>

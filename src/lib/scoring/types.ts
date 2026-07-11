@@ -1,6 +1,7 @@
 export type CheckCategory =
   | "patient"
   | "drug"
+  | "drug_variant"
   | "directions"
   | "quantity"
   | "repeats"
@@ -26,4 +27,4 @@ export interface DispenseResult {
   tip: string;
 }
 
-export const POINTS_TO_PASS = 5;
+export const POINTS_TO_PASS = 6;

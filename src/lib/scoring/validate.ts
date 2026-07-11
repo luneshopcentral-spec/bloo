@@ -1,6 +1,7 @@
 import type { FormState } from "@/components/simulator/state";
 import type { PracticeCase } from "@/lib/types/case";
 import type { Patient } from "@/lib/types/patient";
+import type { DrugRow } from "@/lib/types/drug";
 import { expandAbbrevs } from "./abbreviations";
 import type { CheckResult, DispenseResult } from "./types";
 import { POINTS_TO_PASS } from "./types";
@@ -10,10 +11,16 @@ export interface ValidateInput {
   selectedWarnings: Set<string>;
   caseData: PracticeCase;
   selectedPatient?: Patient | null;
+  selectedDrug?: DrugRow | null;
 }
 
 function extractDigits(s: string): string {
   return (s.match(/\d+/) ?? [""])[0];
+}
+
+// First-4-char normalisation handles amoxicillin vs amoxycillin spelling variants.
+function normFirst4(s: string): string {
+  return s.toLowerCase().replace(/[^a-z]/g, "").slice(0, 4);
 }
 
 export function validateDispense({
@@ -21,13 +28,12 @@ export function validateDispense({
   selectedWarnings,
   caseData,
   selectedPatient = null,
+  selectedDrug = null,
 }: ValidateInput): DispenseResult {
   const checks: CheckResult[] = [];
 
   // ── 0. Patient ────────────────────────────────────────────────────
   const spec = caseData.patientLookup;
-  const norm = (s?: string | null) =>
-    (s ?? "").trim().toUpperCase().replace(/[-\s]/g, "");
   let patientPassed = false;
   let patientDetail = "";
 
@@ -43,36 +49,32 @@ export function validateDispense({
       const normStr = (s?: string | null) => (s ?? "").trim().toUpperCase();
       const normDigits = (s?: string | null) => (s ?? "").replace(/\D/g, "");
 
-      // Scored fields (content must match)
-      const surnameOk = normStr(selectedPatient.surname) === normStr(exp.surname);
+      const surnameOk  = normStr(selectedPatient.surname)   === normStr(exp.surname);
       const firstnameOk = normStr(selectedPatient.firstname) === normStr(exp.firstname);
       const expAddr = normStr(exp.address);
       const gotAddr = normStr(selectedPatient.address);
       const addressOk =
-        !exp.address ||
-        gotAddr.includes(expAddr) ||
-        expAddr.includes(gotAddr);
+        !exp.address || gotAddr.includes(expAddr) || expAddr.includes(gotAddr);
       const medicareOk =
         normDigits(selectedPatient.medicare_card) === normDigits(exp.medicareCard);
 
-      // Required but not scored (must be non-empty)
       const requiredMissing = (
         [
-          [!selectedPatient.title?.trim(), "title"],
-          [!selectedPatient.sex?.trim(), "sex"],
-          [!selectedPatient.date_of_birth?.trim(), "date of birth"],
-          [!selectedPatient.suburb?.trim(), "suburb"],
-          [!selectedPatient.postcode?.trim(), "postcode"],
+          [!selectedPatient.title?.trim(),         "title"],
+          [!selectedPatient.sex?.trim(),            "sex"],
+          [!selectedPatient.date_of_birth?.trim(),  "date of birth"],
+          [!selectedPatient.suburb?.trim(),         "suburb"],
+          [!selectedPatient.postcode?.trim(),       "postcode"],
         ] as [boolean, string][]
       )
         .filter(([missing]) => missing)
         .map(([, field]) => field);
 
       const mismatches = [
-        !surnameOk && `Surname expected "${exp.surname}", got "${selectedPatient.surname}"`,
+        !surnameOk   && `Surname expected "${exp.surname}", got "${selectedPatient.surname}"`,
         !firstnameOk && `Firstname expected "${exp.firstname}", got "${selectedPatient.firstname}"`,
-        !addressOk && `Address expected "${exp.address}", got "${selectedPatient.address ?? "(empty)"}"`,
-        !medicareOk && `Medicare expected "${exp.medicareCard}", got "${selectedPatient.medicare_card ?? "(empty)"}"`,
+        !addressOk   && `Address expected "${exp.address}", got "${selectedPatient.address ?? "(empty)"}"`,
+        !medicareOk  && `Medicare expected "${exp.medicareCard}", got "${selectedPatient.medicare_card ?? "(empty)"}"`,
       ].filter(Boolean) as string[];
 
       patientPassed = requiredMissing.length === 0 && mismatches.length === 0;
@@ -105,32 +107,55 @@ export function validateDispense({
     detail: patientDetail,
   });
 
-  // ── a. Drug ──────────────────────────────────────────────────────
-  const drugEntered = formState.drug.trim().toLowerCase();
-  const drugFirstWord = caseData.drug.toLowerCase().split(" ")[0];
-  const drugPassed = drugEntered.includes(drugFirstWord);
+  // ── a. Drug (generic name) ────────────────────────────────────────
+  // Matches first word of caseData.drug against selectedDrug.generic_name
+  // using 4-char prefix to tolerate amoxicillin/amoxycillin spelling variants.
+  const caseFirstWord = caseData.drug.split(" ")[0];
+  const drugPassed =
+    selectedDrug !== null &&
+    normFirst4(selectedDrug.generic_name) === normFirst4(caseFirstWord);
+
   checks.push({
     category: "drug",
     label: "Drug entered",
     passed: drugPassed,
     expected: caseData.drug,
-    actual: formState.drug || "(empty)",
-    detail: drugPassed
-      ? "Correct drug selected"
-      : `Expected: ${caseData.drug}. You entered: ${formState.drug || "(empty)"}`,
+    actual: selectedDrug?.full_display_name ?? "(no drug selected)",
+    detail: selectedDrug === null
+      ? "No drug selected — type in the drug field to search the directory"
+      : drugPassed
+      ? `Correct drug: ${selectedDrug.generic_name}`
+      : `Wrong drug. Expected: ${caseData.drug}. You selected: ${selectedDrug.full_display_name}`,
   });
 
-  // ── b. Directions ────────────────────────────────────────────────
+  // ── b. Drug variant (specific brand/generic selection) ────────────
+  const variantPassed =
+    selectedDrug !== null &&
+    selectedDrug.seed_id === caseData.correctDrugSeedId;
+
+  const variantDetail = (() => {
+    if (selectedDrug === null)
+      return "No drug variant selected — pick a specific product from the directory";
+    if (!drugPassed)
+      return "Wrong drug selected — see the drug check above";
+    if (variantPassed)
+      return `Correct product selected: ${selectedDrug.full_display_name}`;
+    return `Wrong product. You selected: ${selectedDrug.full_display_name}. Check the prescription for the required brand.`;
+  })();
+
+  checks.push({
+    category: "drug_variant",
+    label: "Drug variant",
+    passed: variantPassed,
+    detail: variantDetail,
+  });
+
+  // ── c. Directions ────────────────────────────────────────────────
   const expectedExpanded = expandAbbrevs(caseData.directions).toLowerCase();
-  const studentExpanded = expandAbbrevs(formState.directions).toLowerCase();
-  const expectedWords = expectedExpanded
-    .split(/\s+/)
-    .filter((w) => w.length >= 3);
-  const matchCount = expectedWords.filter((w) =>
-    studentExpanded.includes(w)
-  ).length;
-  const dirPassed =
-    expectedWords.length > 0 && matchCount / expectedWords.length >= 0.5;
+  const studentExpanded  = expandAbbrevs(formState.directions).toLowerCase();
+  const expectedWords    = expectedExpanded.split(/\s+/).filter((w) => w.length >= 3);
+  const matchCount       = expectedWords.filter((w) => studentExpanded.includes(w)).length;
+  const dirPassed        = expectedWords.length > 0 && matchCount / expectedWords.length >= 0.5;
   checks.push({
     category: "directions",
     label: "Directions",
@@ -139,15 +164,13 @@ export function validateDispense({
     actual: formState.directions || "(empty)",
     detail: dirPassed
       ? "Directions correct (abbreviations accepted)"
-      : `Expected: ${caseData.directions}. You entered: ${
-          formState.directions || "(empty)"
-        }`,
+      : `Expected: ${caseData.directions}. You entered: ${formState.directions || "(empty)"}`,
   });
 
-  // ── c. Quantity ──────────────────────────────────────────────────
+  // ── d. Quantity ──────────────────────────────────────────────────
   const qtyExpected = extractDigits(String(caseData.qty));
-  const qtyStudent = extractDigits(formState.qty);
-  const qtyPassed = qtyExpected !== "" && qtyStudent === qtyExpected;
+  const qtyStudent  = extractDigits(formState.qty);
+  const qtyPassed   = qtyExpected !== "" && qtyStudent === qtyExpected;
   checks.push({
     category: "quantity",
     label: "Quantity",
@@ -159,7 +182,7 @@ export function validateDispense({
       : `Expected: ${caseData.qty}. You entered: ${formState.qty || "(empty)"}`,
   });
 
-  // ── d. Repeats ───────────────────────────────────────────────────
+  // ── e. Repeats ───────────────────────────────────────────────────
   const rptPassed = formState.repeats.trim() === caseData.repeats;
   checks.push({
     category: "repeats",
@@ -169,23 +192,19 @@ export function validateDispense({
     actual: formState.repeats || "(empty)",
     detail: rptPassed
       ? "Repeats correct"
-      : `Expected: ${caseData.repeats}. You entered: ${
-          formState.repeats || "(empty)"
-        }`,
+      : `Expected: ${caseData.repeats}. You entered: ${formState.repeats || "(empty)"}`,
   });
 
-  // ── e. Warning labels ────────────────────────────────────────────
+  // ── f. Warning labels ────────────────────────────────────────────
   const correctSet = new Set(caseData.correctWarnings);
-  const missing = caseData.correctWarnings.filter(
-    (w) => !selectedWarnings.has(w)
-  );
-  const extra = [...selectedWarnings].filter((w) => !correctSet.has(w));
+  const missing    = caseData.correctWarnings.filter((w) => !selectedWarnings.has(w));
+  const extra      = [...selectedWarnings].filter((w) => !correctSet.has(w));
   const warnsPassed = missing.length === 0 && extra.length === 0;
   const warnsDetail = warnsPassed
     ? "All correct labels selected"
     : [
         missing.length ? `Missing: ${missing.join("; ")}` : "",
-        extra.length ? `Extra: ${extra.join("; ")}` : "",
+        extra.length   ? `Extra: ${extra.join("; ")}`     : "",
       ]
         .filter(Boolean)
         .join("\n");
@@ -196,7 +215,7 @@ export function validateDispense({
     detail: warnsDetail,
   });
 
-  // ── f. Error detection ───────────────────────────────────────────
+  // ── g. Error detection ───────────────────────────────────────────
   if (caseData.errors.length === 0) {
     checks.push({
       category: "errors",
@@ -217,7 +236,7 @@ export function validateDispense({
   }
 
   const pointsEarned = checks.filter((c) => c.passed && !c.isWarning).length;
-  const pointsTotal = 7;
+  const pointsTotal  = 8;
 
   return {
     checks,

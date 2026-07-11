@@ -55,14 +55,15 @@ export interface PracticeCase {
   prescriberNo: string;
   date: string;
   scriptType: string;
-  drug: string;
+  drug: string;           // what the doctor wrote (used for drug-check first-word matching)
+  correctDrugSeedId: string; // seed_id of the drug variant the student must select
   directions: string;
   repeats: string;
   qty: string | number;
   price2: string;
   correctWarnings: string[];
   errors: string[];
-  drugDetails: DrugDetails;
+  drugDetails: DrugDetails; // retained for fallback display if drug table is unavailable
   tip: string;
 }
 

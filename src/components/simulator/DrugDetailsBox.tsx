@@ -1,80 +1,65 @@
 import type { PracticeCase } from "@/lib/types/case";
+import type { DrugRow } from "@/lib/types/drug";
 
 interface DrugDetailsBoxProps {
-  typedDrug: string;
+  selectedDrug: DrugRow | null;
   caseData: PracticeCase;
   patientAllergies?: string[];
 }
 
-export function DrugDetailsBox({ typedDrug, caseData, patientAllergies = [] }: DrugDetailsBoxProps) {
-  const firstWord = caseData.drug.toLowerCase().split(" ")[0];
-  const isMatched =
-    typedDrug.trim() !== "" &&
-    typedDrug.trim().toLowerCase().includes(firstWord);
+export function DrugDetailsBox({ selectedDrug, caseData, patientAllergies = [] }: DrugDetailsBoxProps) {
+  const d = selectedDrug;
 
-  const d = isMatched ? caseData.drugDetails : null;
+  const pbsLine = d
+    ? d.pbs_code
+      ? `${d.supply_type}: ${d.pbs_code}`
+      : d.supply_type
+    : "—";
+
+  const scheduleLine = d?.schedule ?? "—";
+  const mfrLine      = d?.manufacturer_full ?? d?.manufacturer_code ?? "—";
+  const costLine     = d?.ws_cost  != null ? `$${d.ws_cost.toFixed(2)}`   : "—";
+  const retailLine   = d?.retail_price != null ? `$${d.retail_price.toFixed(2)}` : "—";
+
+  // Fallback allergy alert: check typed drug against case drugDetails for PDL warnings
+  const dd = caseData.drugDetails;
 
   return (
     <div className="fred-drug-details">
-      <div className="fred-dd-title">{d ? d.name : "Drug Details"}</div>
+      <div className="fred-dd-title">{d ? d.full_display_name : "Drug Details"}</div>
 
       <div className="fred-dd-row">
         <strong>Schedule:</strong>{" "}
-        <span className="fred-dd-blue">{d ? d.schedule : "—"}</span>
+        <span className="fred-dd-blue">{scheduleLine}</span>
       </div>
       <div className="fred-dd-row">
         <strong>PBS:</strong>{" "}
-        <span className="fred-dd-blue">{d ? d.pbs : "—"}</span>
+        <span className="fred-dd-blue">{pbsLine}</span>
       </div>
-      <div className="fred-dd-row">
-        <strong>Class:</strong> {d ? d.pbsClass : "—"}
-      </div>
-      <div className="fred-dd-row">
-        <strong>Claimable:</strong>{" "}
-        {d ? (
-          <span
-            className={
-              d.claimable.includes("Not") ? "fred-dd-red" : "fred-dd-green"
-            }
-          >
-            {d.claimable}
-          </span>
-        ) : (
-          "—"
-        )}
-      </div>
-      {d?.f2t && (
-        <div className="fred-dd-row">
-          <strong>F2T:</strong>{" "}
-          <span className="fred-dd-blue">{d.f2t}</span>
-        </div>
-      )}
       <div className="fred-dd-row">
         <strong>Manufacturer:</strong>{" "}
-        <span className="fred-dd-green">{d ? d.manufacturer : "—"}</span>
+        <span className="fred-dd-green">{mfrLine}</span>
       </div>
       <div className="fred-dd-row">
-        <strong>Cost:</strong> {d ? d.cost : "—"}
+        <strong>Cost:</strong> {costLine}
       </div>
       <div className="fred-dd-row">
-        <strong>Retail:</strong> {d ? d.retail : "—"}
+        <strong>Retail:</strong> {retailLine}
       </div>
       {d && (
-        <>
-          <div className="fred-dd-row">
-            <strong>CMI:</strong> {d.cmi ? "Yes" : "No"}
-          </div>
-          {d.newDrug && (
-            <div className="fred-dd-row fred-dd-green">★ New drug for patient</div>
-          )}
-          {d.warn1 && <div className="fred-dd-warn">{d.warn1}</div>}
-          {d.warn2 && <div className="fred-dd-warn">{d.warn2}</div>}
-          {patientAllergies.length > 0 && (
-            <div className="fred-dd-allergy">
-              ⚠ Patient allergies: {patientAllergies.join(", ")}
-            </div>
-          )}
-        </>
+        <div className="fred-dd-row">
+          <strong>CMI:</strong> {d.cmi_available ? "Available" : "N/A"}
+        </div>
+      )}
+
+      {/* PDL warnings from the case (drug-interaction / safety flags) */}
+      {dd.warn1 && <div className="fred-dd-warn">{dd.warn1}</div>}
+      {dd.warn2 && <div className="fred-dd-warn">{dd.warn2}</div>}
+
+      {patientAllergies.length > 0 && (
+        <div className="fred-dd-allergy">
+          ⚠ Patient allergies: {patientAllergies.join(", ")}
+        </div>
       )}
     </div>
   );

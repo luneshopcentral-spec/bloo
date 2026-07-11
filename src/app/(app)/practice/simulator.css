@@ -1047,3 +1047,185 @@
   font-size: 11px;
   padding: 2px 0;
 }
+
+/* ─── DRUG FIELD — selected drug display ────────────────────────── */
+.fred-root .fred-drug-selected-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 2px inset #888;
+  background: #fffff0;
+  padding: 2px 4px;
+  min-height: 22px;
+}
+.fred-root .fred-drug-selected-name {
+  flex: 1;
+  font-weight: bold;
+  font-size: 12px;
+  color: #000080;
+  font-family: 'Courier New', Courier, monospace;
+}
+.fred-root .fred-drug-change-btn {
+  font-size: 10px;
+  background: #d4d0c8;
+  border: 2px outset #fff;
+  cursor: pointer;
+  padding: 1px 6px;
+  font-family: inherit;
+  white-space: nowrap;
+}
+.fred-root .fred-drug-change-btn:hover {
+  background: #c0bdb5;
+}
+.fred-root .fred-drug-info-line {
+  font-size: 10px;
+  color: #006600;
+  font-style: italic;
+  margin-top: 2px;
+  padding: 1px 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ─── DRUG SELECTION MODAL ──────────────────────────────────────── */
+.fred-root .fred-dsel-backdrop {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 85;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.fred-root .fred-dsel-dialog {
+  background: #d4d0c8;
+  border: 3px outset #fff;
+  width: 820px;
+  max-width: 97vw;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 11px;
+}
+.fred-root .fred-dsel-title {
+  background: #006400;
+  color: #fff;
+  padding: 3px 8px;
+  font-weight: bold;
+  font-size: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: 'Segoe UI', Tahoma, sans-serif;
+}
+.fred-root .fred-dsel-close {
+  background: none;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 2px;
+}
+.fred-root .fred-dsel-search-row {
+  padding: 5px 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-bottom: 1px solid #888;
+  font-family: 'Segoe UI', Tahoma, sans-serif;
+  font-size: 11px;
+  background: #e8e8e0;
+}
+.fred-root .fred-dsel-search-input {
+  flex: 1;
+  border: 2px inset #888;
+  padding: 2px 4px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 12px;
+  background: #fff;
+}
+.fred-root .fred-dsel-loading {
+  font-size: 10px;
+  color: #888;
+  font-family: 'Segoe UI', Tahoma, sans-serif;
+}
+.fred-root .fred-dsel-col-headers {
+  display: grid;
+  grid-template-columns: 18px 1fr 36px 24px 52px 18px 54px 52px 24px;
+  gap: 0;
+  background: #a0a090;
+  border-bottom: 2px solid #555;
+  padding: 2px 4px;
+  font-size: 10px;
+  font-family: 'Segoe UI', Tahoma, sans-serif;
+  font-weight: bold;
+  color: #000;
+}
+.fred-root .fred-dsel-col-headers .right,
+.fred-root .fred-dsel-row .right {
+  text-align: right;
+}
+.fred-root .fred-dsel-body {
+  overflow-y: auto;
+  flex: 1;
+}
+.fred-root .fred-dsel-row {
+  display: grid;
+  grid-template-columns: 18px 1fr 36px 24px 52px 18px 54px 52px 24px;
+  gap: 0;
+  padding: 2px 4px;
+  cursor: pointer;
+  border-bottom: 1px solid #bbb;
+  min-height: 19px;
+  align-items: center;
+  color: #000;
+}
+.fred-root .fred-dsel-row.private .fred-dsel-name { color: #0000cc; }
+.fred-root .fred-dsel-row.generic { font-style: italic; background: #f8f8f0; }
+.fred-root .fred-dsel-row:hover,
+.fred-root .fred-dsel-row.selected {
+  background: #0000aa;
+  color: #fff;
+}
+.fred-root .fred-dsel-row:hover .fred-dsel-name,
+.fred-root .fred-dsel-row.selected .fred-dsel-name { color: #fff; }
+.fred-root .fred-dsel-letter {
+  color: #006400;
+  font-weight: bold;
+  font-size: 10px;
+}
+.fred-root .fred-dsel-row:hover .fred-dsel-letter,
+.fred-root .fred-dsel-row.selected .fred-dsel-letter { color: #99ff99; }
+.fred-root .fred-dsel-empty {
+  padding: 14px;
+  color: #666;
+  font-style: italic;
+  text-align: center;
+  font-family: 'Segoe UI', Tahoma, sans-serif;
+}
+.fred-root .fred-dsel-error {
+  padding: 8px 6px;
+  color: #cc0000;
+  font-size: 11px;
+  font-family: 'Segoe UI', Tahoma, sans-serif;
+}
+.fred-root .fred-dsel-retry {
+  margin-left: 8px;
+  font-size: 10px;
+  cursor: pointer;
+  background: #d4d0c8;
+  border: 1px solid #888;
+  padding: 1px 6px;
+  font-family: inherit;
+}
+.fred-root .fred-dsel-footer {
+  padding: 4px 8px;
+  border-top: 1px solid #888;
+  font-size: 10px;
+  color: #555;
+  font-family: 'Segoe UI', Tahoma, sans-serif;
+  background: #e8e8e0;
+}
