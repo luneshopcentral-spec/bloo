@@ -7,7 +7,13 @@
       "Read(//Users/tanvisharma6445/.nvm/**)",
       "Read(//Users/tanvisharma6445/.volta/**)",
       "Read(//usr/**)",
-      "Bash(npm install *)"
+      "Bash(npm install *)",
+      "Bash(npm --version)",
+      "Bash(npm run *)",
+      "Bash(git *)",
+      "Bash(node *)",
+      "Bash(supabase --version)",
+      "Bash(npx tsc *)"
     ]
   }
 }
