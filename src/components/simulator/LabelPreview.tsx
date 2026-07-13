@@ -19,7 +19,7 @@ export function LabelPreview({ caseData, formState, selectedWarnings, patientNam
   const qty = formState.qty || "—";
   const repeats = formState.repeats || "—";
   const price = formState.price ? `$${formState.price}` : "$—";
-  const warnList = [...selectedWarnings].join(", ");
+  const warnList = Array.from(selectedWarnings).join(", ");
 
   return (
     <div>

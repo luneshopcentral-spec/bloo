@@ -2,6 +2,9 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Patient, PatientFormData } from "@/lib/types/patient";
+import type { Database } from "@/lib/types/database";
+
+type PatientInsert = Database["public"]["Tables"]["patients"]["Insert"];
 
 interface Props {
   open: boolean;
@@ -97,31 +100,32 @@ export function PatientDetailsModal({
     setSaveError("");
 
     const supabase = createClient();
+    const insertData: PatientInsert = {
+      surname: form.surname.trim().toUpperCase(),
+      firstname: form.firstname.trim().toUpperCase(),
+      title: form.title?.trim() || null,
+      sex: form.sex || null,
+      date_of_birth: form.dateOfBirth?.trim() || null,
+      address: form.address?.trim().toUpperCase() || null,
+      suburb: form.suburb?.trim().toUpperCase() || null,
+      postcode: form.postcode?.trim() || null,
+      phone: form.phone?.trim() || null,
+      medicare_card: form.medicareCard?.trim() || null,
+      medicare_valid_to: form.medicareValidTo?.trim() || null,
+      concession_type: form.concessionType?.trim() || null,
+      concession_number: form.concessionNumber?.trim() || null,
+      concession_valid_to: form.concessionValidTo?.trim() || null,
+      allergies: form.allergies
+        ? form.allergies
+            .split(/[\n,;]/)
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : [],
+      patient_notes: form.patientNotes?.trim() || null,
+    };
     const { data, error } = await supabase
       .from("patients")
-      .insert({
-        surname: form.surname.trim().toUpperCase(),
-        firstname: form.firstname.trim().toUpperCase(),
-        title: form.title?.trim() || null,
-        sex: form.sex || null,
-        date_of_birth: form.dateOfBirth?.trim() || null,
-        address: form.address?.trim().toUpperCase() || null,
-        suburb: form.suburb?.trim().toUpperCase() || null,
-        postcode: form.postcode?.trim() || null,
-        phone: form.phone?.trim() || null,
-        medicare_card: form.medicareCard?.trim() || null,
-        medicare_valid_to: form.medicareValidTo?.trim() || null,
-        concession_type: form.concessionType?.trim() || null,
-        concession_number: form.concessionNumber?.trim() || null,
-        concession_valid_to: form.concessionValidTo?.trim() || null,
-        allergies: form.allergies
-          ? form.allergies
-              .split(/[\n,;]/)
-              .map((s) => s.trim())
-              .filter(Boolean)
-          : [],
-        patient_notes: form.patientNotes?.trim() || null,
-      })
+      .insert(insertData as never)
       .select("*")
       .single();
 

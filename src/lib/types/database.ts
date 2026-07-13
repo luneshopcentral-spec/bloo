@@ -40,6 +40,7 @@ export interface Database {
           trial_cases_used?: number;
           created_at?: string;
         };
+        Relationships: [];
       };
       cases: {
         Row: {
@@ -72,6 +73,7 @@ export interface Database {
           is_free_trial?: boolean;
           created_at?: string;
         };
+        Relationships: [];
       };
       attempts: {
         Row: {
@@ -104,6 +106,7 @@ export interface Database {
           details?: Json;
           created_at?: string;
         };
+        Relationships: [];
       };
       patients: {
         Row: {
@@ -169,6 +172,7 @@ export interface Database {
           patient_notes?: string | null;
           created_at?: string;
         };
+        Relationships: [];
       };
       patient_scripts: {
         Row: {
@@ -201,6 +205,7 @@ export interface Database {
           rx_number?: string | null;
           created_at?: string;
         };
+        Relationships: [];
       };
       drugs: {
         Row: {
@@ -269,10 +274,17 @@ export interface Database {
           cmi_available?: boolean;
           created_at?: string;
         };
+        Relationships: [];
       };
     };
-    Views: Record<string, never>;
-    Functions: Record<string, never>;
-    Enums: Record<string, never>;
+    Views: {
+      [_ in never]: never;
+    };
+    Functions: {
+      [_ in never]: never;
+    };
+    Enums: {
+      [_ in never]: never;
+    };
   };
 }

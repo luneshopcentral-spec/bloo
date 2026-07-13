@@ -1,6 +1,9 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import type { Database } from "@/lib/types/database";
+
+type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -29,11 +32,11 @@ export default async function DashboardPage() {
     redirect("/sign-in");
   }
 
-  const { data: profile } = await supabase
+  const { data: profile } = (await supabase
     .from("profiles")
     .select("*")
     .eq("id", user.id)
-    .single();
+    .single()) as { data: ProfileRow | null; error: unknown };
 
   const firstName = profile?.full_name?.split(" ")[0] ?? "there";
   const trialRemaining = 3 - (profile?.trial_cases_used ?? 0);

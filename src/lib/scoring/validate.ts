@@ -198,7 +198,7 @@ export function validateDispense({
   // ── f. Warning labels ────────────────────────────────────────────
   const correctSet = new Set(caseData.correctWarnings);
   const missing    = caseData.correctWarnings.filter((w) => !selectedWarnings.has(w));
-  const extra      = [...selectedWarnings].filter((w) => !correctSet.has(w));
+  const extra      = Array.from(selectedWarnings).filter((w) => !correctSet.has(w));
   const warnsPassed = missing.length === 0 && extra.length === 0;
   const warnsDetail = warnsPassed
     ? "All correct labels selected"
