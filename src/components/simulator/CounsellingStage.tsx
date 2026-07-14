@@ -18,6 +18,7 @@ import {
 import { scoreCounselling } from "@/lib/conversation/score";
 import { buildPatientReply } from "@/lib/conversation/reply";
 import { useSemanticMatcher } from "@/hooks/useSemanticMatcher";
+import { useVoiceConversation } from "@/hooks/useVoiceConversation";
 import type { PracticeMode } from "@/lib/practice/modes";
 
 interface CounsellingStageProps {
@@ -56,20 +57,79 @@ export function CounsellingStage({
   const [concernShown, setConcernShown] = useState(false);
   const [complete, setComplete] = useState(false);
   const [matcherMode, setMatcherMode] = useState<ConversationMatcherMode>("rules");
+  const [interactionMode, setInteractionMode] = useState<"text" | "voice">("text");
+  const [patientAudioEnabled, setPatientAudioEnabled] = useState(true);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const transcriptRef = useRef<HTMLDivElement>(null);
   const matcher = useSemanticMatcher(conversation);
+  const voice = useVoiceConversation({
+    patientKey: conversation.caseId,
+    onTranscript: setInput,
+  });
 
   const studentTurns = useMemo(
     () => messages.filter((message) => message.role === "student").length,
     [messages]
   );
   const matcherAvailable = matcher.status === "ready" || matcher.status === "fallback";
+  const latestPatientMessage = useMemo(
+    () => [...messages].reverse().find((message) => message.role === "patient") ?? null,
+    [messages]
+  );
+  const isListening = voice.activity === "starting" || voice.activity === "listening";
+  const isPatientSpeaking = voice.activity === "speaking";
+
+  function selectTextMode() {
+    if (interactionMode === "text") return;
+    voice.abortListening();
+    voice.cancelSpeech();
+    setInteractionMode("text");
+    requestAnimationFrame(() => inputRef.current?.focus());
+  }
+
+  function selectVoiceMode() {
+    if (interactionMode === "voice") return;
+    setInteractionMode("voice");
+    if (patientAudioEnabled && latestPatientMessage) {
+      voice.speak(latestPatientMessage.text);
+    }
+  }
+
+  function replayPatient() {
+    if (!latestPatientMessage) return;
+    setPatientAudioEnabled(true);
+    voice.speak(latestPatientMessage.text);
+  }
+
+  function togglePatientAudio() {
+    if (patientAudioEnabled) {
+      setPatientAudioEnabled(false);
+      voice.cancelSpeech();
+      return;
+    }
+
+    setPatientAudioEnabled(true);
+    if (latestPatientMessage) voice.speak(latestPatientMessage.text);
+  }
+
+  const voiceStatus = voice.errorMessage
+    ?? (voice.activity === "starting"
+      ? "Waiting for microphone permission or the browser speech service."
+      : voice.activity === "listening"
+      ? "Listening now. Speak naturally, then select Stop listening."
+      : isPatientSpeaking
+        ? `${conversation.patientRole} is speaking.`
+        : voice.activity === "review" && input.trim()
+          ? "Transcript ready. Check what was heard before sending it for marking."
+          : voice.recognitionSupported === false
+            ? "Voice input is unavailable in this browser. You can still type and hear the patient."
+            : "Select Start speaking when you are ready. Nothing is sent for marking until you confirm the transcript.");
 
   async function sendMessage() {
     const text = input.trim();
     if (!text || pending || complete || !matcherAvailable) return;
 
+    voice.abortListening();
     setInput("");
     setPending(true);
     const studentMessage: ConversationMessage = {
@@ -125,6 +185,9 @@ export function CounsellingStage({
       ];
     });
     setPending(false);
+    if (interactionMode === "voice" && patientAudioEnabled) {
+      voice.speak(patientReply.text);
+    }
     requestAnimationFrame(() => {
       transcriptRef.current?.scrollTo({ top: transcriptRef.current.scrollHeight, behavior: "smooth" });
       inputRef.current?.focus();
@@ -133,6 +196,8 @@ export function CounsellingStage({
 
   function finishConversation() {
     if (complete || pending || studentTurns < 2) return;
+    voice.abortListening();
+    voice.cancelSpeech();
     const result = scoreCounselling({
       conversation,
       addressedTopicIds,
@@ -188,7 +253,94 @@ export function CounsellingStage({
           </div>
 
           <div className="fred-chat-composer">
-            <label htmlFor="counselling-message">Speak to the patient</label>
+            <div className="fred-interaction-mode-row">
+              <span>Interaction method</span>
+              <div className="fred-interaction-mode-switch" role="group" aria-label="Interaction method">
+                <button
+                  type="button"
+                  className={interactionMode === "text" ? "active" : ""}
+                  aria-pressed={interactionMode === "text"}
+                  onClick={selectTextMode}
+                >
+                  Text
+                </button>
+                <button
+                  type="button"
+                  className={interactionMode === "voice" ? "active" : ""}
+                  aria-pressed={interactionMode === "voice"}
+                  onClick={selectVoiceMode}
+                >
+                  Voice conversation
+                </button>
+              </div>
+            </div>
+
+            {interactionMode === "voice" && (
+              <section className="fred-voice-controls" aria-labelledby="voice-controls-title">
+                <div className="fred-voice-controls-heading">
+                  <strong id="voice-controls-title">Voice controls</strong>
+                  <span>
+                    Patient voice: {voice.patientVoiceName
+                      ? `${voice.patientVoiceName} (${voice.patientVoiceLanguage})`
+                      : "Australian English system voice"}
+                  </span>
+                </div>
+                {voice.patientVoiceName && !voice.patientVoiceIsAustralian && (
+                  <p className="fred-voice-quality-warning">
+                    No Australian voice is installed, so the best available English voice is being used. Add an
+                    Australian English voice in this laptop&apos;s system speech settings for the most natural patient audio.
+                  </p>
+                )}
+                <div className="fred-voice-buttons">
+                  <button
+                    type="button"
+                    className={isListening ? "listening" : ""}
+                    onClick={isListening ? voice.stopListening : voice.startListening}
+                    disabled={
+                      complete
+                      || pending
+                      || !matcherAvailable
+                      || isPatientSpeaking
+                      || voice.recognitionSupported === false
+                    }
+                  >
+                    {isListening ? "Stop listening" : "Start speaking"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={replayPatient}
+                    disabled={complete || !latestPatientMessage || voice.synthesisSupported === false}
+                  >
+                    Replay patient
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={!patientAudioEnabled}
+                    onClick={togglePatientAudio}
+                    disabled={complete || voice.synthesisSupported === false}
+                  >
+                    {patientAudioEnabled ? "Mute patient" : "Unmute patient"}
+                  </button>
+                </div>
+                <p
+                  className={`fred-voice-status ${voice.activity}`}
+                  role="status"
+                  aria-live="polite"
+                >
+                  {voiceStatus}
+                </p>
+                <p className="fred-voice-disclosure">
+                  No app API key or per-conversation charge is used. Depending on the browser, speech recognition
+                  may be processed by the browser or operating system voice service. Text mode is always available.
+                </p>
+              </section>
+            )}
+
+            <label htmlFor="counselling-message">
+              {interactionMode === "voice"
+                ? "Recognised response (check or edit before sending)"
+                : "Speak to the patient"}
+            </label>
             <textarea
               ref={inputRef}
               id="counselling-message"
@@ -202,21 +354,27 @@ export function CounsellingStage({
               }}
               placeholder={
                 matcherAvailable
-                  ? "Type exactly what you would say to the patient…"
+                  ? interactionMode === "voice"
+                    ? "Your spoken response will appear here. You can also type…"
+                    : "Type exactly what you would say to the patient…"
                   : "Preparing the local matcher…"
               }
               disabled={!matcherAvailable || pending || complete}
               rows={3}
             />
             <div className="fred-chat-actions">
-              <span>Ctrl/⌘ + Enter to send</span>
+              <span>
+                {interactionMode === "voice"
+                  ? "Check the transcript before sending · Ctrl/⌘ + Enter"
+                  : "Ctrl/⌘ + Enter to send"}
+              </span>
               <button
                 type="button"
                 className="fred-chat-send"
                 onClick={() => void sendMessage()}
-                disabled={!input.trim() || !matcherAvailable || pending || complete}
+                disabled={!input.trim() || !matcherAvailable || pending || complete || isListening}
               >
-                Send to patient
+                {interactionMode === "voice" ? "Send spoken response" : "Send to patient"}
               </button>
               <button
                 type="button"
