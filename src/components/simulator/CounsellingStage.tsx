@@ -6,6 +6,7 @@ import type {
   ConversationCase,
   ConversationMatcherMode,
   ConversationMessage,
+  ConversationResponseIntent,
   CounsellingResult,
   UnsafeAdviceFinding,
 } from "@/lib/conversation/types";
@@ -13,6 +14,7 @@ import {
   acceptSemanticCandidates,
   classifyWithRules,
   findUnsafeAdvice,
+  matchResponseIntent,
 } from "@/lib/conversation/matcher";
 import { scoreCounselling } from "@/lib/conversation/score";
 import { useSemanticMatcher } from "@/hooks/useSemanticMatcher";
@@ -36,21 +38,26 @@ function nextPatientReply(
   matchedTopicIds: string[],
   previouslyAddressed: Set<string>,
   studentTurns: number,
-  concernShown: boolean
+  concernShown: boolean,
+  responseIntent: ConversationResponseIntent | null
 ): { text: string; showConcern: boolean } {
   const topicById = new Map(conversation.topics.map((topic) => [topic.id, topic]));
-  const newTopicId = matchedTopicIds.find((id) => !previouslyAddressed.has(id));
-  const selectedId = newTopicId ?? matchedTopicIds[0];
-  const selectedTopic = selectedId ? topicById.get(selectedId) : undefined;
+  const newTopicIds = matchedTopicIds.filter((id) => !previouslyAddressed.has(id));
+  const selectedIds = newTopicIds.length > 0 ? newTopicIds : matchedTopicIds.slice(0, 1);
 
   let response: string;
-  if (selectedId === "invite_questions") {
-    response = conversation.patientQuestion;
-  } else if (selectedTopic) {
-    const replies = selectedTopic.patientReplies;
-    response = previouslyAddressed.has(selectedTopic.id) && selectedTopic.repeatReply
-      ? selectedTopic.repeatReply
-      : replies[studentTurns % replies.length];
+  if (selectedIds.length > 0) {
+    response = selectedIds.slice(0, 3).map((selectedId, index) => {
+      if (selectedId === "invite_questions") return conversation.patientQuestion;
+      const selectedTopic = topicById.get(selectedId);
+      if (!selectedTopic) return "";
+      if (previouslyAddressed.has(selectedTopic.id) && selectedTopic.repeatReply) {
+        return selectedTopic.repeatReply;
+      }
+      return selectedTopic.patientReplies[(studentTurns + index) % selectedTopic.patientReplies.length];
+    }).filter(Boolean).join(" ");
+  } else if (responseIntent) {
+    response = responseIntent.patientReplies[studentTurns % responseIntent.patientReplies.length];
   } else {
     response = conversation.unknownReplies[studentTurns % conversation.unknownReplies.length];
   }
@@ -118,6 +125,9 @@ export function CounsellingStage({
     setMatcherMode(currentMode);
 
     const matchedTopicIds = matches.map((match) => match.topicId);
+    const responseIntent = matchedTopicIds.length === 0
+      ? matchResponseIntent(conversation, text)
+      : null;
     const findings = findUnsafeAdvice(conversation, text);
     const nextAddressed = new Set(addressedTopicIds);
     for (const topicId of matchedTopicIds) nextAddressed.add(topicId);
@@ -127,7 +137,8 @@ export function CounsellingStage({
       matchedTopicIds,
       addressedTopicIds,
       studentTurns + 1,
-      concernShown
+      concernShown,
+      responseIntent
     );
 
     setAddressedTopicIds(nextAddressed);

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { validateDispense, type ValidateInput } from "./validate";
+import { getDispenseReadinessIssues } from "./readiness";
 import { STATIC_CASES } from "@/lib/cases/static-cases";
 import { EMPTY_FORM_STATE, type FormState } from "@/components/simulator/state";
 import type { Patient } from "@/lib/types/patient";
@@ -112,6 +113,29 @@ function correctInput(
 }
 
 describe("validateDispense", () => {
+  it("blocks handover until the essential dispensing workflow is complete", () => {
+    expect(getDispenseReadinessIssues({
+      formState: form({ pharmacistInitials: "AB" }),
+      selectedPatient: null,
+      selectedDrug: null,
+      decision: null,
+    })).toEqual([
+      "patient",
+      "specific medicine product",
+      "directions",
+      "quantity",
+      "repeats",
+      "clinical decision",
+    ]);
+
+    expect(getDispenseReadinessIssues({
+      formState: form({ directions: "1 cap tds", qty: "25", repeats: "0" }),
+      selectedPatient: case1Patient,
+      selectedDrug: case1Drug,
+      decision: "dispense",
+    })).toEqual([]);
+  });
+
   it("passes an accurate, independently completed case", () => {
     const result = validateDispense(correctInput(case1, case1Patient, case1Drug));
 

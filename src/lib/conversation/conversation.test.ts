@@ -5,6 +5,7 @@ import {
   acceptSemanticCandidates,
   classifyWithRules,
   findUnsafeAdvice,
+  matchResponseIntent,
   splitUtterance,
 } from "./matcher";
 import { combineAttemptResults, scoreCounselling } from "./score";
@@ -36,6 +37,35 @@ describe("conversation configuration", () => {
     expect(splitUtterance("Hello. Take one tablet twice daily; also use sunscreen.")).toEqual(
       expect.arrayContaining(["Hello", "Take one tablet twice daily", "use sunscreen"])
     );
+  });
+
+  it("marks patient name and age or date of birth as separate critical checks", () => {
+    const conversation = getConversationCase("case-1");
+    const nameOnly = classifyWithRules(conversation, "Could I confirm your full name?");
+    const ageOnly = classifyWithRules(conversation, "How old are you?");
+    const both = classifyWithRules(
+      conversation,
+      "Could I confirm your full name and date of birth?"
+    );
+
+    expect(nameOnly.map((match) => match.topicId)).toContain("confirm_identity");
+    expect(nameOnly.map((match) => match.topicId)).not.toContain("confirm_age");
+    expect(ageOnly.map((match) => match.topicId)).toContain("confirm_age");
+    expect(both.map((match) => match.topicId)).toEqual(
+      expect.arrayContaining(["confirm_identity", "confirm_age"])
+    );
+  });
+
+  it("responds to common clinical questions even when they are not scoring topics", () => {
+    const conversation = getConversationCase("case-1");
+    expect(matchResponseIntent(conversation, "Have you taken this medication before?")?.id)
+      .toBe("previous_use");
+    expect(matchResponseIntent(conversation, "Any other medical conditions?")?.id)
+      .toBe("medical_conditions");
+    expect(matchResponseIntent(conversation, "Any chest pain?")?.id)
+      .toBe("current_symptoms");
+    expect(matchResponseIntent(conversation, "Could I ask you a couple of questions?")?.id)
+      .toBe("permission_to_ask");
   });
 });
 describe("deterministic clinical gates", () => {
@@ -101,9 +131,37 @@ describe("deterministic clinical gates", () => {
     expect(findUnsafeAdvice(conversation, "You should take a double dose next time.")).toHaveLength(1);
     expect(findUnsafeAdvice(conversation, "Do not double your next dose.")).toHaveLength(0);
   });
+
+  it("flags liquid storage instructions given for an erythromycin capsule supply", () => {
+    const conversation = getConversationCase("case-1");
+    const findings = findUnsafeAdvice(
+      conversation,
+      "Shake it well and keep the medicine refrigerated."
+    );
+    expect(findings.map((finding) => finding.id)).toContain("wrong_capsule_storage_advice");
+    expect(matchResponseIntent(conversation, "Keep it in the fridge")?.id)
+      .toBe("wrong_dosage_form_advice");
+  });
 });
 
 describe("combined marking", () => {
+  it("fails counselling when age or date of birth is not confirmed", () => {
+    const conversation = getConversationCase("case-1");
+    const addressed = conversation.topics
+      .filter((topic) => topic.id !== "confirm_age")
+      .map((topic) => topic.id);
+    const result = scoreCounselling({
+      conversation,
+      addressedTopicIds: addressed,
+      unsafeAdvice: [],
+      transcript: [],
+      matcherMode: "rules",
+    });
+
+    expect(result.criticalFailures).toContain("confirm_age");
+    expect(result.passed).toBe(false);
+  });
+
   it("fails counselling when a critical topic is missing despite a high score", () => {
     const conversation = getConversationCase("case-1");
     const addressed = conversation.topics

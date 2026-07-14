@@ -21,6 +21,12 @@ export interface ConversationTopic {
   patientReplies: string[];
   repeatReply?: string;
 }
+
+export interface ConversationResponseIntent {
+  id: string;
+  fallbackPatterns: string[];
+  patientReplies: string[];
+}
 export interface UnsafeAdviceRule {
   id: string;
   label: string;
@@ -38,6 +44,7 @@ export interface ConversationCase {
   concernPrompt: string;
   patientQuestion: string;
   unknownReplies: string[];
+  responseIntents: ConversationResponseIntent[];
   topics: ConversationTopic[];
   unsafeAdviceRules: UnsafeAdviceRule[];
 }

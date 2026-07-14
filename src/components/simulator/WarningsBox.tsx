@@ -1,18 +1,28 @@
 import type { WarningLabel } from "@/lib/types/case";
+import { MedicinesReferenceDesk } from "@/components/simulator/MedicinesReferenceDesk";
 
 interface WarningsBoxProps {
   warnings: WarningLabel[];
   selectedWarnings: Set<string>;
   onToggle: (warningText: string) => void;
+  medicineName: string;
 }
 
-export function WarningsBox({ warnings, selectedWarnings, onToggle }: WarningsBoxProps) {
+export function WarningsBox({
+  warnings,
+  selectedWarnings,
+  onToggle,
+  medicineName,
+}: WarningsBoxProps) {
   return (
     <fieldset className="fred-warn-box">
       <legend className="fred-warn-title">
         Warnings — <span className="fred-warn-title-red">F2T</span>
       </legend>
-      <div className="fred-warn-subtitle">Select applicable labels:</div>
+      <div className="fred-warn-subtitle">
+        <span>Select applicable labels:</span>
+        <MedicinesReferenceDesk medicineName={medicineName} />
+      </div>
       <div style={{ padding: "2px 4px", overflowY: "auto" }}>
         {warnings.map((w) => {
           const selected = selectedWarnings.has(w.text);
