@@ -838,6 +838,39 @@
   border: 2px solid #b00000;
   color: #710000;
 }
+.fred-root .fred-result-section-heading {
+  margin: 10px 0 5px;
+  padding: 5px 7px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #dcecff;
+  border: 1px solid #5d86ae;
+  color: #003f75;
+  font-size: 11px;
+  font-weight: 800;
+}
+.fred-root .fred-result-section-heading.counselling {
+  background: #e2f4e4;
+  border-color: #579260;
+  color: #15521d;
+}
+.fred-root .fred-result-method-note,
+.fred-root .fred-result-tip {
+  border-radius: 2px;
+  padding: 8px;
+  margin-top: 8px;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.fred-root .fred-result-method-note {
+  background: #f4f1e9;
+  border: 1px solid #a9a293;
+}
+.fred-root .fred-result-tip {
+  background: #e8f4ff;
+  border: 1px solid #aaccff;
+}
 
 @media (max-width: 1199px) {
   .fred-root .fred-workspace {
@@ -1425,4 +1458,307 @@
   color: #555;
   font-family: 'Segoe UI', Tahoma, sans-serif;
   background: #e8e8e0;
+}
+
+/* ─── POST-DISPENSING PATIENT COUNSELLING ───────────────────── */
+.fred-root .fred-counselling-stage {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: #007600;
+}
+.fred-root .fred-counselling-header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  background: #f1efe8;
+  border: 2px outset #fff;
+  padding: 7px 10px;
+}
+.fred-root .fred-stage-kicker {
+  color: #004c87;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.fred-root .fred-counselling-header h1 {
+  margin: 1px 0 2px;
+  font-size: 18px;
+  line-height: 1.1;
+  color: #111;
+}
+.fred-root .fred-counselling-header p {
+  margin: 0;
+  color: #444;
+  font-size: 11px;
+}
+.fred-root .fred-decision-recap {
+  flex: 0 0 285px;
+  background: #e7f1ff;
+  border: 1px solid #7198c7;
+  padding: 5px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.fred-root .fred-decision-recap span {
+  color: #40536a;
+  font-size: 9px;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+.fred-root .fred-decision-recap strong {
+  color: #003d73;
+  font-size: 11px;
+}
+.fred-root .fred-counselling-grid {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 285px;
+  gap: 6px;
+}
+.fred-root .fred-chat-window {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #d4d0c8;
+  border: 3px outset #fff;
+}
+.fred-root .fred-chat-titlebar {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 7px;
+  background: linear-gradient(to bottom, #246fb8, #064b8e);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+}
+.fred-root .fred-chat-titlebar span:last-child {
+  font-weight: 400;
+  color: #dcecff;
+}
+.fred-root .fred-chat-transcript {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: #f8f7f2;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  scrollbar-gutter: stable;
+}
+.fred-root .fred-chat-message {
+  max-width: min(76%, 720px);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.fred-root .fred-chat-message.patient {
+  align-self: flex-start;
+}
+.fred-root .fred-chat-message.student {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+.fred-root .fred-chat-speaker {
+  font-size: 9px;
+  font-weight: 700;
+  color: #59636e;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.fred-root .fred-chat-message p {
+  margin: 0;
+  padding: 7px 9px;
+  border: 1px solid #9ea4a8;
+  background: #fff;
+  color: #1f252a;
+  border-radius: 3px;
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
+.fred-root .fred-chat-message.student p {
+  background: #dcecff;
+  border-color: #6f97c2;
+}
+.fred-root .fred-chat-message.pending p {
+  color: #66717b;
+  font-style: italic;
+}
+.fred-root .fred-chat-composer {
+  flex: 0 0 auto;
+  border-top: 2px solid #8c8c84;
+  padding: 6px 8px;
+  background: #e4e2dc;
+}
+.fred-root .fred-chat-composer label {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #222;
+}
+.fred-root .fred-chat-composer textarea {
+  display: block;
+  width: 100%;
+  min-height: 60px;
+  max-height: 110px;
+  resize: vertical;
+  border: 2px inset #999;
+  background: #fff;
+  padding: 6px 7px;
+  font-family: 'Segoe UI', Tahoma, sans-serif;
+  font-size: 12px;
+  line-height: 1.35;
+  color: #111;
+}
+.fred-root .fred-chat-composer textarea:focus {
+  outline: 2px solid #176bb2;
+  outline-offset: 1px;
+}
+.fred-root .fred-chat-composer textarea:disabled {
+  background: #eee;
+  color: #777;
+}
+.fred-root .fred-chat-actions {
+  margin-top: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.fred-root .fred-chat-actions > span {
+  margin-right: auto;
+  color: #666;
+  font-size: 9px;
+}
+.fred-root .fred-chat-actions button,
+.fred-root .fred-model-card button {
+  border: 2px outset #fff;
+  padding: 4px 10px;
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.fred-root .fred-chat-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.fred-root .fred-chat-send {
+  background: #075e9e;
+  color: #fff;
+}
+.fred-root .fred-chat-finish {
+  background: #087a24;
+  color: #fff;
+}
+.fred-root .fred-counselling-sidebar {
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.fred-root .fred-assessment-card,
+.fred-root .fred-model-card,
+.fred-root .fred-stage-note {
+  background: #f1efe8;
+  border: 2px outset #fff;
+  padding: 8px;
+  font-size: 10px;
+  line-height: 1.4;
+}
+.fred-root .fred-assessment-card h2,
+.fred-root .fred-model-card h2 {
+  margin: 0 0 5px;
+  color: #003f75;
+  font-size: 11px;
+}
+.fred-root .fred-assessment-card p,
+.fred-root .fred-model-card p,
+.fred-root .fred-stage-note p {
+  margin: 0 0 6px;
+}
+.fred-root .fred-assessment-card ul {
+  margin: 5px 0 0;
+  padding-left: 17px;
+}
+.fred-root .fred-assessment-card li {
+  margin: 2px 0;
+}
+.fred-root .fred-model-status {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 6px;
+  margin-bottom: 5px;
+  border: 1px solid #9b9b91;
+  background: #fff;
+  color: #333;
+  font-size: 10px;
+}
+.fred-root .fred-model-dot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 50%;
+  background: #cb8c00;
+}
+.fred-root .fred-model-status.ready .fred-model-dot {
+  background: #07842c;
+}
+.fred-root .fred-model-status.fallback .fred-model-dot {
+  background: #b56800;
+}
+.fred-root .fred-model-progress {
+  height: 7px;
+  margin: -1px 0 6px;
+  border: 1px solid #8b8b83;
+  background: #fff;
+  overflow: hidden;
+}
+.fred-root .fred-model-progress span {
+  display: block;
+  height: 100%;
+  background: #1c70b6;
+  transition: width 120ms linear;
+}
+.fred-root .fred-model-card button {
+  width: 100%;
+  background: #d4d0c8;
+  color: #222;
+  padding: 3px 6px;
+  font-size: 10px;
+}
+.fred-root .fred-stage-note {
+  margin-top: auto;
+  background: #fff8d8;
+  border-color: #ead38c;
+}
+.fred-root .fred-stage-note strong {
+  display: block;
+  margin-bottom: 2px;
+  color: #5c4500;
+}
+
+@media (max-width: 1150px) {
+  .fred-root .fred-counselling-grid {
+    grid-template-columns: minmax(0, 1fr) 245px;
+  }
+  .fred-root .fred-decision-recap {
+    flex-basis: 245px;
+  }
 }

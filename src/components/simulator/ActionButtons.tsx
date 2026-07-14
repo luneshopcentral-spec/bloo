@@ -21,8 +21,8 @@ export function ActionButtons({
 }: ActionButtonsProps) {
   const submitLabel =
     decision === "dispense"
-      ? "✓ Dispense & Print Label"
-      : "✓ Submit Clinical Decision";
+      ? "✓ Dispense & Begin Handover"
+      : "✓ Submit Decision & Speak to Patient";
 
   return (
     <div className="fred-btn-row">
@@ -31,7 +31,7 @@ export function ActionButtons({
         onClick={onDispense}
         disabled={submitted}
       >
-        {submitted ? "Attempt submitted" : submitLabel}
+        {submitted ? "Dispensing stage submitted" : submitLabel}
       </button>
       <button className="fred-main-btn" onClick={onShowAnswers} disabled={answersRevealed}>
         {answersRevealed ? "Answers revealed (assisted)" : "Show Correct Answers"}

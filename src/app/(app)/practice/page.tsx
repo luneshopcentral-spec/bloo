@@ -7,6 +7,9 @@ import { STATIC_CASES, ALL_WARNINGS } from "@/lib/cases/static-cases";
 import { formReducer, EMPTY_FORM_STATE } from "@/components/simulator/state";
 import { validateDispense } from "@/lib/scoring/validate";
 import type { DispenseResult } from "@/lib/scoring/types";
+import type { AttemptResult, CounsellingResult } from "@/lib/conversation/types";
+import { combineAttemptResults } from "@/lib/conversation/score";
+import { getConversationCase } from "@/lib/conversation/cases";
 import type { DispenseDecision, MessageRow } from "@/lib/types/case";
 import type { Patient, PatientScript } from "@/lib/types/patient";
 import type { DrugRow } from "@/lib/types/drug";
@@ -30,11 +33,13 @@ import { ResultOverlay }       from "@/components/simulator/ResultOverlay";
 import { PrescriptionDrawer }  from "@/components/simulator/PrescriptionDrawer";
 import { PatientDetailsModal } from "@/components/simulator/PatientDetailsModal";
 import { DrugSelectionModal }  from "@/components/simulator/DrugSelectionModal";
+import { CounsellingStage }    from "@/components/simulator/CounsellingStage";
 
 const DEFAULT_STATUS =
   "Search for patient by surname, then enter drug details and complete the label.";
 
 export default function PracticePage() {
+  const [stage, setStage]                         = useState<"dispensing" | "counselling">("dispensing");
   const [currentCaseIndex, setCurrentCaseIndex]   = useState(0);
   const [formState, dispatch]                      = useReducer(formReducer, EMPTY_FORM_STATE);
   const [selectedWarnings, setSelectedWarnings]    = useState<Set<string>>(new Set());
@@ -42,7 +47,8 @@ export default function PracticePage() {
   const [messages, setMessages]                    = useState<MessageRow[]>([]);
 
   const [sessionScore, setSessionScore]   = useState({ correct: 0, total: 0 });
-  const [lastResult, setLastResult]       = useState<DispenseResult | null>(null);
+  const [pendingDispenseResult, setPendingDispenseResult] = useState<DispenseResult | null>(null);
+  const [lastResult, setLastResult]       = useState<AttemptResult | null>(null);
   const [overlayOpen, setOverlayOpen]     = useState(false);
   const [initialsError, setInitialsError] = useState(false);
   const [clinicalDecision, setClinicalDecision] = useState<DispenseDecision | null>(null);
@@ -64,6 +70,7 @@ export default function PracticePage() {
   const [drugModalQuery, setDrugModalQuery] = useState("");
 
   const current = STATIC_CASES[currentCaseIndex];
+  const currentConversation = getConversationCase(current.id);
 
   // ── Reset form + patient + drug whenever the case changes ─────────
   useEffect(() => {
@@ -82,6 +89,9 @@ export default function PracticePage() {
     setAnswersRevealed(false);
     setAttemptSubmitted(false);
     setOverlayOpen(false);
+    setStage("dispensing");
+    setPendingDispenseResult(null);
+    setLastResult(null);
 
     setSelectedPatient(null);
     setPatientScripts([]);
@@ -129,6 +139,9 @@ export default function PracticePage() {
     setAnswersRevealed(false);
     setAttemptSubmitted(false);
     setOverlayOpen(false);
+    setStage("dispensing");
+    setPendingDispenseResult(null);
+    setLastResult(null);
     setStatusMessage("Form cleared. Enter the next script.");
     setMessages([]);
   }
@@ -171,20 +184,30 @@ export default function PracticePage() {
       assisted: answersRevealed,
     });
 
-    setLastResult(result);
+    setPendingDispenseResult(result);
     setAttemptSubmitted(true);
-    if (result.countsTowardProgress) {
+    setDrawerOpen(false);
+    setStatusMessage("Dispensing stage submitted. Complete the patient interaction to receive your result.");
+    setStage("counselling");
+  }
+
+  function handleCounsellingComplete(counsellingResult: CounsellingResult) {
+    if (!pendingDispenseResult) return;
+
+    const completeResult = combineAttemptResults(pendingDispenseResult, counsellingResult);
+    setLastResult(completeResult);
+    if (completeResult.countsTowardProgress) {
       setSessionScore((prev) => ({
-        correct: prev.correct + (result.passed ? 1 : 0),
+        correct: prev.correct + (completeResult.passed ? 1 : 0),
         total: prev.total + 1,
       }));
     }
     setStatusMessage(
-      result.assisted
-        ? `Assisted review complete (${result.pointsEarned}/${result.pointsTotal}) — not counted in the session score.`
-        : result.passed
-        ? `✓ Dispense check passed (${result.pointsEarned}/${result.pointsTotal}) — review the feedback before moving on.`
-        : `✗ Dispense check needs review (${result.pointsEarned}/${result.pointsTotal}) — see the result panel.`
+      completeResult.assisted
+        ? "Assisted dispensing and counselling review complete — not counted in the session score."
+        : completeResult.passed
+          ? "Complete dispensing and counselling attempt passed."
+          : "Complete attempt needs review. See the combined result panel."
     );
     setOverlayOpen(true);
   }
@@ -207,7 +230,7 @@ export default function PracticePage() {
   function handlePatientSaved(patient: Patient) {
     setAddPatientModalOpen(false);
     setSelectedPatient(patient);
-    setStatusMessage(`New patient added: ${patient.surname}, ${patient.firstname}`);
+    setStatusMessage(`Attempt patient entered: ${patient.surname}, ${patient.firstname}`);
   }
 
   function handleOpenDrugModal(query: string) {
@@ -240,14 +263,16 @@ export default function PracticePage() {
 
         <TitleBar />
         <MenuBar />
-        <Toolbar
-          currentCase={currentCaseIndex}
-          onCaseChange={handleCaseChange}
-          cases={STATIC_CASES}
-          sessionScore={sessionScore}
-        />
+        {stage === "dispensing" ? (
+          <>
+            <Toolbar
+              currentCase={currentCaseIndex}
+              onCaseChange={handleCaseChange}
+              cases={STATIC_CASES}
+              sessionScore={sessionScore}
+            />
 
-        <div className="fred-workspace">
+            <div className="fred-workspace">
           {/* ── LEFT: main content ── */}
           <div className="fred-workspace-main">
             <div className="fred-main-win">
@@ -319,7 +344,17 @@ export default function PracticePage() {
             patientScripts={patientScripts}
             onStatusUpdate={setStatusMessage}
           />
-        </div>
+            </div>
+          </>
+        ) : (
+          <CounsellingStage
+            key={current.id}
+            conversation={currentConversation}
+            decision={clinicalDecision}
+            onComplete={handleCounsellingComplete}
+            onViewResults={() => setOverlayOpen(true)}
+          />
+        )}
 
         <ResultOverlay
           show={overlayOpen}
