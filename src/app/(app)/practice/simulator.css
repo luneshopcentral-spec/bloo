@@ -2175,6 +2175,150 @@
   padding: 6px 8px;
   background: #e4e2dc;
 }
+.fred-root .fred-interaction-mode-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 5px;
+}
+.fred-root .fred-interaction-mode-row > span {
+  font-size: 10px;
+  font-weight: 700;
+  color: #222;
+}
+.fred-root .fred-interaction-mode-switch {
+  display: inline-flex;
+  border: 1px solid #777;
+  background: #bcbab4;
+}
+.fred-root .fred-interaction-mode-switch button {
+  min-width: 82px;
+  border: 0;
+  border-right: 1px solid #777;
+  padding: 4px 10px;
+  background: #e4e2dc;
+  color: #252525;
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.fred-root .fred-interaction-mode-switch button:last-child {
+  min-width: 132px;
+  border-right: 0;
+}
+.fred-root .fred-interaction-mode-switch button.active {
+  background: #075e9e;
+  color: #fff;
+  box-shadow: inset 1px 1px 1px #00345c;
+}
+.fred-root .fred-interaction-mode-switch button:focus-visible,
+.fred-root .fred-voice-buttons button:focus-visible {
+  outline: 2px solid #ffbf00;
+  outline-offset: 2px;
+}
+.fred-root .fred-voice-controls {
+  margin: 0 0 6px;
+  border: 1px solid #71859a;
+  background: #edf5ff;
+  padding: 6px 7px;
+}
+.fred-root .fred-voice-controls-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 5px;
+  color: #193c5b;
+  font-size: 10px;
+}
+.fred-root .fred-voice-controls-heading span {
+  color: #4a5d6e;
+  font-size: 9px;
+  text-align: right;
+}
+.fred-root .fred-voice-quality-warning {
+  margin: -1px 0 5px;
+  border-left: 3px solid #b16b00;
+  background: #fff7df;
+  padding: 3px 5px;
+  color: #694200;
+  font-size: 9px;
+  line-height: 1.25;
+}
+.fred-root .fred-voice-buttons {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.fred-root .fred-voice-buttons button {
+  border: 2px outset #fff;
+  background: #d4d0c8;
+  color: #111;
+  padding: 4px 9px;
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.fred-root .fred-voice-buttons button:first-child {
+  min-width: 112px;
+  background: #087a24;
+  color: #fff;
+}
+.fred-root .fred-voice-buttons button.listening {
+  background: #a51414;
+  animation: fred-voice-pulse 1.3s ease-in-out infinite;
+}
+.fred-root .fred-voice-buttons button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.fred-root .fred-voice-status {
+  margin: 5px 0 0;
+  padding-left: 14px;
+  color: #29485f;
+  font-size: 10px;
+  line-height: 1.3;
+  position: relative;
+}
+.fred-root .fred-voice-status::before {
+  content: "";
+  position: absolute;
+  left: 1px;
+  top: 4px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #527188;
+}
+.fred-root .fred-voice-status.listening::before,
+.fred-root .fred-voice-status.speaking::before {
+  background: #087a24;
+}
+.fred-root .fred-voice-status.starting::before {
+  background: #b16b00;
+}
+.fred-root .fred-voice-status.error {
+  color: #8f1111;
+}
+.fred-root .fred-voice-status.error::before {
+  background: #b31313;
+}
+.fred-root .fred-voice-disclosure {
+  margin: 4px 0 0;
+  color: #5c6870;
+  font-size: 9px;
+  line-height: 1.25;
+}
+.fred-root .fred-voice-controls + label + textarea {
+  min-height: 48px;
+}
+@keyframes fred-voice-pulse {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.22); }
+}
 .fred-root .fred-chat-composer label {
   display: block;
   margin-bottom: 3px;

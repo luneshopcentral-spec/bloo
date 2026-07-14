@@ -1,0 +1,197 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  getSpeechRecognitionConstructor,
+  patientSpeechRate,
+  preparePatientSpeech,
+  selectPatientVoice,
+  speechRecognitionErrorMessage,
+  type SpeechRecognitionLike,
+} from "@/lib/voice/web-speech";
+
+export type VoiceActivity = "idle" | "starting" | "listening" | "review" | "speaking" | "error";
+
+interface UseVoiceConversationOptions {
+  patientKey: string;
+  onTranscript: (transcript: string) => void;
+}
+
+export function useVoiceConversation({
+  patientKey,
+  onTranscript,
+}: UseVoiceConversationOptions) {
+  const [recognitionSupported, setRecognitionSupported] = useState<boolean | null>(null);
+  const [synthesisSupported, setSynthesisSupported] = useState<boolean | null>(null);
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [activity, setActivity] = useState<VoiceActivity>("idle");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const transcriptCallbackRef = useRef(onTranscript);
+
+  useEffect(() => {
+    transcriptCallbackRef.current = onTranscript;
+  }, [onTranscript]);
+
+  useEffect(() => {
+    const recognitionConstructor = getSpeechRecognitionConstructor(window);
+    const canSpeak = "speechSynthesis" in window && "SpeechSynthesisUtterance" in window;
+    setRecognitionSupported(Boolean(recognitionConstructor));
+    setSynthesisSupported(canSpeak);
+
+    const loadVoices = () => setVoices(window.speechSynthesis.getVoices());
+    if (canSpeak) {
+      loadVoices();
+      window.speechSynthesis.addEventListener("voiceschanged", loadVoices);
+    }
+
+    return () => {
+      if (canSpeak) {
+        window.speechSynthesis.removeEventListener("voiceschanged", loadVoices);
+        window.speechSynthesis.cancel();
+      }
+      if (recognitionRef.current) {
+        recognitionRef.current.onresult = null;
+        recognitionRef.current.onerror = null;
+        recognitionRef.current.onend = null;
+        recognitionRef.current.abort();
+      }
+      recognitionRef.current = null;
+    };
+  }, []);
+
+  const patientVoice = useMemo(
+    () => selectPatientVoice(voices, patientKey),
+    [patientKey, voices]
+  );
+
+  const cancelSpeech = useCallback(() => {
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+    setActivity((current) => (current === "speaking" ? "idle" : current));
+  }, []);
+
+  const abortListening = useCallback(() => {
+    if (recognitionRef.current) {
+      recognitionRef.current.onresult = null;
+      recognitionRef.current.onerror = null;
+      recognitionRef.current.onend = null;
+      recognitionRef.current.abort();
+    }
+    recognitionRef.current = null;
+    setActivity((current) => (
+      current === "starting" || current === "listening" ? "idle" : current
+    ));
+  }, []);
+
+  const stopListening = useCallback(() => {
+    try {
+      recognitionRef.current?.stop();
+    } catch {
+      abortListening();
+    }
+  }, [abortListening]);
+
+  const startListening = useCallback(() => {
+    const RecognitionConstructor = getSpeechRecognitionConstructor(window);
+    if (!RecognitionConstructor) {
+      setRecognitionSupported(false);
+      setErrorMessage("Voice recognition is unavailable in this browser. Continue by typing.");
+      setActivity("error");
+      return;
+    }
+
+    cancelSpeech();
+    abortListening();
+    setErrorMessage(null);
+    transcriptCallbackRef.current("");
+
+    const recognition = new RecognitionConstructor();
+    let recognisedText = "";
+    recognition.lang = "en-AU";
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.maxAlternatives = 3;
+    recognition.onstart = () => setActivity("listening");
+    recognition.onresult = (event) => {
+      const parts: string[] = [];
+      let hasFinalResult = false;
+      for (let index = 0; index < event.results.length; index += 1) {
+        const result = event.results[index];
+        const transcript = result[0]?.transcript?.trim();
+        if (transcript) parts.push(transcript);
+        if (result.isFinal) hasFinalResult = true;
+      }
+
+      recognisedText = parts.join(" ").trim();
+      transcriptCallbackRef.current(recognisedText);
+      if (hasFinalResult) setActivity("review");
+    };
+    recognition.onerror = (event) => {
+      setErrorMessage(speechRecognitionErrorMessage(event.error));
+      setActivity("error");
+    };
+    recognition.onend = () => {
+      recognitionRef.current = null;
+      setActivity((current) => {
+        if (current === "error") return current;
+        return recognisedText ? "review" : "idle";
+      });
+    };
+
+    recognitionRef.current = recognition;
+    try {
+      setActivity("starting");
+      recognition.start();
+    } catch {
+      recognitionRef.current = null;
+      setErrorMessage("The microphone could not start. Try again, or continue by typing.");
+      setActivity("error");
+    }
+  }, [abortListening, cancelSpeech]);
+
+  const speak = useCallback(
+    (text: string) => {
+      if (!("speechSynthesis" in window) || !("SpeechSynthesisUtterance" in window)) {
+        setSynthesisSupported(false);
+        setErrorMessage("Patient audio is unavailable in this browser. The transcript remains available.");
+        return;
+      }
+
+      abortListening();
+      window.speechSynthesis.cancel();
+      setErrorMessage(null);
+      const utterance = new SpeechSynthesisUtterance(preparePatientSpeech(text));
+      utterance.lang = patientVoice?.lang || "en-AU";
+      utterance.voice = patientVoice;
+      utterance.rate = patientSpeechRate(patientKey);
+      utterance.pitch = 1;
+      utterance.volume = 1;
+      utterance.onstart = () => setActivity("speaking");
+      utterance.onend = () => setActivity("idle");
+      utterance.onerror = (event) => {
+        if (event.error === "canceled" || event.error === "interrupted") return;
+        setErrorMessage("The patient voice could not play. The written response is still available.");
+        setActivity("error");
+      };
+      window.speechSynthesis.speak(utterance);
+    },
+    [abortListening, patientKey, patientVoice]
+  );
+
+  return {
+    recognitionSupported,
+    synthesisSupported,
+    patientVoiceName: patientVoice?.name ?? null,
+    patientVoiceLanguage: patientVoice?.lang ?? null,
+    patientVoiceIsAustralian: patientVoice?.lang.toLowerCase().replace("_", "-").startsWith("en-au") ?? false,
+    activity,
+    errorMessage,
+    startListening,
+    stopListening,
+    abortListening,
+    speak,
+    cancelSpeech,
+  };
+}
