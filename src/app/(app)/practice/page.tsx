@@ -7,7 +7,10 @@ import { STATIC_CASES, ALL_WARNINGS } from "@/lib/cases/static-cases";
 import { formReducer, EMPTY_FORM_STATE } from "@/components/simulator/state";
 import { validateDispense } from "@/lib/scoring/validate";
 import type { DispenseResult } from "@/lib/scoring/types";
-import type { MessageRow } from "@/lib/types/case";
+import type { AttemptResult, CounsellingResult } from "@/lib/conversation/types";
+import { combineAttemptResults } from "@/lib/conversation/score";
+import { getConversationCase } from "@/lib/conversation/cases";
+import type { DispenseDecision, MessageRow } from "@/lib/types/case";
 import type { Patient, PatientScript } from "@/lib/types/patient";
 import type { DrugRow } from "@/lib/types/drug";
 import { createClient } from "@/lib/supabase/client";
@@ -22,6 +25,7 @@ import { WarningsBox }         from "@/components/simulator/WarningsBox";
 import { LabelPreview }        from "@/components/simulator/LabelPreview";
 import { ApiBox }              from "@/components/simulator/ApiBox";
 import { ActionButtons }       from "@/components/simulator/ActionButtons";
+import { ClinicalDecisionPanel } from "@/components/simulator/ClinicalDecisionPanel";
 import { MessagesPanel }       from "@/components/simulator/MessagesPanel";
 import { StatusBar }           from "@/components/simulator/StatusBar";
 import { HistoryPanel }        from "@/components/simulator/HistoryPanel";
@@ -29,11 +33,13 @@ import { ResultOverlay }       from "@/components/simulator/ResultOverlay";
 import { PrescriptionDrawer }  from "@/components/simulator/PrescriptionDrawer";
 import { PatientDetailsModal } from "@/components/simulator/PatientDetailsModal";
 import { DrugSelectionModal }  from "@/components/simulator/DrugSelectionModal";
+import { CounsellingStage }    from "@/components/simulator/CounsellingStage";
 
 const DEFAULT_STATUS =
   "Search for patient by surname, then enter drug details and complete the label.";
 
 export default function PracticePage() {
+  const [stage, setStage]                         = useState<"dispensing" | "counselling">("dispensing");
   const [currentCaseIndex, setCurrentCaseIndex]   = useState(0);
   const [formState, dispatch]                      = useReducer(formReducer, EMPTY_FORM_STATE);
   const [selectedWarnings, setSelectedWarnings]    = useState<Set<string>>(new Set());
@@ -41,12 +47,16 @@ export default function PracticePage() {
   const [messages, setMessages]                    = useState<MessageRow[]>([]);
 
   const [sessionScore, setSessionScore]   = useState({ correct: 0, total: 0 });
-  const [lastResult, setLastResult]       = useState<DispenseResult | null>(null);
+  const [pendingDispenseResult, setPendingDispenseResult] = useState<DispenseResult | null>(null);
+  const [lastResult, setLastResult]       = useState<AttemptResult | null>(null);
   const [overlayOpen, setOverlayOpen]     = useState(false);
   const [initialsError, setInitialsError] = useState(false);
+  const [clinicalDecision, setClinicalDecision] = useState<DispenseDecision | null>(null);
+  const [answersRevealed, setAnswersRevealed] = useState(false);
+  const [attemptSubmitted, setAttemptSubmitted] = useState(false);
 
-  // Prescription drawer — auto-opens on case change
-  const [drawerOpen, setDrawerOpen] = useState(true);
+  // Keep the prescription available without covering the core laptop workspace.
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   // Patient state
   const [selectedPatient, setSelectedPatient]         = useState<Patient | null>(null);
@@ -60,6 +70,7 @@ export default function PracticePage() {
   const [drugModalQuery, setDrugModalQuery] = useState("");
 
   const current = STATIC_CASES[currentCaseIndex];
+  const currentConversation = getConversationCase(current.id);
 
   // ── Reset form + patient + drug whenever the case changes ─────────
   useEffect(() => {
@@ -73,7 +84,14 @@ export default function PracticePage() {
     setSelectedWarnings(new Set());
     setInitialsError(false);
     setStatusMessage(DEFAULT_STATUS);
-    setDrawerOpen(true);
+    setDrawerOpen(false);
+    setClinicalDecision(null);
+    setAnswersRevealed(false);
+    setAttemptSubmitted(false);
+    setOverlayOpen(false);
+    setStage("dispensing");
+    setPendingDispenseResult(null);
+    setLastResult(null);
 
     setSelectedPatient(null);
     setPatientScripts([]);
@@ -84,14 +102,8 @@ export default function PracticePage() {
     setDrugModalOpen(false);
     setDrugModalQuery("");
 
-    const msgs: MessageRow[] = c.errors.map((err, i) => ({
-      id: `E${String(i + 1).padStart(3, "0")}`,
-      patient: c.patientLookup.prescriptionPatient.name,
-      item: c.drug,
-      summary: err,
-      severity: err.includes("⚠") ? "error" : ("warning" as const),
-    }));
-    setMessages(msgs);
+    // Do not reveal the case's hidden clinical issue before the student decides.
+    setMessages([]);
   }, [currentCaseIndex]);
 
   // ── Load patient scripts when a patient is selected ───────────────
@@ -123,6 +135,13 @@ export default function PracticePage() {
     dispatch({ type: "RESET" });
     setSelectedWarnings(new Set());
     setSelectedDrug(null);
+    setClinicalDecision(null);
+    setAnswersRevealed(false);
+    setAttemptSubmitted(false);
+    setOverlayOpen(false);
+    setStage("dispensing");
+    setPendingDispenseResult(null);
+    setLastResult(null);
     setStatusMessage("Form cleared. Enter the next script.");
     setMessages([]);
   }
@@ -130,7 +149,11 @@ export default function PracticePage() {
   async function handleShowAnswers() {
     dispatch({ type: "FILL_FROM_CASE", case: current });
     setSelectedWarnings(new Set(current.correctWarnings));
-    setStatusMessage("Answers shown — study the label and warnings, then try the next case.");
+    setClinicalDecision(current.expectedDecision);
+    setAnswersRevealed(true);
+    setStatusMessage(
+      "Answers shown — this is now an assisted attempt and will not count in the session score."
+    );
 
     if (current.correctDrugSeedId) {
       const supabase = createClient();
@@ -157,17 +180,34 @@ export default function PracticePage() {
       caseData: STATIC_CASES[currentCaseIndex],
       selectedPatient,
       selectedDrug,
+      decision: clinicalDecision,
+      assisted: answersRevealed,
     });
 
-    setLastResult(result);
-    setSessionScore((prev) => ({
-      correct: prev.correct + (result.passed ? 1 : 0),
-      total:   prev.total + 1,
-    }));
+    setPendingDispenseResult(result);
+    setAttemptSubmitted(true);
+    setDrawerOpen(false);
+    setStatusMessage("Dispensing stage submitted. Complete the patient interaction to receive your result.");
+    setStage("counselling");
+  }
+
+  function handleCounsellingComplete(counsellingResult: CounsellingResult) {
+    if (!pendingDispenseResult) return;
+
+    const completeResult = combineAttemptResults(pendingDispenseResult, counsellingResult);
+    setLastResult(completeResult);
+    if (completeResult.countsTowardProgress) {
+      setSessionScore((prev) => ({
+        correct: prev.correct + (completeResult.passed ? 1 : 0),
+        total: prev.total + 1,
+      }));
+    }
     setStatusMessage(
-      result.passed
-        ? `✓ Dispense check passed (${result.pointsEarned}/${result.pointsTotal}) — review the feedback before moving on.`
-        : `✗ Dispense check needs review (${result.pointsEarned}/${result.pointsTotal}) — see the result panel.`
+      completeResult.assisted
+        ? "Assisted dispensing and counselling review complete — not counted in the session score."
+        : completeResult.passed
+          ? "Complete dispensing and counselling attempt passed."
+          : "Complete attempt needs review. See the combined result panel."
     );
     setOverlayOpen(true);
   }
@@ -190,7 +230,7 @@ export default function PracticePage() {
   function handlePatientSaved(patient: Patient) {
     setAddPatientModalOpen(false);
     setSelectedPatient(patient);
-    setStatusMessage(`New patient added: ${patient.surname}, ${patient.firstname}`);
+    setStatusMessage(`Attempt patient entered: ${patient.surname}, ${patient.firstname}`);
   }
 
   function handleOpenDrugModal(query: string) {
@@ -217,18 +257,24 @@ export default function PracticePage() {
           best experience, switch to a larger screen.
         </div>
 
+        <div className="fred-training-banner" role="note">
+          Training simulation — use current PBS, product information and jurisdictional references in practice.
+        </div>
+
         <TitleBar />
         <MenuBar />
-        <Toolbar
-          currentCase={currentCaseIndex}
-          onCaseChange={handleCaseChange}
-          cases={STATIC_CASES}
-          sessionScore={sessionScore}
-        />
+        {stage === "dispensing" ? (
+          <>
+            <Toolbar
+              currentCase={currentCaseIndex}
+              onCaseChange={handleCaseChange}
+              cases={STATIC_CASES}
+              sessionScore={sessionScore}
+            />
 
-        <div className="grid grid-cols-[1fr_220px] items-start">
+            <div className="fred-workspace">
           {/* ── LEFT: main content ── */}
-          <div>
+          <div className="fred-workspace-main">
             <div className="fred-main-win">
               <PatientHeader
                 caseData={current}
@@ -269,12 +315,23 @@ export default function PracticePage() {
                 <ApiBox />
               </div>
 
-              <ActionButtons
-                onDispense={handleDispense}
-                onShowAnswers={handleShowAnswers}
-                onClear={handleClear}
-                onNext={handleNext}
-              />
+              <div className="fred-action-dock">
+                <ClinicalDecisionPanel
+                  value={clinicalDecision}
+                  onChange={setClinicalDecision}
+                  disabled={attemptSubmitted}
+                />
+
+                <ActionButtons
+                  onDispense={handleDispense}
+                  onShowAnswers={handleShowAnswers}
+                  onClear={handleClear}
+                  onNext={handleNext}
+                  decision={clinicalDecision}
+                  answersRevealed={answersRevealed}
+                  submitted={attemptSubmitted}
+                />
+              </div>
 
               <MessagesPanel messages={messages} />
               <StatusBar message={statusMessage} />
@@ -287,7 +344,17 @@ export default function PracticePage() {
             patientScripts={patientScripts}
             onStatusUpdate={setStatusMessage}
           />
-        </div>
+            </div>
+          </>
+        ) : (
+          <CounsellingStage
+            key={current.id}
+            conversation={currentConversation}
+            decision={clinicalDecision}
+            onComplete={handleCounsellingComplete}
+            onViewResults={() => setOverlayOpen(true)}
+          />
+        )}
 
         <ResultOverlay
           show={overlayOpen}

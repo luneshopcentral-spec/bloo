@@ -29,7 +29,7 @@ export function StatusBar({ message }: StatusBarProps) {
   }, []);
 
   return (
-    <div className="fred-statusbar">
+    <div className="fred-statusbar" role="status" aria-live="polite">
       <span>{message}</span>
       <span>{clock}</span>
     </div>

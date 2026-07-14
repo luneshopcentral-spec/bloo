@@ -53,8 +53,8 @@ export function DrugDetailsBox({ selectedDrug, caseData, patientAllergies = [] }
       )}
 
       {/* PDL warnings from the case (drug-interaction / safety flags) */}
-      {dd.warn1 && <div className="fred-dd-warn">{dd.warn1}</div>}
-      {dd.warn2 && <div className="fred-dd-warn">{dd.warn2}</div>}
+      {d && dd.warn1 && <div className="fred-dd-warn">{dd.warn1}</div>}
+      {d && dd.warn2 && <div className="fred-dd-warn">{dd.warn2}</div>}
 
       {patientAllergies.length > 0 && (
         <div className="fred-dd-allergy">

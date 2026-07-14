@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Pill, LogOut, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
@@ -12,6 +12,7 @@ interface AppNavProps {
 
 export function AppNav({ userEmail }: AppNavProps) {
   const router = useRouter();
+  const pathname = usePathname();
 
   async function handleSignOut() {
     const supabase = createClient();
@@ -19,6 +20,9 @@ export function AppNav({ userEmail }: AppNavProps) {
     router.push("/");
     router.refresh();
   }
+
+  // The simulator owns the full laptop viewport and provides its own exit control.
+  if (pathname === "/practice") return null;
 
   return (
     <nav className="border-b border-slate-200 bg-white">

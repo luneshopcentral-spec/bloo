@@ -99,6 +99,7 @@ export function PrescriptionDrawer({
         role="dialog"
         aria-label="Original prescription"
         aria-hidden={!open}
+        inert={!open}
         className="presc-panel"
       >
         {/* Header bar */}

@@ -2,9 +2,9 @@ import {
   Monitor,
   Zap,
   FileText,
-  TrendingUp,
+  CircleAlert,
   ShieldCheck,
-  Smartphone,
+  Laptop,
 } from "lucide-react";
 
 const features = [
@@ -12,37 +12,37 @@ const features = [
     icon: Monitor,
     title: "Realistic Fred-style interface",
     description:
-      "Practise in an interface modelled closely on Fred Dispense — the dispensing software used across most Australian community pharmacies.",
+      "Build familiarity with a laptop-first, Fred-style dispensing layout. This independent training tool is not an official Fred product.",
   },
   {
     icon: Zap,
     title: "Instant, detailed feedback",
     description:
-      "Every dispensing step is scored the moment you submit. Mistakes are highlighted with clear explanations so you learn fast.",
+      "Eight checks are scored on submission, with mandatory safety gates for the patient, medicine, directions, quantity, repeats and final decision.",
   },
   {
     icon: FileText,
-    title: "Real PBS scenarios",
+    title: "Foundation case library",
     description:
-      "Cases drawn from common PBS items — metformin, atorvastatin, amoxicillin, warfarin, and more — with correct quantities, repeats, and authority requirements.",
+      "Six training scenarios cover patient entry, product selection, labels, warnings and clinically unsafe prescriptions. Live PBS details still require a current reference.",
   },
   {
-    icon: TrendingUp,
-    title: "Progress tracking",
+    icon: CircleAlert,
+    title: "Critical-error feedback",
     description:
-      "See your scores over time, track which case categories you struggle with, and measure your accuracy streak before placement.",
+      "Unsafe choices cannot be rescued by easier points. Feedback identifies the failed safety gate and explains the expected disposition.",
   },
   {
     icon: ShieldCheck,
-    title: "S4 & S8 case library",
+    title: "Clinical decision practice",
     description:
-      "Includes Schedule 4 and Schedule 8 dispensing scenarios with the additional checks and documentation those scripts require.",
+      "Choose whether to dispense, hold and contact the prescriber, or not supply. Problem cases no longer reveal their answer in the case title.",
   },
   {
-    icon: Smartphone,
-    title: "Study anywhere",
+    icon: Laptop,
+    title: "Designed for laptops",
     description:
-      "Fully responsive — practise on your laptop, tablet, or phone. No app download required, nothing to install.",
+      "The simulator is intentionally optimised for laptop and desktop study. No download or local installation is required.",
   },
 ];
 

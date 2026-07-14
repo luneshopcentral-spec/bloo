@@ -6,21 +6,21 @@ const steps = [
     step: "01",
     title: "Sign up free",
     description:
-      "Create your account in 30 seconds — no credit card required. Get immediate access to 3 full practice cases.",
+      "Create an account with no credit card and access the current six-case foundation beta.",
   },
   {
     icon: ClipboardList,
     step: "02",
     title: "Practise cases",
     description:
-      "Work through dispensing scenarios just like you would in a real Fred Dispense session. Enter drug names, quantities, PBS codes, and counselling points.",
+      "Select the patient and product, complete the label and warnings, then make an explicit clinical decision.",
   },
   {
     icon: BarChart3,
     step: "03",
-    title: "Track your progress",
+    title: "Review safety feedback",
     description:
-      "Review your score for each case, see where you went wrong, and watch your accuracy improve over time as your placement approaches.",
+      "Review every scoring check and critical failure. Revealed-answer attempts are clearly marked as assisted and excluded from the session score.",
   },
 ];
 

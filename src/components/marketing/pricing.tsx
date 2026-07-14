@@ -1,16 +1,16 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { CheckCircle2, Infinity } from "lucide-react";
+import { CheckCircle2, FlaskConical } from "lucide-react";
 
 const included = [
-  "Full case library (50+ scenarios and growing)",
-  "S4 and S8 dispensing cases",
-  "Instant feedback with detailed breakdowns",
-  "Progress dashboard & accuracy tracking",
-  "Mobile-friendly — study anywhere",
-  "All future cases added at no extra cost",
-  "Lifetime access — pay once, keep forever",
+  "Six foundation dispensing scenarios",
+  "Critical safety-gate scoring",
+  "Detailed feedback for every check",
+  "Assisted-attempt labelling",
+  "Laptop-first simulator workspace",
+  "Patient, product, label and warning practice",
+  "Clinical dispense / hold / do-not-supply decisions",
 ];
 
 export function Pricing() {
@@ -19,11 +19,11 @@ export function Pricing() {
       <div className="container">
         <div className="mx-auto mb-12 max-w-2xl text-center">
           <h2 className="text-3xl font-bold text-slate-900">
-            Simple, one-time pricing
+            Foundation beta access
           </h2>
           <p className="mt-4 text-slate-600">
-            No subscriptions. No monthly fees. Pay once and study for as long as
-            you need.
+            Use the current foundation library while the broader case set,
+            persistent progress and counselling simulator are developed.
           </p>
         </div>
 
@@ -31,20 +31,19 @@ export function Pricing() {
           <Card className="relative overflow-hidden border-2 border-emerald-600 shadow-xl shadow-emerald-100">
             {/* popular ribbon */}
             <div className="absolute right-0 top-0 bg-emerald-600 px-4 py-1 text-xs font-semibold uppercase tracking-wider text-white">
-              Best value
+              Current release
             </div>
 
             <CardHeader className="pb-4 pt-8 text-center">
               <p className="text-sm font-medium uppercase tracking-wider text-emerald-600">
-                Lifetime Access
+                Foundation Beta
               </p>
               <div className="mt-2 flex items-end justify-center gap-1">
                 <span className="text-5xl font-extrabold text-slate-900">
-                  $39
+                  Free
                 </span>
-                <span className="mb-2 text-slate-500">AUD</span>
               </div>
-              <p className="text-sm text-slate-500">One-time payment</p>
+              <p className="text-sm text-slate-500">No payment required</p>
             </CardHeader>
 
             <CardContent className="pb-8">
@@ -58,18 +57,18 @@ export function Pricing() {
               </ul>
 
               <Button className="w-full h-12 text-base" asChild>
-                <Link href="/sign-up">Get Lifetime Access — $39 AUD</Link>
+                <Link href="/sign-up">Create a beta account</Link>
               </Button>
 
               <div className="mt-4 flex items-center justify-center gap-2 rounded-lg bg-emerald-50 px-4 py-2.5">
-                <Infinity className="h-4 w-4 text-emerald-600" />
+                <FlaskConical className="h-4 w-4 text-emerald-600" />
                 <p className="text-sm font-medium text-emerald-800">
-                  3 free cases — no card needed to start
+                  Six foundation cases available
                 </p>
               </div>
 
               <p className="mt-4 text-center text-xs text-slate-400">
-                30-day money-back guarantee if you are not satisfied.
+                Training prototype — not a substitute for current clinical, legal or PBS references.
               </p>
             </CardContent>
           </Card>

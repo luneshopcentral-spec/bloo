@@ -6,8 +6,8 @@
 /* ── System wrapper: trigger tab + drawer panel side-by-side ── */
 .presc-system {
   /* CSS custom properties for responsive widths */
-  --drawer-w: 480px;
-  --system-w: 512px; /* 480px drawer + 32px trigger tab */
+  --drawer-w: 420px;
+  --system-w: 452px; /* drawer + 32px trigger tab */
 
   position: fixed;
   right: 0;
@@ -29,11 +29,18 @@
   transform: translateX(0);
 }
 
-/* Smaller screens: narrower drawer */
+/* Common laptop screens: keep the core dispensing fields visible. */
+@media (max-width: 1439px) {
+  .presc-system {
+    --drawer-w: 360px;
+    --system-w: 392px;
+  }
+}
+
 @media (max-width: 1279px) {
   .presc-system {
-    --drawer-w: 400px;
-    --system-w: 432px;
+    --drawer-w: 340px;
+    --system-w: 372px;
   }
 }
 

@@ -28,15 +28,15 @@ export function Hero() {
         </h1>
 
         <p className="mx-auto mt-6 max-w-2xl text-lg text-slate-600">
-          Practise real PBS dispensing workflows from home — at your own pace,
-          any time of day. Get instant feedback, track your progress, and walk
-          into your clinical placement with confidence.
+          Practise a focused set of Australian dispensing scenarios from home.
+          Build workflow familiarity, make safety decisions and get immediate
+          feedback before placement or simulated assessments.
         </p>
 
         <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
           <Button size="lg" className="h-12 px-8 text-base" asChild>
             <Link href="/sign-up">
-              Start Free Trial
+              Start Beta Practice
               <ArrowRight className="ml-2 h-5 w-5" />
             </Link>
           </Button>
@@ -54,7 +54,7 @@ export function Hero() {
         </div>
 
         <p className="mt-4 text-sm text-slate-500">
-          3 free cases — no credit card needed
+          Six foundation cases — no credit card needed
         </p>
 
         {/* mock app screenshot placeholder */}
@@ -64,7 +64,7 @@ export function Hero() {
             <div className="h-3 w-3 rounded-full bg-yellow-400" />
             <div className="h-3 w-3 rounded-full bg-green-400" />
             <span className="ml-3 text-xs text-slate-400">
-              DispenseRx Practice — Case #12: Metformin 500mg
+              DispenseRx Practice — Case #5: Metformin 1000mg
             </span>
           </div>
           <div className="bg-slate-900 p-8 text-left">

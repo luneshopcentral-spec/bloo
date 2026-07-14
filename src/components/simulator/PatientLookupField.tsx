@@ -58,6 +58,8 @@ export function PatientLookupField({
           {selectedPatient.surname}, {selectedPatient.firstname}
         </span>
         <button
+          type="button"
+          id="patient-lookup"
           className="fred-patient-change-btn"
           onClick={() => {
             setInputValue(selectedPatient.surname);
@@ -80,6 +82,7 @@ export function PatientLookupField({
   return (
     <div className="fred-patient-lookup-row">
       <input
+        id="patient-lookup"
         className="fred-patient-lookup-input"
         value={inputValue}
         onChange={handleInputChange}

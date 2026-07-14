@@ -63,6 +63,7 @@ export interface PracticeCase {
   price2: string;
   correctWarnings: string[];
   errors: string[];
+  expectedDecision: DispenseDecision;
   drugDetails: DrugDetails; // retained for fallback display if drug table is unavailable
   tip: string;
 }
@@ -80,3 +81,8 @@ export interface MessageRow {
   summary: string;
   severity: "error" | "warning" | "info";
 }
+
+export type DispenseDecision =
+  | "dispense"
+  | "hold_contact_prescriber"
+  | "do_not_supply";

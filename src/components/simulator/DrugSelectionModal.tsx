@@ -111,15 +111,21 @@ export function DrugSelectionModal({ open, query, onDrugSelected, onClose }: Pro
       onKeyDown={handleBodyKeyDown}
       tabIndex={-1}
     >
-      <div className="fred-dsel-dialog">
+      <div
+        className="fred-dsel-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="drug-selection-title"
+      >
         <div className="fred-dsel-title">
-          <span>Drug Selection</span>
-          <button className="fred-dsel-close" onClick={onClose}>✕</button>
+          <span id="drug-selection-title">Drug Selection</span>
+          <button className="fred-dsel-close" onClick={onClose} aria-label="Close drug selection">✕</button>
         </div>
 
         <div className="fred-dsel-search-row">
-          <label>Drug&nbsp;Name:</label>
+          <label htmlFor="drug-selection-search">Drug&nbsp;Name:</label>
           <input
+            id="drug-selection-search"
             ref={inputRef}
             className="fred-dsel-search-input"
             value={internalQuery}

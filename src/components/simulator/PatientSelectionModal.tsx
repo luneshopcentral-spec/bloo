@@ -101,15 +101,21 @@ export function PatientSelectionModal({
       className="fred-psel-backdrop"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="fred-psel-dialog">
+      <div
+        className="fred-psel-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="patient-selection-title"
+      >
         <div className="fred-psel-title">
-          <span>Patient Selection</span>
-          <button className="fred-psel-close" onClick={onClose}>✕</button>
+          <span id="patient-selection-title">Patient Selection</span>
+          <button className="fred-psel-close" onClick={onClose} aria-label="Close patient selection">✕</button>
         </div>
 
         <div className="fred-psel-search-row">
-          <label>Surname:</label>
+          <label htmlFor="patient-selection-search">Surname:</label>
           <input
+            id="patient-selection-search"
             ref={inputRef}
             className="fred-psel-search-input"
             value={query}

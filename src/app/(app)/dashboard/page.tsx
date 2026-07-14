@@ -14,15 +14,13 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
-  CheckCircle2,
-  TrendingUp,
-  Flame,
+  Construction,
   PlayCircle,
   ArrowRight,
 } from "lucide-react";
 
 export default async function DashboardPage() {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const {
     data: { user },
@@ -39,8 +37,6 @@ export default async function DashboardPage() {
     .single()) as { data: ProfileRow | null; error: unknown };
 
   const firstName = profile?.full_name?.split(" ")[0] ?? "there";
-  const trialRemaining = 3 - (profile?.trial_cases_used ?? 0);
-  const hasPaid = profile?.has_paid ?? false;
 
   return (
     <div className="mx-auto max-w-4xl px-8 py-10">
@@ -55,56 +51,26 @@ export default async function DashboardPage() {
           </p>
         </div>
 
-        {!hasPaid && (
-          <Badge
-            variant="outline"
-            className="w-fit border-emerald-200 bg-emerald-50 text-emerald-700 text-sm px-3 py-1"
-          >
-            Free trial: {trialRemaining}/3 cases remaining
-          </Badge>
-        )}
-        {hasPaid && (
-          <Badge
-            variant="outline"
-            className="w-fit border-emerald-200 bg-emerald-50 text-emerald-700 text-sm px-3 py-1"
-          >
-            Lifetime access
-          </Badge>
-        )}
+        <Badge
+          variant="outline"
+          className="w-fit border-emerald-200 bg-emerald-50 text-emerald-700 text-sm px-3 py-1"
+        >
+          Foundation beta · 6 cases
+        </Badge>
       </div>
 
-      {/* Stats */}
-      <div className="mb-8 grid gap-4 sm:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription className="flex items-center gap-1.5">
-              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-              Cases Completed
-            </CardDescription>
-            <CardTitle className="text-3xl">0</CardTitle>
-          </CardHeader>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription className="flex items-center gap-1.5">
-              <TrendingUp className="h-4 w-4 text-emerald-600" />
-              Average Score
-            </CardDescription>
-            <CardTitle className="text-3xl text-slate-400">—</CardTitle>
-          </CardHeader>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription className="flex items-center gap-1.5">
-              <Flame className="h-4 w-4 text-emerald-600" />
-              Best Streak
-            </CardDescription>
-            <CardTitle className="text-3xl">0</CardTitle>
-          </CardHeader>
-        </Card>
-      </div>
+      <Card className="mb-8 border-dashed">
+        <CardContent className="flex items-start gap-3 p-5">
+          <Construction className="mt-0.5 h-5 w-5 text-amber-600" />
+          <div>
+            <p className="font-semibold text-slate-900">Persistent progress is coming next</p>
+            <p className="mt-1 text-sm text-slate-600">
+              The current beta shows an independent session score inside the simulator.
+              Attempt history, averages and skill trends are not yet saved to this dashboard.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Main CTA */}
       <Card className="border-2 border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50">
@@ -116,9 +82,7 @@ export default async function DashboardPage() {
             <div>
               <CardTitle>Start Practising</CardTitle>
               <CardDescription>
-                {hasPaid
-                  ? "Access your full case library"
-                  : `${trialRemaining} free case${trialRemaining !== 1 ? "s" : ""} remaining in your trial`}
+                Six foundation cases available
               </CardDescription>
             </div>
           </div>
@@ -135,11 +99,6 @@ export default async function DashboardPage() {
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
-            {!hasPaid && (
-              <Button variant="outline" size="lg" asChild>
-                <Link href="/#pricing">Unlock Full Access — $39 AUD</Link>
-              </Button>
-            )}
           </div>
         </CardContent>
       </Card>
