@@ -1,11 +1,13 @@
 import type {
   ConversationCase,
+  ConversationResponseIntent,
   ConversationTopic,
   UnsafeAdviceRule,
 } from "./types";
 
 interface CommonTopicFacts {
-  identityReply: string;
+  nameReply: string;
+  ageReply: string;
   allergiesReply: string;
   medicinesReply: string;
   medicinesCritical?: boolean;
@@ -30,22 +32,40 @@ function commonTopics(facts: CommonTopicFacts): ConversationTopic[] {
     },
     {
       id: "confirm_identity",
-      label: "Confirm the correct patient",
+      label: "Confirm the patient's full name",
       category: "information_gathering",
       critical: true,
       examples: [
-        "Could I confirm your full name and date of birth?",
-        "Before we start, can you tell me the patient's name and date of birth?",
+        "Could I confirm your full name?",
+        "Before we start, can you tell me the patient's name?",
         "Can I check who this medicine is for?",
       ],
       fallbackPatterns: [
-        "\\bconfirm\\b.*\\b(?:name|identity|date of birth|dob|address)\\b",
+        "\\bconfirm\\b.*\\b(?:name|identity)\\b",
         "\\b(?:your|patient'?s) (?:full )?name\\b",
-        "\\bdate of birth\\b|\\bdob\\b",
         "\\bwho (?:is|was) this (?:medicine|prescription) for\\b",
       ],
-      patientReplies: [facts.identityReply],
-      repeatReply: facts.identityReply,
+      patientReplies: [facts.nameReply],
+      repeatReply: facts.nameReply,
+    },
+    {
+      id: "confirm_age",
+      label: "Confirm the patient's date of birth or age",
+      category: "information_gathering",
+      critical: true,
+      examples: [
+        "Could I confirm your date of birth?",
+        "How old are you?",
+        "Can I check the patient's age or date of birth?",
+      ],
+      fallbackPatterns: [
+        "\\b(?:date of birth|birth date|birthday|dob)\\b",
+        "\\bhow old\\b",
+        "\\b(?:your|patient'?s|child'?s|son'?s|daughter'?s) age\\b",
+        "\\bconfirm\\b.*\\bage\\b",
+      ],
+      patientReplies: [facts.ageReply],
+      repeatReply: facts.ageReply,
     },
     {
       id: "allergies",
@@ -88,6 +108,67 @@ function commonTopics(facts: CommonTopicFacts): ConversationTopic[] {
       patientReplies: [facts.medicinesReply],
       repeatReply: facts.medicinesReply,
     },
+  ];
+}
+
+interface CommonResponseFacts {
+  previousUseReplies: string[];
+  conditionsReplies: string[];
+  symptomsReplies: string[];
+}
+
+function commonResponseIntents(facts: CommonResponseFacts): ConversationResponseIntent[] {
+  return [
+    {
+      id: "permission_to_ask",
+      fallbackPatterns: [
+        "\\b(?:can|could|may) i (?:ask|check)\\b",
+        "\\b(?:a couple of|some|few) questions\\b",
+        "\\bis (?:that|it) (?:okay|ok) if i\\b",
+      ],
+      patientReplies: [
+        "Of course. What would you like to ask?",
+        "Yes, that's fine. Go ahead.",
+        "Sure, I'm happy to answer a few questions.",
+      ],
+    },
+    {
+      id: "previous_use",
+      fallbackPatterns: [
+        "\\b(?:taken|used|had|been on)\\b.*\\b(?:before|previously|in the past)\\b",
+        "\\bfirst time\\b.*\\b(?:medicine|medication|drug|antibiotic|tablet|capsule)\\b",
+        "\\btaken before\\b",
+      ],
+      patientReplies: facts.previousUseReplies,
+    },
+    {
+      id: "medical_conditions",
+      fallbackPatterns: [
+        "\\b(?:medical|health) conditions?\\b",
+        "\\bother conditions?\\b",
+        "\\bmedical history\\b",
+        "\\b(?:heart|kidney|renal|liver|breathing) (?:condition|conditions|problem|problems)\\b",
+      ],
+      patientReplies: facts.conditionsReplies,
+    },
+    {
+      id: "current_symptoms",
+      fallbackPatterns: [
+        "\\b(?:chest pain|symptom|symptoms|fever|cough|pain|vomit|vomiting|diarrh(?:ea|oea)|nausea)\\b",
+        "\\bhow (?:are|have) you (?:been )?feel(?:ing)?\\b",
+      ],
+      patientReplies: facts.symptomsReplies,
+    },
+  ];
+}
+
+function variedUnknownReplies(...caseSpecific: string[]): string[] {
+  return [
+    ...caseSpecific,
+    "I'm not sure how that relates to this medicine. Could you rephrase the question?",
+    "Could you ask that in a different way? I'm not sure what information you need.",
+    "I didn't quite follow that. Could you explain why you're asking?",
+    "I'm not certain what you mean. Could you use a little more detail?",
   ];
 }
 
@@ -164,13 +245,39 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
     concernTopicId: "complete_course",
     concernPrompt: "I usually feel better after a few days. Can I stop it then?",
     patientQuestion: "If it makes me feel sick, is there anything I can do?",
-    unknownReplies: [
-      "Sorry, I’m not quite sure what you mean. Could you explain that another way?",
-      "Could you make that a little clearer for me?",
+    unknownReplies: variedUnknownReplies(
+      "Sorry, I'm not quite sure what you mean. Could you explain that another way?"
+    ),
+    responseIntents: [
+      {
+        id: "wrong_dosage_form_advice",
+        fallbackPatterns: [
+          "\\b(?:shake|refrigerat|fridge)\\w*\\b",
+        ],
+        patientReplies: [
+          "This is a capsule, isn't it? What exactly would I need to shake or refrigerate?",
+          "I thought these were capsules. Could you check those storage instructions?",
+        ],
+      },
+      ...commonResponseIntents({
+        previousUseReplies: [
+          "No, I don't think I've taken erythromycin before.",
+          "This is my first supply of this antibiotic.",
+        ],
+        conditionsReplies: [
+          "I have high blood pressure and high cholesterol recorded with the pharmacy.",
+          "The pharmacy has my blood pressure and cholesterol history on file.",
+        ],
+        symptomsReplies: [
+          "No chest pain. I just have the infection that my doctor assessed.",
+          "Nothing like chest pain or breathing trouble—just the symptoms I saw my doctor about.",
+        ],
+      }),
     ],
     topics: [
       ...commonTopics({
-        identityReply: "John Smith. I can confirm the other details if you need them.",
+        nameReply: "John Smith.",
+        ageReply: "My date of birth is 14 March 1965.",
         allergiesReply: "I don’t have any medicine allergies that I know of.",
         medicinesReply: "I’m not taking any other regular medicines or supplements at the moment.",
       }),
@@ -248,12 +355,20 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
       },
       ...closingTopics("I’ll take one capsule three times each day and finish the prescribed course."),
     ],
-    unsafeAdviceRules: withCommonUnsafe({
-      id: "stop_antibiotic_early",
-      label: "Unsafe antibiotic duration advice",
-      patterns: ["\\b(?:you can|it is fine to|it's fine to) stop\\b.*\\b(?:feel|feeling) better\\b"],
-      detail: "The student advised stopping the antibiotic simply because the patient feels better.",
-    }),
+    unsafeAdviceRules: withCommonUnsafe(
+      {
+        id: "stop_antibiotic_early",
+        label: "Unsafe antibiotic duration advice",
+        patterns: ["\\b(?:you can|it is fine to|it's fine to) stop\\b.*\\b(?:feel|feeling) better\\b"],
+        detail: "The student advised stopping the antibiotic simply because the patient feels better.",
+      },
+      {
+        id: "wrong_capsule_storage_advice",
+        label: "Instructions do not match the supplied dosage form",
+        patterns: ["\\b(?:shake|refrigerat|fridge)\\w*\\b"],
+        detail: "The student gave liquid preparation or refrigeration instructions for the erythromycin capsule supply.",
+      }
+    ),
   },
 
   "case-2": {
@@ -265,10 +380,25 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
     concernTopicId: "interactions",
     concernPrompt: "I sometimes take ibuprofen for headaches. Is that still okay?",
     patientQuestion: "What signs of bleeding should make me get help?",
-    unknownReplies: ["I’m not sure I followed that. Could you say it another way?"],
+    unknownReplies: variedUnknownReplies("I'm not sure I followed that. Could you say it another way?"),
+    responseIntents: commonResponseIntents({
+      previousUseReplies: [
+        "Yes, I've been taking warfarin for some time.",
+        "Yes. This isn't my first warfarin supply.",
+      ],
+      conditionsReplies: [
+        "I have the condition the anticoagulation clinic manages, and they monitor my warfarin.",
+        "My relevant medical history is already recorded with the anticoagulation clinic.",
+      ],
+      symptomsReplies: [
+        "I haven't noticed unusual bleeding, black stools or a recent head injury.",
+        "No new bleeding or bruising symptoms today.",
+      ],
+    }),
     topics: [
       ...commonTopics({
-        identityReply: "Margaret Jones. Yes, the warfarin is for me.",
+        nameReply: "Margaret Jones. Yes, the warfarin is for me.",
+        ageReply: "My date of birth is 22 June 1948.",
         allergiesReply: "No known medicine allergies.",
         medicinesReply: "Warfarin is my main regular medicine. I sometimes use pain relievers for headaches.",
         medicinesCritical: true,
@@ -356,10 +486,25 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
     concernTopicId: "liquid_handling",
     concernPrompt: "Should I use a kitchen teaspoon to measure it?",
     patientQuestion: "Where should I keep the bottle once it has been mixed?",
-    unknownReplies: ["Sorry, could you explain that in simpler terms for me?"],
+    unknownReplies: variedUnknownReplies("Sorry, could you explain that in simpler terms for me?"),
+    responseIntents: commonResponseIntents({
+      previousUseReplies: [
+        "Liam has had an antibiotic before, but this is his first supply for this infection.",
+        "He has used antibiotics previously, though not for this current infection.",
+      ],
+      conditionsReplies: [
+        "Liam doesn't have any other medical conditions that I know of.",
+        "No other health conditions have been diagnosed.",
+      ],
+      symptomsReplies: [
+        "He has the symptoms the doctor assessed, but no breathing trouble or severe reaction.",
+        "Nothing new since the doctor saw him, and he is breathing normally.",
+      ],
+    }),
     topics: [
       ...commonTopics({
-        identityReply: "It’s for my son, Liam Henderson.",
+        nameReply: "It's for my son, Liam Henderson.",
+        ageReply: "His date of birth is 12 May 2009.",
         allergiesReply: "Liam has no known medicine allergies.",
         medicinesReply: "He isn’t taking any other regular medicines or supplements.",
       }),
@@ -472,10 +617,25 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
     concernTopicId: "explain_hold",
     concernPrompt: "Why can’t I just take it home today?",
     patientQuestion: "How long will it take to speak with my doctor?",
-    unknownReplies: ["I’m not sure what that means for me. Could you explain it plainly?"],
+    unknownReplies: variedUnknownReplies("I'm not sure what that means for me. Could you explain it plainly?"),
+    responseIntents: commonResponseIntents({
+      previousUseReplies: [
+        "Yes, I've used temazepam before when I couldn't sleep.",
+        "Yes. I've had sleeping tablets previously.",
+      ],
+      conditionsReplies: [
+        "I have anxiety and a past history with alcohol that is recorded at the pharmacy.",
+        "My anxiety and previous alcohol dependence are the main relevant conditions.",
+      ],
+      symptomsReplies: [
+        "I'm having trouble sleeping, but I don't have chest pain or breathing problems now.",
+        "The main problem is sleep. I don't have any urgent symptoms today.",
+      ],
+    }),
     topics: [
       ...commonTopics({
-        identityReply: "David Park. The sleeping tablets are for me.",
+        nameReply: "David Park. The sleeping tablets are for me.",
+        ageReply: "My date of birth is 8 November 1971.",
         allergiesReply: "I don’t have any known medicine allergies.",
         medicinesReply: "I sometimes use other things to help me sleep, but nothing prescribed regularly.",
         medicinesCritical: true,
@@ -572,10 +732,25 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
     concernTopicId: "explain_hold",
     concernPrompt: "Is there a problem with the prescription?",
     patientQuestion: "Should I keep taking my current tablets while you contact the doctor?",
-    unknownReplies: ["Could you explain what you need me to do next?"],
+    unknownReplies: variedUnknownReplies("Could you explain what you need me to do next?"),
+    responseIntents: commonResponseIntents({
+      previousUseReplies: [
+        "Yes, I've taken metformin before, although this is the 1000 milligram strength.",
+        "Yes. Metformin is one of my regular diabetes medicines.",
+      ],
+      conditionsReplies: [
+        "I have diabetes, reflux and mildly reduced kidney function.",
+        "My diabetes and recent kidney test are the main relevant issues.",
+      ],
+      symptomsReplies: [
+        "I feel well today and don't have vomiting, severe weakness or breathing trouble.",
+        "No new symptoms today; this is a regular prescription.",
+      ],
+    }),
     topics: [
       ...commonTopics({
-        identityReply: "Carol Simmons. Yes, the metformin is for me.",
+        nameReply: "Carol Simmons. Yes, the metformin is for me.",
+        ageReply: "My date of birth is 23 April 1959.",
         allergiesReply: "I don’t have any known medicine allergies.",
         medicinesReply: "I take cimetidine for reflux as well as my diabetes medicines.",
         medicinesCritical: true,
@@ -675,10 +850,25 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
     concernTopicId: "separation",
     concernPrompt: "I use an antacid most days. Can I take them together?",
     patientQuestion: "Do I need to do anything different when I’m out in the sun?",
-    unknownReplies: ["Sorry, could you put that another way?"],
+    unknownReplies: variedUnknownReplies("Sorry, could you put that another way?"),
+    responseIntents: commonResponseIntents({
+      previousUseReplies: [
+        "No, this is my first time taking doxycycline.",
+        "I haven't used this antibiotic before.",
+      ],
+      conditionsReplies: [
+        "I don't have any other medical conditions that I know of.",
+        "No other diagnosed health conditions.",
+      ],
+      symptomsReplies: [
+        "I have the symptoms my doctor assessed, but no severe pain or breathing trouble.",
+        "Nothing new or urgent since I saw the doctor.",
+      ],
+    }),
     topics: [
       ...commonTopics({
-        identityReply: "Fiona Chang. The doxycycline is for me.",
+        nameReply: "Fiona Chang. The doxycycline is for me.",
+        ageReply: "My date of birth is 15 March 1998.",
         allergiesReply: "I don’t have any known medicine allergies.",
         medicinesReply: "I use an antacid fairly often and take a multivitamin.",
         medicinesCritical: true,

@@ -472,6 +472,128 @@
   color: #555;
   margin-bottom: 2px;
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.fred-root .fred-reference-open {
+  width: 100%;
+  padding: 2px 4px;
+  border: 1px solid #777;
+  background: #e8e8e0;
+  color: #003f7f;
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: bold;
+  cursor: pointer;
+}
+.fred-root .fred-reference-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.5);
+}
+.fred-root .fred-reference-dialog {
+  width: 620px;
+  max-width: 96vw;
+  max-height: 86vh;
+  overflow: auto;
+  border: 3px outset #fff;
+  background: #d4d0c8;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+  color: #111;
+  font-family: 'Segoe UI', Tahoma, sans-serif;
+}
+.fred-root .fred-reference-titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 5px 8px;
+  background: #006400;
+  color: #fff;
+}
+.fred-root .fred-reference-titlebar h2 {
+  margin: 0;
+  font-size: 14px;
+}
+.fred-root .fred-reference-titlebar button {
+  border: 1px solid #fff;
+  background: #006400;
+  color: #fff;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+.fred-root .fred-reference-body {
+  padding: 12px;
+  font-size: 12px;
+}
+.fred-root .fred-reference-lead {
+  margin: 0 0 12px;
+  line-height: 1.45;
+}
+.fred-root .fred-reference-body label {
+  display: block;
+  margin-bottom: 3px;
+  font-weight: bold;
+}
+.fred-root .fred-reference-query-row {
+  display: flex;
+  gap: 6px;
+}
+.fred-root .fred-reference-query-row input {
+  min-width: 0;
+  flex: 1;
+  border: 2px inset #888;
+  padding: 5px 6px;
+  background: #fff;
+  font-family: 'Courier New', Courier, monospace;
+}
+.fred-root .fred-reference-query-row button,
+.fred-root .fred-reference-links a {
+  border: 2px outset #fff;
+  background: #e8e8e0;
+  color: #001a80;
+  padding: 5px 9px;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: bold;
+  text-decoration: none;
+  cursor: pointer;
+}
+.fred-root .fred-reference-query-row button:disabled {
+  color: #888;
+  cursor: not-allowed;
+}
+.fred-root .fred-reference-copy-status {
+  min-height: 18px;
+  padding-top: 3px;
+  color: #005a00;
+  font-size: 11px;
+}
+.fred-root .fred-reference-links {
+  display: flex;
+  gap: 8px;
+  margin: 11px 0;
+}
+.fred-root .fred-reference-guidance {
+  border: 1px solid #888;
+  background: #fffde0;
+  padding: 8px;
+}
+.fred-root .fred-reference-guidance p,
+.fred-root .fred-reference-footnote {
+  margin: 4px 0 0;
+  line-height: 1.45;
+}
+.fred-root .fred-reference-footnote {
+  color: #555;
+  font-size: 11px;
 }
 .fred-root .fred-warn-item {
   display: flex;
@@ -1458,6 +1580,26 @@
   color: #555;
   font-family: 'Segoe UI', Tahoma, sans-serif;
   background: #e8e8e0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.fred-root .fred-dsel-confirm {
+  flex: 0 0 auto;
+  border: 2px outset #fff;
+  background: #d4d0c8;
+  color: #000;
+  min-width: 160px;
+  padding: 3px 10px;
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: bold;
+  cursor: pointer;
+}
+.fred-root .fred-dsel-confirm:disabled {
+  color: #888;
+  cursor: not-allowed;
 }
 
 /* ─── POST-DISPENSING PATIENT COUNSELLING ───────────────────── */

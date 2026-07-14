@@ -17,7 +17,7 @@ export function DrugSelectionModal({ open, query, onDrugSelected, onClose }: Pro
   const [drugs, setDrugs]         = useState<DrugRow[]>([]);
   const [loading, setLoading]     = useState(false);
   const [fetchError, setFetchError] = useState("");
-  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
   const inputRef   = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -26,7 +26,7 @@ export function DrugSelectionModal({ open, query, onDrugSelected, onClose }: Pro
       setInternalQuery(query);
       setDrugs([]);
       setFetchError("");
-      setSelectedIndex(0);
+      setSelectedIndex(-1);
       setTimeout(() => inputRef.current?.focus(), 30);
     }
   }, [open, query]);
@@ -56,7 +56,7 @@ export function DrugSelectionModal({ open, query, onDrugSelected, onClose }: Pro
       return;
     }
     setDrugs((data as DrugRow[]) ?? []);
-    setSelectedIndex(0);
+    setSelectedIndex(-1);
   }
 
   useEffect(() => {
@@ -84,22 +84,11 @@ export function DrugSelectionModal({ open, query, onDrugSelected, onClose }: Pro
       if (drug) onDrugSelected(drug);
       return;
     }
-    // Letter shortcut: a-z jump to that row
-    if (/^[a-z]$/i.test(e.key) && !e.ctrlKey && !e.metaKey && e.target === inputRef.current) {
-      // only trigger if input is empty (otherwise it's normal typing)
-      return;
-    }
   }
 
-  function handleBodyKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
-    if (e.key === "Escape") { onClose(); return; }
-    const letter = e.key.toLowerCase();
-    const idx = LETTERS.indexOf(letter);
-    if (idx !== -1 && idx < drugs.length) {
-      setSelectedIndex(idx);
-      const drug = drugs[idx];
-      if (drug) onDrugSelected(drug);
-    }
+  function confirmSelection() {
+    const drug = drugs[selectedIndex];
+    if (drug) onDrugSelected(drug);
   }
 
   if (!open) return null;
@@ -108,7 +97,6 @@ export function DrugSelectionModal({ open, query, onDrugSelected, onClose }: Pro
     <div
       className="fred-dsel-backdrop"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-      onKeyDown={handleBodyKeyDown}
       tabIndex={-1}
     >
       <div
@@ -149,7 +137,7 @@ export function DrugSelectionModal({ open, query, onDrugSelected, onClose }: Pro
           <span className="right">Mf</span>
         </div>
 
-        <div className="fred-dsel-body">
+        <div className="fred-dsel-body" role="listbox" aria-label="Matching medicine products">
           {fetchError && (
             <div className="fred-dsel-error">
               Search failed — {fetchError}
@@ -176,8 +164,10 @@ export function DrugSelectionModal({ open, query, onDrugSelected, onClose }: Pro
                   isPrivate ? "private" : "",
                   drug.is_generic ? "generic" : "",
                 ].filter(Boolean).join(" ")}
-                onClick={() => onDrugSelected(drug)}
-                onMouseEnter={() => setSelectedIndex(i)}
+                role="option"
+                aria-selected={selectedIndex === i}
+                onClick={() => setSelectedIndex(i)}
+                onDoubleClick={() => onDrugSelected(drug)}
               >
                 <span className="fred-dsel-letter">{letter}</span>
                 <span className="fred-dsel-name">{drug.full_display_name}</span>
@@ -194,7 +184,15 @@ export function DrugSelectionModal({ open, query, onDrugSelected, onClose }: Pro
         </div>
 
         <div className="fred-dsel-footer">
-          ↑↓ Navigate &nbsp;·&nbsp; a–z Jump &nbsp;·&nbsp; Enter Select &nbsp;·&nbsp; Esc Close
+          <span>Type to search · Click or use ↑↓ to highlight · Enter or double-click to confirm · Esc closes</span>
+          <button
+            type="button"
+            className="fred-dsel-confirm"
+            onClick={confirmSelection}
+            disabled={selectedIndex < 0 || !drugs[selectedIndex]}
+          >
+            Confirm selected product
+          </button>
         </div>
       </div>
     </div>

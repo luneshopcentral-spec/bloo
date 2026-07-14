@@ -6,6 +6,7 @@ import "./simulator.css";
 import { STATIC_CASES, ALL_WARNINGS } from "@/lib/cases/static-cases";
 import { formReducer, EMPTY_FORM_STATE } from "@/components/simulator/state";
 import { validateDispense } from "@/lib/scoring/validate";
+import { getDispenseReadinessIssues } from "@/lib/scoring/readiness";
 import type { DispenseResult } from "@/lib/scoring/types";
 import type { AttemptResult, CounsellingResult } from "@/lib/conversation/types";
 import { combineAttemptResults } from "@/lib/conversation/score";
@@ -174,6 +175,20 @@ export default function PracticePage() {
       return;
     }
 
+    const incompleteItems = getDispenseReadinessIssues({
+      formState,
+      selectedPatient,
+      selectedDrug,
+      decision: clinicalDecision,
+    });
+
+    if (incompleteItems.length > 0) {
+      setStatusMessage(
+        `Complete the dispensing workflow before handover: ${incompleteItems.join(", ")}.`
+      );
+      return;
+    }
+
     const result = validateDispense({
       formState,
       selectedWarnings,
@@ -305,6 +320,7 @@ export default function PracticePage() {
                   warnings={ALL_WARNINGS}
                   selectedWarnings={selectedWarnings}
                   onToggle={handleToggleWarning}
+                  medicineName={selectedDrug?.generic_name ?? formState.drug}
                 />
                 <LabelPreview
                   caseData={current}

@@ -1,6 +1,7 @@
 import type {
   AcceptedTopicMatch,
   ConversationCase,
+  ConversationResponseIntent,
   ConversationTopic,
   SemanticCandidate,
   UnsafeAdviceFinding,
@@ -53,6 +54,16 @@ export function topicEvidenceIsValid(topic: ConversationTopic, text: string): bo
 function hasRuleSignal(topic: ConversationTopic, text: string): boolean {
   const normalized = normalizeConversationText(text);
   return topic.fallbackPatterns.some((pattern) => patternMatches(normalized, pattern));
+}
+
+export function matchResponseIntent(
+  conversation: ConversationCase,
+  text: string
+): ConversationResponseIntent | null {
+  const normalized = normalizeConversationText(text);
+  return conversation.responseIntents.find((intent) =>
+    intent.fallbackPatterns.some((pattern) => patternMatches(normalized, pattern))
+  ) ?? null;
 }
 
 function significantTokens(text: string): Set<string> {

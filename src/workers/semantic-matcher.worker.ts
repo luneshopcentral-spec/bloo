@@ -49,7 +49,9 @@ async function getExtractor(): Promise<FeatureExtractionPipeline> {
 
   post({ type: "loading", progress: null, message: "Preparing local language model…" });
   extractor = await pipeline("feature-extraction", MODEL_ID, {
-    device: "auto",
+    // WASM is slower than WebGPU but substantially more reliable across managed
+    // university laptops and browsers. The rules matcher remains the final fallback.
+    device: "wasm",
     dtype: "q8",
     progress_callback: reportProgress,
   });
@@ -86,11 +88,10 @@ async function initialize(caseId: string, topics: SemanticTopicPayload[]) {
     offset = nextOffset;
   }
 
-  const hasWebGpu = "gpu" in navigator;
   post({
     type: "ready",
     caseId,
-    backend: hasWebGpu ? "local-webgpu" : "local-wasm",
+    backend: "local-wasm",
   });
 }
 
