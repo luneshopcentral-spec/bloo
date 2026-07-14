@@ -16,6 +16,11 @@ export function normalizeConversationText(text: string): string {
     .toLowerCase()
     .replace(/[’']/g, "'")
     .replace(/[^a-z0-9%./'\s-]/g, " ")
+    .replace(/(\d)([a-z])/g, "$1 $2")
+    .replace(/([a-z])(\d)/g, "$1 $2")
+    .replace(/\b(?:mls|millilitres?|milliliters?)\b/g, "ml")
+    .replace(/\b(?:medications?|medicines?|drugs?)\b/g, "medicine")
+    .replace(/\b(?:refrigerator|refrigerated|refrigeration)\b/g, "fridge")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -72,9 +77,27 @@ function significantTokens(text: string): Set<string> {
     "how", "i", "in", "is", "it", "me", "my", "of", "on", "or", "the", "this",
     "to", "we", "what", "when", "with", "you", "your",
   ]);
+  const aliases: Record<string, string> = {
+    complete: "finish",
+    completed: "finish",
+    completing: "finish",
+    finished: "finish",
+    dosage: "dose",
+    dosing: "dose",
+    physician: "doctor",
+    prescriber: "doctor",
+    explain: "tell",
+    explained: "tell",
+    describe: "tell",
+    describing: "tell",
+    nausea: "sick",
+    nauseous: "sick",
+    refrigerate: "fridge",
+  };
   return new Set(
     normalizeConversationText(text)
       .split(" ")
+      .map((token) => aliases[token] ?? token)
       .filter((token) => token.length > 2 && !stopWords.has(token))
   );
 }

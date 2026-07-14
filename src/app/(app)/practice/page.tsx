@@ -14,6 +14,8 @@ import { getConversationCase } from "@/lib/conversation/cases";
 import type { DispenseDecision, MessageRow } from "@/lib/types/case";
 import type { Patient, PatientScript } from "@/lib/types/patient";
 import type { DrugRow } from "@/lib/types/drug";
+import type { Prescriber } from "@/lib/types/prescriber";
+import { formatPrescriberName } from "@/lib/types/prescriber";
 import { createClient } from "@/lib/supabase/client";
 
 import { TitleBar }            from "@/components/simulator/TitleBar";
@@ -34,6 +36,7 @@ import { ResultOverlay }       from "@/components/simulator/ResultOverlay";
 import { PrescriptionDrawer }  from "@/components/simulator/PrescriptionDrawer";
 import { PatientDetailsModal } from "@/components/simulator/PatientDetailsModal";
 import { DrugSelectionModal }  from "@/components/simulator/DrugSelectionModal";
+import { PrescriberDirectoryModal } from "@/components/simulator/PrescriberDirectoryModal";
 import { CounsellingStage }    from "@/components/simulator/CounsellingStage";
 
 const DEFAULT_STATUS =
@@ -70,6 +73,11 @@ export default function PracticePage() {
   const [drugModalOpen, setDrugModalOpen]   = useState(false);
   const [drugModalQuery, setDrugModalQuery] = useState("");
 
+  // Prescriber state
+  const [selectedPrescriber, setSelectedPrescriber] = useState<Prescriber | null>(null);
+  const [prescriberModalOpen, setPrescriberModalOpen] = useState(false);
+  const [prescriberModalQuery, setPrescriberModalQuery] = useState("");
+
   const current = STATIC_CASES[currentCaseIndex];
   const currentConversation = getConversationCase(current.id);
 
@@ -79,7 +87,6 @@ export default function PracticePage() {
 
     dispatch({ type: "RESET" });
     dispatch({ type: "SET_FIELD", field: "scriptDate",   value: c.date });
-    dispatch({ type: "SET_FIELD", field: "prescriberNo", value: c.prescriberNo });
     dispatch({ type: "SET_FIELD", field: "scriptType",   value: c.scriptType });
 
     setSelectedWarnings(new Set());
@@ -102,6 +109,10 @@ export default function PracticePage() {
     setSelectedDrug(null);
     setDrugModalOpen(false);
     setDrugModalQuery("");
+
+    setSelectedPrescriber(null);
+    setPrescriberModalOpen(false);
+    setPrescriberModalQuery("");
 
     // Do not reveal the case's hidden clinical issue before the student decides.
     setMessages([]);
@@ -136,6 +147,7 @@ export default function PracticePage() {
     dispatch({ type: "RESET" });
     setSelectedWarnings(new Set());
     setSelectedDrug(null);
+    setSelectedPrescriber(null);
     setClinicalDecision(null);
     setAnswersRevealed(false);
     setAttemptSubmitted(false);
@@ -156,15 +168,19 @@ export default function PracticePage() {
       "Answers shown — this is now an assisted attempt and will not count in the session score."
     );
 
-    if (current.correctDrugSeedId) {
-      const supabase = createClient();
-      const { data } = await supabase
-        .from("drugs")
-        .select("*")
-        .eq("seed_id", current.correctDrugSeedId)
-        .single();
-      if (data) setSelectedDrug(data as DrugRow);
-    }
+    const supabase = createClient();
+    const { data: drugData } = await supabase
+      .from("drugs")
+      .select("*")
+      .eq("seed_id", current.correctDrugSeedId)
+      .single();
+    const { data: prescriberData } = await supabase
+      .from("prescribers")
+      .select("*")
+      .eq("prescriber_number", current.prescriberNo)
+      .single();
+    if (drugData) setSelectedDrug(drugData as DrugRow);
+    if (prescriberData) setSelectedPrescriber(prescriberData as Prescriber);
   }
 
   function handleDispense() {
@@ -179,6 +195,7 @@ export default function PracticePage() {
       formState,
       selectedPatient,
       selectedDrug,
+      selectedPrescriber,
       decision: clinicalDecision,
     });
 
@@ -195,6 +212,7 @@ export default function PracticePage() {
       caseData: STATIC_CASES[currentCaseIndex],
       selectedPatient,
       selectedDrug,
+      selectedPrescriber,
       decision: clinicalDecision,
       assisted: answersRevealed,
     });
@@ -256,8 +274,21 @@ export default function PracticePage() {
   function handleDrugSelected(drug: DrugRow) {
     setSelectedDrug(drug);
     setDrugModalOpen(false);
-    dispatch({ type: "SET_FIELD", field: "drug", value: `${drug.generic_name} ${drug.form} ${drug.strength}` });
+    dispatch({ type: "SET_FIELD", field: "drug", value: drug.full_display_name });
     setStatusMessage(`Drug selected: ${drug.full_display_name}`);
+  }
+
+  function handleOpenPrescriberModal(query: string) {
+    setPrescriberModalQuery(query.split(",")[0]?.trim() ?? query);
+    setPrescriberModalOpen(true);
+  }
+
+  function handlePrescriberSelected(prescriber: Prescriber) {
+    setSelectedPrescriber(prescriber);
+    setPrescriberModalOpen(false);
+    dispatch({ type: "SET_FIELD", field: "doctor", value: formatPrescriberName(prescriber) });
+    dispatch({ type: "SET_FIELD", field: "prescriberNo", value: prescriber.prescriber_number });
+    setStatusMessage(`Prescriber selected: ${formatPrescriberName(prescriber)}`);
   }
 
   const patientName      = selectedPatient ? `${selectedPatient.surname}, ${selectedPatient.firstname}` : "";
@@ -307,6 +338,8 @@ export default function PracticePage() {
                   disabled={scriptFormDisabled}
                   selectedDrug={selectedDrug}
                   onOpenDrugModal={handleOpenDrugModal}
+                  selectedPrescriber={selectedPrescriber}
+                  onOpenPrescriberModal={handleOpenPrescriberModal}
                 />
                 <DrugDetailsBox
                   selectedDrug={selectedDrug}
@@ -396,6 +429,13 @@ export default function PracticePage() {
           query={drugModalQuery}
           onDrugSelected={handleDrugSelected}
           onClose={() => setDrugModalOpen(false)}
+        />
+
+        <PrescriberDirectoryModal
+          open={prescriberModalOpen}
+          query={prescriberModalQuery}
+          onSelect={handlePrescriberSelected}
+          onClose={() => setPrescriberModalOpen(false)}
         />
       </div>
 

@@ -184,7 +184,7 @@ export function ResultOverlay({
             <strong>Conversation assessment:</strong>{" "}
             {result.counselling.matcherMode === "semantic"
               ? "Local semantic matching plus deterministic clinical safety rules."
-              : "Basic local phrase matching plus deterministic clinical safety rules."}
+              : "Expanded local language matching plus deterministic clinical safety rules."}
             {` ${result.counselling.turns} student turn${result.counselling.turns === 1 ? "" : "s"} assessed.`}
           </div>
 

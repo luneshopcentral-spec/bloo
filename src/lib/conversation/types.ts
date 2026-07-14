@@ -20,12 +20,14 @@ export interface ConversationTopic {
   semanticThreshold?: number;
   patientReplies: string[];
   repeatReply?: string;
+  feedback?: string;
 }
 
 export interface ConversationResponseIntent {
   id: string;
   fallbackPatterns: string[];
   patientReplies: string[];
+  suppressConcern?: boolean;
 }
 export interface UnsafeAdviceRule {
   id: string;

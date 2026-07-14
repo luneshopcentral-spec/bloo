@@ -2,6 +2,7 @@ import { useRef } from "react";
 import { expandAbbrevs } from "@/lib/scoring/abbreviations";
 import type { FormState, FormAction } from "@/components/simulator/state";
 import type { DrugRow } from "@/lib/types/drug";
+import type { Prescriber } from "@/lib/types/prescriber";
 
 interface ScriptFormProps {
   formState: FormState;
@@ -10,6 +11,8 @@ interface ScriptFormProps {
   disabled?: boolean;
   selectedDrug: DrugRow | null;
   onOpenDrugModal: (query: string) => void;
+  selectedPrescriber: Prescriber | null;
+  onOpenPrescriberModal: (query: string) => void;
 }
 
 function onChange(dispatch: React.Dispatch<FormAction>, name: keyof FormState) {
@@ -24,6 +27,8 @@ export function ScriptForm({
   disabled = false,
   selectedDrug,
   onOpenDrugModal,
+  selectedPrescriber,
+  onOpenPrescriberModal,
 }: ScriptFormProps) {
   const initialsDisplay  = formState.pharmacistInitials.trim() || "__";
   const expandedDirections = expandAbbrevs(formState.directions);
@@ -75,24 +80,32 @@ export function ScriptForm({
       <div className="grid grid-cols-2 gap-1.5 mb-1 px-1">
         <div>
           <label className="fred-field-label" htmlFor="medical-doctor">Medical Doctor</label>
-          <input id="medical-doctor" className="fred-field-input" placeholder="Doctor surname, first"
-            value={formState.doctor} onChange={onChange(dispatch, "doctor")} disabled={disabled} />
+          <div className="fred-directory-field">
+            <input id="medical-doctor" className="fred-field-input" placeholder="Doctor surname, first"
+              value={formState.doctor} onChange={onChange(dispatch, "doctor")} disabled={disabled || !!selectedPrescriber} />
+            <button type="button" onClick={() => onOpenPrescriberModal(formState.doctor)} disabled={disabled}>
+              {selectedPrescriber ? "Change" : "Directory"}
+            </button>
+          </div>
         </div>
         <div>
           <label className="fred-field-label" htmlFor="prescriber-number">Prescriber No.</label>
           <input id="prescriber-number" className="fred-field-input" placeholder="Prescriber No."
-            value={formState.prescriberNo} onChange={onChange(dispatch, "prescriberNo")} disabled={disabled} />
+            value={formState.prescriberNo} readOnly disabled={disabled} />
         </div>
       </div>
 
       {/* Drug field */}
       <div className="px-1 mb-1">
-        <label className="fred-field-label" htmlFor="drug-search">Drug or Repeat No</label>
+        <label className="fred-field-label" htmlFor="drug-search">Brand / Product or Repeat No</label>
 
         {selectedDrug ? (
           <div className="fred-drug-selected-wrap">
             <span className="fred-drug-selected-name">
-              {selectedDrug.generic_name} {selectedDrug.form} {selectedDrug.strength}
+              <span className={`fred-product-kind ${selectedDrug.is_generic ? "generic" : "brand"}`}>
+                {selectedDrug.is_generic ? "GENERIC" : "BRAND"}
+              </span>
+              {selectedDrug.full_display_name}
             </span>
             <button
               type="button"
@@ -108,7 +121,7 @@ export function ScriptForm({
           <input
             id="drug-search"
             className="fred-field-input"
-            placeholder="Type drug name to search directory…"
+            placeholder="Type brand or generic name to search directory…"
             value={formState.drug}
             onChange={handleDrugInput}
             disabled={disabled}

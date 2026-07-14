@@ -207,6 +207,54 @@ export interface Database {
         };
         Relationships: [];
       };
+      prescribers: {
+        Row: {
+          id: string;
+          seed_id: string | null;
+          title: string | null;
+          surname: string;
+          firstname: string;
+          prescriber_number: string;
+          practice_name: string | null;
+          address: string | null;
+          suburb: string | null;
+          state: string | null;
+          postcode: string | null;
+          phone: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          seed_id?: string | null;
+          title?: string | null;
+          surname: string;
+          firstname: string;
+          prescriber_number: string;
+          practice_name?: string | null;
+          address?: string | null;
+          suburb?: string | null;
+          state?: string | null;
+          postcode?: string | null;
+          phone?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          seed_id?: string | null;
+          title?: string | null;
+          surname?: string;
+          firstname?: string;
+          prescriber_number?: string;
+          practice_name?: string | null;
+          address?: string | null;
+          suburb?: string | null;
+          state?: string | null;
+          postcode?: string | null;
+          phone?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       drugs: {
         Row: {
           id: string;

@@ -9,6 +9,7 @@ import {
   splitUtterance,
 } from "./matcher";
 import { combineAttemptResults, scoreCounselling } from "./score";
+import { buildPatientReply } from "./reply";
 import type { DispenseResult } from "@/lib/scoring/types";
 
 const safeDispense: DispenseResult = {
@@ -66,6 +67,61 @@ describe("conversation configuration", () => {
       .toBe("current_symptoms");
     expect(matchResponseIntent(conversation, "Could I ask you a couple of questions?")?.id)
       .toBe("permission_to_ask");
+  });
+
+  it("understands the Liam case wording shown in the reported conversation", () => {
+    const conversation = getConversationCase("case-3");
+    const purposeAndDose = classifyWithRules(
+      conversation,
+      "Amoxicillin is an antibiotic used to treat infections. Liam should have 10mls three times a day for 10 days."
+    );
+    const ids = purposeAndDose.map((match) => match.topicId);
+    expect(ids).toEqual(expect.arrayContaining(["purpose", "directions"]));
+
+    const safety = classifyWithRules(
+      conversation,
+      "Seek immediate medical attention for breathing difficulties, facial or throat swelling, widespread hives or blistering skin."
+    );
+    expect(safety.map((match) => match.topicId)).toContain("reaction_safety");
+  });
+
+  it("treats side-effect advice as counselling rather than a symptom-history question", () => {
+    const conversation = getConversationCase("case-3");
+    const text = "It might cause an upset stomach and nausea.";
+    expect(classifyWithRules(conversation, text).map((match) => match.topicId)).toContain("common_effects");
+    expect(matchResponseIntent(conversation, text)?.id).toBe("side_effect_explanation");
+    expect(matchResponseIntent(conversation, "Does Liam have any nausea?")?.id).toBe("current_symptoms");
+  });
+
+  it("answers diagnosis and courtesy questions naturally without awarding hidden marks", () => {
+    const conversation = getConversationCase("case-3");
+    expect(matchResponseIntent(conversation, "What infection is it?")?.id).toBe("diagnosis_question");
+    expect(matchResponseIntent(conversation, "Thank you, goodbye")?.id).toBe("courtesy_close");
+  });
+
+  it("does not repeat the same patient question after questions were already invited", () => {
+    const conversation = getConversationCase("case-3");
+    const first = buildPatientReply(conversation, ["invite_questions"], new Set(), 8, true, null);
+    const repeat = buildPatientReply(
+      conversation,
+      ["invite_questions"],
+      new Set(["invite_questions"]),
+      9,
+      true,
+      null
+    );
+    expect(first.text).toBe(conversation.patientQuestion);
+    expect(repeat.text).toBe("No other questions, thank you.");
+  });
+
+  it("recognises teach-back only when the patient is asked to explain the plan", () => {
+    const conversation = getConversationCase("case-3");
+    expect(classifyWithRules(conversation, "Do you understand?").map((match) => match.topicId))
+      .not.toContain("teach_back");
+    expect(classifyWithRules(
+      conversation,
+      "Just so I know I explained it clearly, can you tell me how you will give Liam each dose?"
+    ).map((match) => match.topicId)).toContain("teach_back");
   });
 });
 describe("deterministic clinical gates", () => {
