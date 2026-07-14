@@ -17,9 +17,23 @@
 
   background: var(--fred-green);
   font-family: 'Segoe UI', Tahoma, Geneva, sans-serif;
-  font-size: 12px;
+  font-size: 13px;
   color: #000;
-  min-height: calc(100vh - 64px); /* 64px = AppNav h-16 */
+  height: 100vh;
+  min-height: 640px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.fred-root .fred-training-banner {
+  flex: 0 0 auto;
+  background: #fff8d8;
+  border-bottom: 1px solid #c99a00;
+  color: #5c4500;
+  padding: 3px 8px;
+  font-size: 11px;
+  text-align: center;
 }
 
 /* ─── NARROW-SCREEN BANNER ───────────────────────────────────── */
@@ -63,6 +77,21 @@
   display: flex;
   gap: 2px;
 }
+.fred-root .fred-titlebar-exit {
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.65);
+  background: rgba(0,0,0,0.18);
+  border-radius: 2px;
+  padding: 2px 8px;
+  font-size: 11px;
+  text-decoration: none;
+}
+.fred-root .fred-titlebar-exit:hover,
+.fred-root .fred-titlebar-exit:focus-visible {
+  background: rgba(0,0,0,0.35);
+  outline: 2px solid #fff;
+  outline-offset: 1px;
+}
 .fred-root .fred-titlebar-btn {
   background: #c0c0c0;
   border: 1px solid #888;
@@ -92,12 +121,12 @@
   user-select: none;
 }
 .fred-root .fred-menubar-item {
-  cursor: pointer;
+  cursor: default;
   padding: 1px 6px;
 }
 .fred-root .fred-menubar-item:hover {
-  background: #0a246a;
-  color: white;
+  background: transparent;
+  color: inherit;
 }
 
 /* ─── TOOLBAR ────────────────────────────────────────────────── */
@@ -108,15 +137,24 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   user-select: none;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+.fred-root .fred-toolbar-reference {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
 }
 .fred-root .fred-tb-btn {
   background: linear-gradient(to bottom, #f0f0e8, #d4d0c8);
   border: 1px solid #888;
   border-radius: 2px;
   padding: 2px 6px;
-  cursor: pointer;
+  cursor: default;
   font-size: 11px;
   display: flex;
   align-items: center;
@@ -127,7 +165,7 @@
   font-family: 'Segoe UI', Tahoma, sans-serif;
 }
 .fred-root .fred-tb-btn:hover {
-  background: linear-gradient(to bottom, #e8f4ff, #c8dcf0);
+  background: linear-gradient(to bottom, #f0f0e8, #d4d0c8);
 }
 .fred-root .fred-tb-btn.tb-blue   { background: #0000cc; color: white; font-weight: bold; }
 .fred-root .fred-tb-btn.tb-green  { background: #006600; color: white; }
@@ -147,6 +185,7 @@
   padding: 2px 8px;
   font-size: 11px;
   white-space: nowrap;
+  margin-left: auto;
 }
 .fred-root .fred-case-select {
   font-size: 11px;
@@ -158,6 +197,19 @@
 }
 
 /* ─── MAIN WINDOW ────────────────────────────────────────────── */
+.fred-root .fred-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 240px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+.fred-root .fred-workspace-main {
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
 .fred-root .fred-main-win {
   background: #d4d0c8;
   margin: 4px;
@@ -397,11 +449,14 @@
   background: #d4d0c8;
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
 }
 .fred-root .fred-warn-title {
   background: #d4d0c8;
   padding: 2px 4px;
-  font-size: 10px;
+  font-size: 11px;
   border-bottom: 1px solid #888;
   display: flex;
   gap: 4px;
@@ -412,7 +467,7 @@
   font-weight: bold;
 }
 .fred-root .fred-warn-subtitle {
-  font-size: 10px;
+  font-size: 11px;
   padding: 2px 4px;
   color: #555;
   margin-bottom: 2px;
@@ -424,9 +479,62 @@
   align-items: flex-start;
   margin-bottom: 1px;
   cursor: pointer;
-  font-size: 10px;
+  font-size: 11px;
   padding: 1px 4px;
   line-height: 1.3;
+}
+.fred-root .fred-warn-checkbox {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 auto;
+  margin: 1px 1px 0 0;
+}
+
+/* ─── FINAL CLINICAL DECISION ────────────────────────────────── */
+.fred-root .fred-decision-panel {
+  margin: 4px 4px 2px;
+  padding: 4px 6px 6px;
+  border: 1px solid #777;
+  background: #eceae4;
+}
+.fred-root .fred-decision-panel legend {
+  padding: 0 5px;
+  color: #00008b;
+  font-size: 12px;
+  font-weight: 700;
+}
+.fred-root .fred-decision-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+}
+.fred-root .fred-decision-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  border: 1px solid #888;
+  background: #f7f7f2;
+  padding: 5px 6px;
+  cursor: pointer;
+  min-width: 0;
+}
+.fred-root .fred-decision-option.selected {
+  border-color: #005f2f;
+  background: #d8f2df;
+  box-shadow: inset 0 0 0 1px #005f2f;
+}
+.fred-root .fred-decision-option input {
+  margin-top: 2px;
+}
+.fred-root .fred-decision-option strong,
+.fred-root .fred-decision-option small {
+  display: block;
+}
+.fred-root .fred-decision-option small {
+  margin-top: 1px;
+  color: #444;
+  font-size: 10px;
+  line-height: 1.25;
 }
 .fred-root .fred-warn-item:hover {
   background: #e8e8e0;
@@ -485,11 +593,24 @@
 }
 
 /* ─── ACTION BUTTONS ─────────────────────────────────────────── */
+.fred-root .fred-action-dock {
+  position: sticky;
+  bottom: 24px;
+  z-index: 8;
+  background: #d4d0c8;
+  border-top: 1px solid #888;
+  box-shadow: 0 -2px 5px rgba(0,0,0,0.18);
+}
 .fred-root .fred-btn-row {
   display: flex;
   gap: 4px;
   padding: 4px;
   flex-wrap: wrap;
+  background: #d4d0c8;
+}
+.fred-root .fred-main-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 .fred-root .fred-main-btn {
   background: linear-gradient(to bottom, #f0f0e8, #d4d0c8);
@@ -553,6 +674,9 @@
   align-items: center;
   font-size: 11px;
   color: #333;
+  position: sticky;
+  bottom: 0;
+  z-index: 9;
 }
 
 /* ─── HISTORY PANEL (right sidebar) ─────────────────────────── */
@@ -560,11 +684,9 @@
   background: #d4d0c8;
   border-left: 2px solid #888;
   overflow-y: auto;
-  position: sticky;
-  top: 0;
-  align-self: start;
-  max-height: calc(100vh - 64px);
-  font-size: 11px;
+  height: 100%;
+  min-height: 0;
+  font-size: 12px;
 }
 .fred-root .fred-hp-header {
   background: #00008b;
@@ -593,8 +715,14 @@
 .fred-root .fred-hp-item {
   border-bottom: 1px solid #aaa;
   padding: 4px 6px;
-  font-size: 10px;
+  font-size: 11px;
   cursor: pointer;
+  display: block;
+  width: 100%;
+  background: #d4d0c8;
+  color: inherit;
+  text-align: left;
+  font-family: inherit;
 }
 .fred-root .fred-hp-item:hover { background: #c0d8f0; }
 .fred-root .fred-hp-item-grid {
@@ -637,7 +765,7 @@
   background: #d4d0c8;
   border: 3px outset #fff;
   min-width: 400px;
-  max-width: 520px;
+  max-width: 620px;
   width: 90vw;
 }
 .fred-root .fred-result-title {
@@ -654,11 +782,80 @@
   cursor: pointer;
   font-size: 14px;
   line-height: 1;
+  color: #fff;
+  border: 0;
+  background: transparent;
+  padding: 2px 4px;
 }
 .fred-root .fred-result-body {
   padding: 12px;
-  max-height: 60vh;
+  max-height: 72vh;
   overflow-y: auto;
+}
+.fred-root .fred-result-summary {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 9px 10px;
+  margin-bottom: 8px;
+  border: 1px solid;
+}
+.fred-root .fred-result-summary.passed {
+  background: #ccffcc;
+  border-color: #008000;
+}
+.fred-root .fred-result-summary.failed {
+  background: #ffcccc;
+  border-color: #b00000;
+}
+.fred-root .fred-result-score {
+  font-size: 28px;
+  line-height: 1;
+  font-weight: 800;
+}
+.fred-root .fred-result-outcome {
+  font-size: 13px;
+  font-weight: 800;
+}
+.fred-root .fred-result-session {
+  margin-top: 2px;
+  color: #444;
+  font-size: 11px;
+}
+.fred-root .fred-result-assisted,
+.fred-root .fred-result-critical {
+  padding: 7px 8px;
+  margin-bottom: 8px;
+  font-size: 11px;
+  line-height: 1.4;
+}
+.fred-root .fred-result-assisted {
+  background: #e8f4ff;
+  border: 1px solid #4d86b8;
+}
+.fred-root .fred-result-critical {
+  background: #fff0f0;
+  border: 2px solid #b00000;
+  color: #710000;
+}
+
+@media (max-width: 1199px) {
+  .fred-root .fred-workspace {
+    grid-template-columns: minmax(0, 1fr) 210px;
+  }
+  .fred-root .fred-toolbar-reference .fred-tb-btn:nth-of-type(-n+5) {
+    display: none;
+  }
+}
+
+@media (max-height: 760px) {
+  .fred-root .fred-abbrev-ref,
+  .fred-root .fred-msg-area {
+    display: none;
+  }
+  .fred-root .fred-decision-option small {
+    display: none;
+  }
 }
 .fred-root .fred-result-footer {
   padding: 8px;

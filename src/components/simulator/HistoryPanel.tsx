@@ -44,10 +44,12 @@ export function HistoryPanel({
       )}
 
       {patientScripts.map((s, i) => (
-        <div
+        <button
+          type="button"
           key={i}
           className="fred-hp-item"
           onClick={() => handleItemClick(s)}
+          aria-label={`${s.drug}, supplied ${s.script_date}, quantity ${s.qty ?? "not recorded"}, ${s.repeats ?? 0} repeats`}
         >
           <div className="fred-hp-item-grid">
             <span className="fred-hp-date">{s.script_date}</span>
@@ -56,7 +58,7 @@ export function HistoryPanel({
             <span>{String(s.repeats ?? 0)}</span>
           </div>
           <div className="fred-hp-drug">{s.drug}</div>
-        </div>
+        </button>
       ))}
 
       <div className="fred-hp-section">

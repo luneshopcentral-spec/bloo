@@ -1,10 +1,6 @@
 "use client";
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import type { Patient, PatientFormData } from "@/lib/types/patient";
-import type { Database } from "@/lib/types/database";
-
-type PatientInsert = Database["public"]["Tables"]["patients"]["Insert"];
 
 interface Props {
   open: boolean;
@@ -94,13 +90,16 @@ export function PatientDetailsModal({
     return Object.keys(errs).length === 0;
   }
 
-  async function handleSave() {
+  function handleSave() {
     if (!validate()) return;
     setSaving(true);
     setSaveError("");
 
-    const supabase = createClient();
-    const insertData: PatientInsert = {
+    // Practice patients belong to this attempt only. Writing synthetic exam
+    // data into the shared Supabase directory would pollute every user's search.
+    const practicePatient: Patient = {
+      id: crypto.randomUUID(),
+      seed_id: null,
       surname: form.surname.trim().toUpperCase(),
       firstname: form.firstname.trim().toUpperCase(),
       title: form.title?.trim() || null,
@@ -123,18 +122,9 @@ export function PatientDetailsModal({
         : [],
       patient_notes: form.patientNotes?.trim() || null,
     };
-    const { data, error } = await supabase
-      .from("patients")
-      .insert(insertData as never)
-      .select("*")
-      .single();
 
     setSaving(false);
-    if (error) {
-      setSaveError(`Save failed: ${error.message}`);
-      return;
-    }
-    onSave(data as Patient);
+    onSave(practicePatient);
   }
 
   const headerName =
@@ -155,10 +145,12 @@ export function PatientDetailsModal({
     placeholder?: string;
     width?: string;
   }) {
+    const id = `patient-${field}`;
     return (
       <div className="fred-pdtl-field" style={width ? { gridColumn: `span ${width}` } : undefined}>
-        <div className="fred-pdtl-label">{label}</div>
+        <label className="fred-pdtl-label" htmlFor={id}>{label}</label>
         <input
+          id={id}
           className={`fred-pdtl-input${errors[field] ? " error" : ""}`}
           value={(form[field] as string) ?? ""}
           onChange={(e) => set(field, e.target.value)}
@@ -179,9 +171,14 @@ export function PatientDetailsModal({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="fred-pdtl-dialog">
+      <div
+        className="fred-pdtl-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="patient-details-title"
+      >
         <div className="fred-pdtl-title">
-          <span>
+          <span id="patient-details-title">
             {mode === "add" ? "Add New Patient" : "Patient Details"}
           </span>
           <button
@@ -193,6 +190,7 @@ export function PatientDetailsModal({
               fontSize: "14px",
             }}
             onClick={onClose}
+            aria-label="Close patient details"
           >
             ✕
           </button>
@@ -222,8 +220,9 @@ export function PatientDetailsModal({
           {/* Name row */}
           <div className="fred-pdtl-grid-4">
             <div className="fred-pdtl-field">
-              <div className="fred-pdtl-label">Title</div>
+              <label className="fred-pdtl-label" htmlFor="patient-title">Title</label>
               <select
+                id="patient-title"
                 className="fred-pdtl-select"
                 value={form.title ?? ""}
                 onChange={(e) => set("title", e.target.value)}
@@ -235,8 +234,9 @@ export function PatientDetailsModal({
               </select>
             </div>
             <div className="fred-pdtl-field">
-              <div className="fred-pdtl-label">Surname *</div>
+              <label className="fred-pdtl-label" htmlFor="patient-surname">Surname *</label>
               <input
+                id="patient-surname"
                 className={`fred-pdtl-input${errors.surname ? " error" : ""}`}
                 value={form.surname}
                 onChange={(e) => set("surname", e.target.value.toUpperCase())}
@@ -248,8 +248,9 @@ export function PatientDetailsModal({
               )}
             </div>
             <div className="fred-pdtl-field">
-              <div className="fred-pdtl-label">Firstname *</div>
+              <label className="fred-pdtl-label" htmlFor="patient-firstname">Firstname *</label>
               <input
+                id="patient-firstname"
                 className={`fred-pdtl-input${errors.firstname ? " error" : ""}`}
                 value={form.firstname}
                 onChange={(e) => set("firstname", e.target.value.toUpperCase())}
@@ -261,8 +262,9 @@ export function PatientDetailsModal({
               )}
             </div>
             <div className="fred-pdtl-field">
-              <div className="fred-pdtl-label">Sex</div>
+              <label className="fred-pdtl-label" htmlFor="patient-sex">Sex</label>
               <select
+                id="patient-sex"
                 className="fred-pdtl-select"
                 value={form.sex ?? ""}
                 onChange={(e) => set("sex", e.target.value)}
@@ -305,8 +307,9 @@ export function PatientDetailsModal({
             </div>
             <div className="fred-pdtl-grid-3">
               <div className="fred-pdtl-field">
-                <div className="fred-pdtl-label">Concession Type</div>
+                <label className="fred-pdtl-label" htmlFor="patient-concession-type">Concession Type</label>
                 <select
+                  id="patient-concession-type"
                   className="fred-pdtl-select"
                   value={form.concessionType ?? ""}
                   onChange={(e) => set("concessionType", e.target.value)}
@@ -326,8 +329,9 @@ export function PatientDetailsModal({
           {/* Allergies + Notes */}
           <div className="fred-pdtl-grid-2">
             <div className="fred-pdtl-field">
-              <div className="fred-pdtl-label">Allergies (one per line)</div>
+              <label className="fred-pdtl-label" htmlFor="patient-allergies">Allergies (one per line)</label>
               <textarea
+                id="patient-allergies"
                 className="fred-pdtl-textarea"
                 value={form.allergies ?? ""}
                 onChange={(e) => set("allergies", e.target.value)}
@@ -336,8 +340,9 @@ export function PatientDetailsModal({
               />
             </div>
             <div className="fred-pdtl-field">
-              <div className="fred-pdtl-label">Patient Notes</div>
+              <label className="fred-pdtl-label" htmlFor="patient-notes">Patient Notes</label>
               <textarea
+                id="patient-notes"
                 className="fred-pdtl-textarea"
                 value={form.patientNotes ?? ""}
                 onChange={(e) => set("patientNotes", e.target.value)}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import type { DispenseResult } from "@/lib/scoring/types";
 
 interface ResultOverlayProps {
@@ -18,30 +18,97 @@ export function ResultOverlay({
   onClose,
   onNext,
 }: ResultOverlayProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+
   useEffect(() => {
     if (!show) return;
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    closeRef.current?.focus();
+
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
+      if (e.key !== "Tab" || !dialogRef.current) return;
+
+      const focusable = Array.from(
+        dialogRef.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
     }
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      previouslyFocused?.focus();
+    };
   }, [show, onClose]);
 
   if (!show || !result) return null;
 
   return (
     <div className="fred-result-overlay show">
-      <div className="fred-result-box">
+      <div
+        ref={dialogRef}
+        className="fred-result-box"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="dispense-results-title"
+      >
         {/* Title bar */}
         <div className="fred-result-title">
-          <span>Dispensing Check Results</span>
-          <span className="fred-result-close" onClick={onClose}>
+          <span id="dispense-results-title">Dispensing Check Results</span>
+          <button
+            ref={closeRef}
+            type="button"
+            className="fred-result-close"
+            onClick={onClose}
+            aria-label="Close dispensing results"
+          >
             ✕
-          </span>
+          </button>
         </div>
 
         {/* Body */}
         <div className="fred-result-body">
+          <div
+            className={`fred-result-summary ${result.passed ? "passed" : "failed"}`}
+            aria-live="polite"
+          >
+            <div className="fred-result-score">
+              {result.pointsEarned}/{result.pointsTotal}
+            </div>
+            <div>
+              <div className="fred-result-outcome">
+                {result.passed ? "Passed ✓" : "Needs review ✗"}
+              </div>
+              <div className="fred-result-session">
+                Independent session: {sessionScore.correct}/{sessionScore.total}
+              </div>
+            </div>
+          </div>
+
+          {result.assisted && (
+            <div className="fred-result-assisted" role="status">
+              Assisted practice: answers were revealed, so this result is not included in progress.
+            </div>
+          )}
+
+          {result.criticalFailures.length > 0 && (
+            <div className="fred-result-critical" role="alert">
+              <strong>Critical safety gate failed.</strong> A high point score cannot compensate for an unsafe patient, medicine, directions, quantity, repeats or clinical decision.
+            </div>
+          )}
+
           {/* Per-check rows */}
           {result.checks.map((check) => {
             const isAmber = check.isWarning;
@@ -104,38 +171,6 @@ export function ResultOverlay({
             <strong>💡 Pharmacist tip:</strong> {result.tip}
           </div>
 
-          {/* Score block */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "16px",
-              marginTop: "10px",
-              padding: "8px 10px",
-              background: result.passed ? "#ccffcc" : "#ffcccc",
-              border: `1px solid ${result.passed ? "#00aa00" : "#cc0000"}`,
-              borderRadius: "2px",
-            }}
-          >
-            <div
-              style={{
-                fontSize: "26px",
-                fontWeight: "bold",
-                color: result.passed ? "#006600" : "#cc0000",
-                lineHeight: 1,
-              }}
-            >
-              {result.pointsEarned}/{result.pointsTotal}
-            </div>
-            <div>
-              <div style={{ fontWeight: "bold", fontSize: "12px" }}>
-                {result.passed ? "Passed ✓" : "Needs Review ✗"}
-              </div>
-              <div style={{ fontSize: "11px", color: "#555", marginTop: "2px" }}>
-                Session: {sessionScore.correct}/{sessionScore.total}
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* Footer */}

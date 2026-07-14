@@ -1,8 +1,13 @@
+import type { DispenseDecision } from "@/lib/types/case";
+
 interface ActionButtonsProps {
   onDispense: () => void;
   onShowAnswers: () => void;
   onClear: () => void;
   onNext: () => void;
+  decision: DispenseDecision | null;
+  answersRevealed: boolean;
+  submitted: boolean;
 }
 
 export function ActionButtons({
@@ -10,14 +15,26 @@ export function ActionButtons({
   onShowAnswers,
   onClear,
   onNext,
+  decision,
+  answersRevealed,
+  submitted,
 }: ActionButtonsProps) {
+  const submitLabel =
+    decision === "dispense"
+      ? "✓ Dispense & Print Label"
+      : "✓ Submit Clinical Decision";
+
   return (
     <div className="fred-btn-row">
-      <button className="fred-main-btn btn-green" onClick={onDispense}>
-        ✓ Dispense &amp; Print Label
+      <button
+        className="fred-main-btn btn-green"
+        onClick={onDispense}
+        disabled={submitted}
+      >
+        {submitted ? "Attempt submitted" : submitLabel}
       </button>
-      <button className="fred-main-btn" onClick={onShowAnswers}>
-        Show Correct Answers
+      <button className="fred-main-btn" onClick={onShowAnswers} disabled={answersRevealed}>
+        {answersRevealed ? "Answers revealed (assisted)" : "Show Correct Answers"}
       </button>
       <button className="fred-main-btn btn-red" onClick={onClear}>
         ✕ Clear

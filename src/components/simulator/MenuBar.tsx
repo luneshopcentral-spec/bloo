@@ -10,7 +10,7 @@ const MENU_ITEMS = [
 
 export function MenuBar() {
   return (
-    <div className="fred-menubar">
+    <div className="fred-menubar" aria-hidden="true">
       {MENU_ITEMS.map((item) => (
         <span key={item} className="fred-menubar-item">
           {item}

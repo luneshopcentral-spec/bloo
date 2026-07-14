@@ -49,13 +49,13 @@ export function ScriptForm({
       {/* Row 1: Date / Type / Hospital */}
       <div className="grid grid-cols-3 gap-1.5 mb-1 px-1">
         <div>
-          <label className="fred-field-label">Script Date</label>
-          <input className="fred-field-input" placeholder="DD/MM/YY"
+          <label className="fred-field-label" htmlFor="script-date">Script Date</label>
+          <input id="script-date" className="fred-field-input" placeholder="DD/MM/YY"
             value={formState.scriptDate} onChange={onChange(dispatch, "scriptDate")} disabled={disabled} />
         </div>
         <div>
-          <label className="fred-field-label">Script Type</label>
-          <select className="fred-field-select" value={formState.scriptType}
+          <label className="fred-field-label" htmlFor="script-type">Script Type</label>
+          <select id="script-type" className="fred-field-select" value={formState.scriptType}
             onChange={onChange(dispatch, "scriptType")} disabled={disabled}>
             <option>N — NHS</option>
             <option>P — Private</option>
@@ -65,8 +65,8 @@ export function ScriptForm({
           </select>
         </div>
         <div>
-          <label className="fred-field-label">Hospital Prov. No.</label>
-          <input className="fred-field-input" value={formState.hospitalProvNo}
+          <label className="fred-field-label" htmlFor="hospital-provider-number">Hospital Prov. No.</label>
+          <input id="hospital-provider-number" className="fred-field-input" value={formState.hospitalProvNo}
             onChange={onChange(dispatch, "hospitalProvNo")} disabled={disabled} />
         </div>
       </div>
@@ -74,20 +74,20 @@ export function ScriptForm({
       {/* Row 2: Doctor / Prescriber No */}
       <div className="grid grid-cols-2 gap-1.5 mb-1 px-1">
         <div>
-          <label className="fred-field-label">Medical Doctor</label>
-          <input className="fred-field-input" placeholder="Doctor surname, first"
+          <label className="fred-field-label" htmlFor="medical-doctor">Medical Doctor</label>
+          <input id="medical-doctor" className="fred-field-input" placeholder="Doctor surname, first"
             value={formState.doctor} onChange={onChange(dispatch, "doctor")} disabled={disabled} />
         </div>
         <div>
-          <label className="fred-field-label">Prescriber No.</label>
-          <input className="fred-field-input" placeholder="Prescriber No."
+          <label className="fred-field-label" htmlFor="prescriber-number">Prescriber No.</label>
+          <input id="prescriber-number" className="fred-field-input" placeholder="Prescriber No."
             value={formState.prescriberNo} onChange={onChange(dispatch, "prescriberNo")} disabled={disabled} />
         </div>
       </div>
 
       {/* Drug field */}
       <div className="px-1 mb-1">
-        <label className="fred-field-label">Drug or Repeat No</label>
+        <label className="fred-field-label" htmlFor="drug-search">Drug or Repeat No</label>
 
         {selectedDrug ? (
           <div className="fred-drug-selected-wrap">
@@ -95,6 +95,8 @@ export function ScriptForm({
               {selectedDrug.generic_name} {selectedDrug.form} {selectedDrug.strength}
             </span>
             <button
+              type="button"
+              id="drug-search"
               className="fred-drug-change-btn"
               onClick={() => !disabled && onOpenDrugModal(selectedDrug.generic_name)}
               disabled={disabled}
@@ -104,6 +106,7 @@ export function ScriptForm({
           </div>
         ) : (
           <input
+            id="drug-search"
             className="fred-field-input"
             placeholder="Type drug name to search directory…"
             value={formState.drug}
@@ -135,8 +138,8 @@ export function ScriptForm({
       {/* Directions / Repeats / Qty / Price */}
       <div className="grid gap-1.5 mb-1 px-1" style={{ gridTemplateColumns: "1fr auto auto auto" }}>
         <div className="flex flex-col gap-0.5">
-          <label className="fred-field-label">Directions</label>
-          <textarea className="fred-dir-textarea" placeholder="e.g. Take ONE capsule tds pc"
+          <label className="fred-field-label" htmlFor="directions">Directions</label>
+          <textarea id="directions" className="fred-dir-textarea" placeholder="e.g. Take ONE capsule tds pc"
             value={formState.directions} onChange={onChange(dispatch, "directions")} disabled={disabled} />
           {formState.directions && (
             <div style={{ fontSize: "10px", color: "#555", fontStyle: "italic", marginTop: "1px" }}>
@@ -145,31 +148,32 @@ export function ScriptForm({
           )}
         </div>
         <div className="flex flex-col gap-0.5">
-          <label className="fred-field-label">Repeats</label>
-          <input className="fred-dir-col-input" placeholder="0"
+          <label className="fred-field-label" htmlFor="repeats">Repeats</label>
+          <input id="repeats" className="fred-dir-col-input" placeholder="0" inputMode="numeric"
             value={formState.repeats} onChange={onChange(dispatch, "repeats")} disabled={disabled} />
           <div style={{ fontSize: "9px", color: "#888" }}>Max —</div>
         </div>
         <div className="flex flex-col gap-0.5">
-          <label className="fred-field-label">Quantity</label>
-          <input className="fred-dir-col-input" placeholder="0"
+          <label className="fred-field-label" htmlFor="quantity">Quantity</label>
+          <input id="quantity" className="fred-dir-col-input" placeholder="0" inputMode="decimal"
             value={formState.qty} onChange={onChange(dispatch, "qty")} disabled={disabled} />
         </div>
         <div className="flex flex-col gap-0.5">
-          <label className="fred-field-label">Price</label>
-          <input className="fred-dir-col-input" placeholder="0.00"
+          <label className="fred-field-label" htmlFor="price">Price</label>
+          <input id="price" className="fred-dir-col-input" placeholder="0.00" inputMode="decimal"
             value={formState.price} onChange={onChange(dispatch, "price")} disabled={disabled} />
         </div>
       </div>
 
       {/* Pharmacist initials */}
       <div className="fred-pharmacist-row">
-        <span>Pharmacist Initials OK</span>
+        <label htmlFor="pharmacist-initials">Pharmacist Initials</label>
         <div className={`fred-initials-box${initialsError ? " fred-initials-shake" : ""}`}>
           {initialsDisplay}
         </div>
         <span>to proceed</span>
         <input
+          id="pharmacist-initials"
           style={{
             width: "50px", fontSize: "12px",
             border: initialsError ? "2px solid #cc0000" : "2px inset #888",
@@ -177,6 +181,8 @@ export function ScriptForm({
           }}
           placeholder="Initials"
           maxLength={3}
+          aria-invalid={initialsError}
+          autoComplete="off"
           value={formState.pharmacistInitials}
           onChange={(e) =>
             dispatch({ type: "SET_FIELD", field: "pharmacistInitials", value: e.target.value.toUpperCase() })

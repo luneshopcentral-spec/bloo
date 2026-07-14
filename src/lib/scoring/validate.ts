@@ -1,5 +1,5 @@
 import type { FormState } from "@/components/simulator/state";
-import type { PracticeCase } from "@/lib/types/case";
+import type { DispenseDecision, PracticeCase } from "@/lib/types/case";
 import type { Patient } from "@/lib/types/patient";
 import type { DrugRow } from "@/lib/types/drug";
 import { expandAbbrevs } from "./abbreviations";
@@ -12,10 +12,59 @@ export interface ValidateInput {
   caseData: PracticeCase;
   selectedPatient?: Patient | null;
   selectedDrug?: DrugRow | null;
+  decision?: DispenseDecision | null;
+  assisted?: boolean;
 }
 
-function extractDigits(s: string): string {
-  return (s.match(/\d+/) ?? [""])[0];
+interface ParsedQuantity {
+  amount: string;
+  unit: string;
+}
+
+function parseQuantity(value: string): ParsedQuantity | null {
+  const match = value.trim().match(/^(\d+(?:\.\d+)?)\s*([a-zA-Z]+)?$/);
+  if (!match) return null;
+  const unit = (match[2] ?? "").toLowerCase();
+  return {
+    amount: String(Number(match[1])),
+    unit: unit === "millilitres" || unit === "milliliters" ? "ml" : unit,
+  };
+}
+
+const NUMBER_WORDS: Record<string, string> = {
+  one: "1",
+  two: "2",
+  three: "3",
+  four: "4",
+  five: "5",
+  six: "6",
+};
+
+function directionTokens(value: string): string[] {
+  const expanded = expandAbbrevs(value).toLowerCase();
+  return expanded
+    .replace(/[’']/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((token) => NUMBER_WORDS[token] ?? token);
+}
+
+function hasNegation(value: string): boolean {
+  return /\b(?:no|not|never|avoid|without|dont|do not)\b/i.test(value);
+}
+
+function directionsMatch(expected: string, actual: string): boolean {
+  if (!actual.trim()) return false;
+  if (hasNegation(expected) !== hasNegation(actual)) return false;
+
+  const expectedTokens = directionTokens(expected);
+  const actualTokens = new Set(directionTokens(actual));
+  if (expectedTokens.length === 0) return false;
+
+  const matched = expectedTokens.filter((token) => actualTokens.has(token)).length;
+  return matched / expectedTokens.length >= 0.8;
 }
 
 // First-4-char normalisation handles amoxicillin vs amoxycillin spelling variants.
@@ -29,6 +78,8 @@ export function validateDispense({
   caseData,
   selectedPatient = null,
   selectedDrug = null,
+  decision = null,
+  assisted = false,
 }: ValidateInput): DispenseResult {
   const checks: CheckResult[] = [];
 
@@ -58,6 +109,17 @@ export function validateDispense({
       const medicareOk =
         normDigits(selectedPatient.medicare_card) === normDigits(exp.medicareCard);
 
+      const expectedFieldMatches = [
+        ["title", exp.title, selectedPatient.title],
+        ["sex", exp.sex, selectedPatient.sex],
+        ["date of birth", exp.dateOfBirth, selectedPatient.date_of_birth],
+        ["suburb", exp.suburb, selectedPatient.suburb],
+        ["postcode", exp.postcode, selectedPatient.postcode],
+        ["Medicare valid-to", exp.medicareValidTo, selectedPatient.medicare_valid_to],
+        ["concession type", exp.concessionType, selectedPatient.concession_type],
+        ["concession number", exp.concessionNumber, selectedPatient.concession_number],
+      ] as const;
+
       const requiredMissing = (
         [
           [!selectedPatient.title?.trim(),         "title"],
@@ -75,6 +137,11 @@ export function validateDispense({
         !firstnameOk && `Firstname expected "${exp.firstname}", got "${selectedPatient.firstname}"`,
         !addressOk   && `Address expected "${exp.address}", got "${selectedPatient.address ?? "(empty)"}"`,
         !medicareOk  && `Medicare expected "${exp.medicareCard}", got "${selectedPatient.medicare_card ?? "(empty)"}"`,
+        ...expectedFieldMatches.map(([label, expected, actual]) =>
+          expected && normStr(actual) !== normStr(expected)
+            ? `${label} expected "${expected}", got "${actual ?? "(empty)"}"`
+            : false
+        ),
       ].filter(Boolean) as string[];
 
       patientPassed = requiredMissing.length === 0 && mismatches.length === 0;
@@ -104,6 +171,7 @@ export function validateDispense({
     category: "patient",
     label: "Patient selected",
     passed: patientPassed,
+    isCritical: true,
     detail: patientDetail,
   });
 
@@ -119,6 +187,7 @@ export function validateDispense({
     category: "drug",
     label: "Drug entered",
     passed: drugPassed,
+    isCritical: true,
     expected: caseData.drug,
     actual: selectedDrug?.full_display_name ?? "(no drug selected)",
     detail: selectedDrug === null
@@ -147,19 +216,17 @@ export function validateDispense({
     category: "drug_variant",
     label: "Drug variant",
     passed: variantPassed,
+    isCritical: true,
     detail: variantDetail,
   });
 
   // ── c. Directions ────────────────────────────────────────────────
-  const expectedExpanded = expandAbbrevs(caseData.directions).toLowerCase();
-  const studentExpanded  = expandAbbrevs(formState.directions).toLowerCase();
-  const expectedWords    = expectedExpanded.split(/\s+/).filter((w) => w.length >= 3);
-  const matchCount       = expectedWords.filter((w) => studentExpanded.includes(w)).length;
-  const dirPassed        = expectedWords.length > 0 && matchCount / expectedWords.length >= 0.5;
+  const dirPassed = directionsMatch(caseData.directions, formState.directions);
   checks.push({
     category: "directions",
     label: "Directions",
     passed: dirPassed,
+    isCritical: true,
     expected: caseData.directions,
     actual: formState.directions || "(empty)",
     detail: dirPassed
@@ -168,13 +235,18 @@ export function validateDispense({
   });
 
   // ── d. Quantity ──────────────────────────────────────────────────
-  const qtyExpected = extractDigits(String(caseData.qty));
-  const qtyStudent  = extractDigits(formState.qty);
-  const qtyPassed   = qtyExpected !== "" && qtyStudent === qtyExpected;
+  const qtyExpected = parseQuantity(String(caseData.qty));
+  const qtyStudent  = parseQuantity(formState.qty);
+  const qtyPassed =
+    qtyExpected !== null &&
+    qtyStudent !== null &&
+    qtyStudent.amount === qtyExpected.amount &&
+    (!qtyStudent.unit || !qtyExpected.unit || qtyStudent.unit === qtyExpected.unit);
   checks.push({
     category: "quantity",
     label: "Quantity",
     passed: qtyPassed,
+    isCritical: true,
     expected: String(caseData.qty),
     actual: formState.qty || "(empty)",
     detail: qtyPassed
@@ -188,6 +260,7 @@ export function validateDispense({
     category: "repeats",
     label: "Repeats",
     passed: rptPassed,
+    isCritical: true,
     expected: caseData.repeats,
     actual: formState.repeats || "(empty)",
     detail: rptPassed
@@ -215,35 +288,46 @@ export function validateDispense({
     detail: warnsDetail,
   });
 
-  // ── g. Error detection ───────────────────────────────────────────
-  if (caseData.errors.length === 0) {
-    checks.push({
-      category: "errors",
-      label: "Error detection",
-      passed: true,
-      detail: "No script errors for this case — straightforward dispense",
-    });
-  } else {
-    checks.push({
-      category: "errors",
-      label: "Error detection",
-      passed: false,
-      isWarning: true,
-      detail: `⚠ Script issue(s) flagged: ${caseData.errors.join(
-        "; "
-      )} — verify you would NOT dispense this script as written`,
-    });
-  }
+  // ── g. Clinical decision ─────────────────────────────────────────
+  const decisionLabels: Record<DispenseDecision, string> = {
+    dispense: "Dispense after final check",
+    hold_contact_prescriber: "Hold and contact the prescriber",
+    do_not_supply: "Do not supply",
+  };
+  const decisionPassed = decision === caseData.expectedDecision;
+  const issueDetail = caseData.errors.length
+    ? ` Clinical issue(s): ${caseData.errors.join("; ")}`
+    : " No unresolved clinical or legal issue was identified in this training case.";
+  checks.push({
+    category: "errors",
+    label: "Clinical decision",
+    passed: decisionPassed,
+    isCritical: true,
+    expected: decisionLabels[caseData.expectedDecision],
+    actual: decision ? decisionLabels[decision] : "No decision selected",
+    detail: decisionPassed
+      ? `Safe disposition selected: ${decisionLabels[caseData.expectedDecision]}.${issueDetail}`
+      : `Expected: ${decisionLabels[caseData.expectedDecision]}. You selected: ${
+          decision ? decisionLabels[decision] : "no decision"
+        }.${issueDetail}`,
+  });
 
-  const pointsEarned = checks.filter((c) => c.passed && !c.isWarning).length;
-  const pointsTotal  = 8;
+  const pointsEarned = checks.filter((check) => check.passed).length;
+  const pointsTotal = checks.length;
+  const criticalFailures = checks
+    .filter((check) => check.isCritical && !check.passed)
+    .map((check) => check.category);
+  const passed = pointsEarned >= POINTS_TO_PASS && criticalFailures.length === 0;
 
   return {
     checks,
     pointsEarned,
     pointsTotal,
-    passed: pointsEarned >= POINTS_TO_PASS,
+    passed,
     passThreshold: POINTS_TO_PASS,
+    criticalFailures,
+    assisted,
+    countsTowardProgress: !assisted,
     tip: caseData.tip,
   };
 }

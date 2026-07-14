@@ -1,19 +1,19 @@
 const faqs = [
   {
     q: "Is DispenseRx Practice affiliated with Fred IT Group?",
-    a: "No. DispenseRx Practice is a completely independent study tool created by pharmacy educators and students. It is not affiliated with, endorsed by, or connected to Fred IT Group Pty Ltd in any way. 'Fred Dispense' is a trademark of Fred IT Group Pty Ltd.",
+    a: "No. DispenseRx Practice is an independent training prototype. It is not affiliated with, endorsed by, or connected to Fred IT Group Pty Ltd. 'Fred Dispense' is a trademark of Fred IT Group Pty Ltd.",
   },
   {
     q: "How realistic is the simulator?",
-    a: "The interface and workflows are modelled closely on the Fred Dispense dispensing process — including PBS item selection, quantity, repeats, patient details, and endorsements. It is designed to build real muscle memory, not just theoretical knowledge. The more you practise here, the faster you will be in an actual dispensary.",
+    a: "The simulator uses a Fred-style visual layout and covers patient selection, medicine selection, directions, quantity, repeats, warning labels and a final clinical decision. Many production Fred features are not yet simulated, so it should be used for foundation practice rather than treated as an exact replica.",
   },
   {
     q: "What cases are included?",
-    a: "The library covers common and high-stakes PBS items: anti-diabetics, statins, antihypertensives, antibiotics, analgesics, anticoagulants, and more. It includes Schedule 4 and Schedule 8 scenarios, authority scripts, and streamlined authority cases. Cases are graded easy → medium → hard. New cases are added regularly at no extra cost.",
+    a: "The current beta contains six foundation cases covering antibiotics, warfarin, a paediatric liquid, temazepam, metformin and doxycycline. Authority, streamlined-authority and genuine Schedule 8 workflows are not yet included.",
   },
   {
-    q: "What is your refund policy?",
-    a: "We offer a 30-day money-back guarantee. If you are unhappy with the product for any reason, contact us within 30 days of purchase and we will issue a full refund — no questions asked.",
+    q: "Is this a clinical or PBS reference?",
+    a: "No. It is a training simulation. Students must use current product information, PBS listings, legislation, university guidance and supervisor feedback for real clinical decisions.",
   },
   {
     q: "Who is DispenseRx Practice for?",
@@ -21,7 +21,7 @@ const faqs = [
   },
   {
     q: "Do I need to download anything?",
-    a: "No. DispenseRx Practice runs entirely in your browser on any device — laptop, tablet, or phone. Just sign up and start practising immediately.",
+    a: "No. DispenseRx Practice runs in a browser. The simulator is intentionally designed for laptop and desktop screens rather than phone use.",
   },
 ];
 

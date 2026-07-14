@@ -97,7 +97,7 @@ export default function SignUpPage() {
       <CardHeader className="space-y-1">
         <CardTitle className="text-2xl font-bold">Create your account</CardTitle>
         <CardDescription>
-          Start with 3 free cases — no credit card needed
+          Access all 6 foundation beta cases — no credit card needed
         </CardDescription>
       </CardHeader>
 

@@ -67,9 +67,8 @@ export function ProblemSolution() {
             DispenseRx Practice brings the dispensing bay to you
           </h3>
           <p className="text-slate-700">
-            A browser-based simulator modelled on the Fred Dispense interface,
-            packed with real PBS scenarios, instant feedback, and progress
-            tracking — so you can practise anywhere, anytime.
+            A laptop-first, Fred-style training simulator with six foundation
+            scenarios, immediate feedback and explicit clinical safety decisions.
           </p>
         </div>
       </div>

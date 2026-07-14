@@ -20,9 +20,13 @@ export function PatientHeader({
   return (
     <div className="fred-patient-header">
       <div style={{ display: "flex", alignItems: "center", gap: "8px", flex: 1 }}>
-        <span className="fred-ph-label" style={{ whiteSpace: "nowrap" }}>
+        <label
+          className="fred-ph-label"
+          htmlFor="patient-lookup"
+          style={{ whiteSpace: "nowrap" }}
+        >
           Patient Name or Repeat No
-        </span>
+        </label>
         <PatientLookupField
           selectedPatient={selectedPatient}
           onPatientSelect={onPatientSelect}
