@@ -145,7 +145,6 @@ export function PatientDetailsModal({
     if (!form.address?.trim()) errs.address = "Required";
     if (!form.suburb?.trim()) errs.suburb = "Required";
     if (!form.postcode?.trim()) errs.postcode = "Required";
-    if (!form.dateOfBirth?.trim()) errs.dateOfBirth = "Required (from prescription)";
     setErrors(errs);
     return Object.keys(errs).length === 0;
   }

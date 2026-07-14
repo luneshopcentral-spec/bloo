@@ -331,6 +331,14 @@ describe("validateDispense", () => {
     );
   });
 
+  it("allows date of birth to be omitted when adding a new patient", () => {
+    const withoutDob = validateDispense(
+      correctInput(case3, { ...case3Patient, date_of_birth: null }, case3Drug)
+    );
+
+    expect(withoutDob.checks.find((check) => check.category === "patient")?.passed).toBe(true);
+  });
+
   it("rejects the wrong existing patient", () => {
     const wrongPatient = mockPatient({
       seed_id: "patient-margaret-jones-fitzroy",

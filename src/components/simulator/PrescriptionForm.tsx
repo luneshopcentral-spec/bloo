@@ -64,7 +64,7 @@ export function PrescriptionForm({ caseData }: PrescriptionFormProps) {
         </div>
         <div className="pbs-fcell pbs-fcell-narrow">
           <div className="pbs-tiny">Gen</div>
-          <div className="pbs-bold">✓</div>
+          <div className="pbs-bold">{caseData.genericSubstitutionAllowed ? "✓" : "—"}</div>
         </div>
         <div className="pbs-fcell pbs-fcell-narrow">
           <div className="pbs-tiny">Con</div>
@@ -82,6 +82,9 @@ export function PrescriptionForm({ caseData }: PrescriptionFormProps) {
             </div>
             <div className="pbs-tiny">Patient&rsquo;s name &amp; address</div>
             <div className="pbs-patient-name-val">{pp.name}</div>
+            {pp.dateOfBirth && (
+              <div className="pbs-patient-dob">DOB: {pp.dateOfBirth}</div>
+            )}
             <div className="pbs-patient-addr">{pp.address}</div>
           </div>
           <div className="pbs-auth-fields pbs-yellow">
@@ -115,6 +118,12 @@ export function PrescriptionForm({ caseData }: PrescriptionFormProps) {
           directions and deferred supply if applicable)
         </div>
         <div className="pbs-drug-name-display">{caseData.drug}</div>
+        <div className="pbs-product-instruction">
+          {caseData.prescribedProductType === "generic" ? "Generic product prescribed" : "Brand product prescribed"}
+          {caseData.genericSubstitutionAllowed
+            ? " · Generic substitution permitted"
+            : " · Substitution not authorised"}
+        </div>
         <div className="pbs-drug-dirs">{caseData.directions}</div>
         <div className="pbs-drug-meta-row">
           <span>

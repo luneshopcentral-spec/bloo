@@ -84,6 +84,12 @@ export interface Database {
           max_score: number;
           passed: boolean;
           details: Json;
+          case_version: string;
+          mode: "learn" | "practice" | "exam";
+          assisted: boolean;
+          counts_toward_progress: boolean;
+          critical_failures: string[];
+          competencies: Json;
           created_at: string;
         };
         Insert: {
@@ -94,6 +100,12 @@ export interface Database {
           max_score: number;
           passed: boolean;
           details: Json;
+          case_version: string;
+          mode: "learn" | "practice" | "exam";
+          assisted?: boolean;
+          counts_toward_progress?: boolean;
+          critical_failures?: string[];
+          competencies?: Json;
           created_at?: string;
         };
         Update: {
@@ -104,6 +116,12 @@ export interface Database {
           max_score?: number;
           passed?: boolean;
           details?: Json;
+          case_version?: string;
+          mode?: "learn" | "practice" | "exam";
+          assisted?: boolean;
+          counts_toward_progress?: boolean;
+          critical_failures?: string[];
+          competencies?: Json;
           created_at?: string;
         };
         Relationships: [];

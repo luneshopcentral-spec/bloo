@@ -42,6 +42,7 @@ export interface PatientLookupSpec {
     name: string;
     address: string;
     mcare: string;
+    dateOfBirth?: string;
   };
 }
 
@@ -56,6 +57,8 @@ export interface PracticeCase {
   date: string;
   scriptType: string;
   drug: string;           // what the doctor wrote (used for drug-check first-word matching)
+  prescribedProductType: "brand" | "generic";
+  genericSubstitutionAllowed: boolean;
   correctDrugSeedId: string; // seed_id of the drug variant the student must select
   directions: string;
   repeats: string;

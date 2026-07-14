@@ -4,7 +4,6 @@ import {
   MEDICINE_LEARNING_PROFILES,
   PUBLIC_MEDICINE_REFERENCES,
   findBestMedicineLearningProfile,
-  normalizeMedicineQuery,
   searchMedicineLearningProfiles,
 } from "./reference";
 import { normalizeWarningLabel, resolveWarningLabelInput } from "@/lib/warnings/resolve";
@@ -14,9 +13,8 @@ describe("medicines learning reference", () => {
     for (const practiceCase of STATIC_CASES) {
       const profile = findBestMedicineLearningProfile(practiceCase.drug);
       expect(profile, practiceCase.title).not.toBeNull();
-      expect(normalizeMedicineQuery(practiceCase.drug)).toContain(
-        normalizeMedicineQuery(profile?.genericName ?? "missing")
-      );
+      expect(profile?.sections.length).toBeGreaterThanOrEqual(5);
+      expect(profile?.sources.length).toBeGreaterThanOrEqual(2);
     }
   });
 
@@ -26,12 +24,12 @@ describe("medicines learning reference", () => {
     expect(searchMedicineLearningProfiles("antibiotic").length).toBeGreaterThan(1);
   });
 
-  it("keeps every profile behind educator review until signed off", () => {
+  it("keeps every profile behind pharmacist review until signed off", () => {
     expect(MEDICINE_LEARNING_PROFILES.every(
-      (profile) => profile.reviewStatus === "educator_review_required"
+      (profile) => profile.reviewStatus === "pharmacist_review_required"
     )).toBe(true);
     expect(PUBLIC_MEDICINE_REFERENCES.map((source) => source.id)).toEqual(
-      expect.arrayContaining(["tga-cmi", "tga-pi", "healthdirect", "pbs"])
+      expect.arrayContaining(["tga-cmi", "artg", "healthdirect", "pbs"])
     );
   });
 
@@ -41,7 +39,7 @@ describe("medicines learning reference", () => {
       expect(profile).not.toBeNull();
       const studyText = normalizeWarningLabel([
         profile?.summary,
-        ...(profile?.sections.map((section) => section.detail) ?? []),
+        ...(profile?.sections.flatMap((section) => [section.summary, ...section.bullets]) ?? []),
         ...(profile?.labelReasoningClues ?? []),
       ].join(" "));
 

@@ -17,9 +17,11 @@ import type { DrugRow } from "@/lib/types/drug";
 import type { Prescriber } from "@/lib/types/prescriber";
 import { formatPrescriberName } from "@/lib/types/prescriber";
 import { createClient } from "@/lib/supabase/client";
+import { getCaseEditorialRecord } from "@/lib/governance/editorial";
+import type { PracticeMode } from "@/lib/practice/modes";
+import { persistCompletedAttempt } from "@/lib/attempts/persist";
 
 import { TitleBar }            from "@/components/simulator/TitleBar";
-import { MenuBar }             from "@/components/simulator/MenuBar";
 import { Toolbar }             from "@/components/simulator/Toolbar";
 import { PatientHeader }       from "@/components/simulator/PatientHeader";
 import { ScriptForm }          from "@/components/simulator/ScriptForm";
@@ -45,6 +47,7 @@ const DEFAULT_STATUS =
 export default function PracticePage() {
   const [stage, setStage]                         = useState<"dispensing" | "counselling">("dispensing");
   const [currentCaseIndex, setCurrentCaseIndex]   = useState(0);
+  const [practiceMode, setPracticeMode]           = useState<PracticeMode>("practice");
   const [formState, dispatch]                      = useReducer(formReducer, EMPTY_FORM_STATE);
   const [selectedWarnings, setSelectedWarnings]    = useState<Set<string>>(new Set());
   const [statusMessage, setStatusMessage]          = useState(DEFAULT_STATUS);
@@ -80,6 +83,7 @@ export default function PracticePage() {
 
   const current = STATIC_CASES[currentCaseIndex];
   const currentConversation = getConversationCase(current.id);
+  const editorialRecord = getCaseEditorialRecord(current.id);
 
   // ── Reset form + patient + drug whenever the case changes ─────────
   useEffect(() => {
@@ -140,6 +144,11 @@ export default function PracticePage() {
 
   // ── Handlers ──────────────────────────────────────────────────────
   function handleCaseChange(n: number) { setCurrentCaseIndex(n); }
+  function handleModeChange(mode: PracticeMode) {
+    setPracticeMode(mode);
+    handleClear();
+    setStatusMessage(`${mode[0].toUpperCase()}${mode.slice(1)} mode selected. A fresh attempt has started.`);
+  }
   function handleNext() { setCurrentCaseIndex((i) => (i + 1) % STATIC_CASES.length); }
   function handleNextFromOverlay() { setCurrentCaseIndex((i) => (i + 1) % STATIC_CASES.length); }
 
@@ -228,8 +237,10 @@ export default function PracticePage() {
     if (!pendingDispenseResult) return;
 
     const completeResult = combineAttemptResults(pendingDispenseResult, counsellingResult);
-    setLastResult(completeResult);
-    if (completeResult.countsTowardProgress) {
+    const countsTowardProgress = completeResult.countsTowardProgress && practiceMode !== "learn";
+    const recordedResult = { ...completeResult, countsTowardProgress };
+    setLastResult(recordedResult);
+    if (countsTowardProgress) {
       setSessionScore((prev) => ({
         correct: prev.correct + (completeResult.passed ? 1 : 0),
         total: prev.total + 1,
@@ -243,6 +254,21 @@ export default function PracticePage() {
           : "Complete attempt needs review. See the combined result panel."
     );
     setOverlayOpen(true);
+
+    void persistCompletedAttempt({
+      caseId: current.id,
+      caseVersion: editorialRecord.version,
+      mode: practiceMode,
+      result: recordedResult,
+      countsTowardProgress,
+    }).then((persistence) => {
+      if (persistence.saved) return;
+      if (persistence.reason === "schema_update_required") {
+        setStatusMessage("Attempt completed, but cloud progress needs the latest Supabase migration (0007_attempt_progress.sql). Results remain available in this session.");
+      } else if (persistence.reason === "database_error") {
+        setStatusMessage("Attempt completed, but cloud progress could not be saved. Results remain available in this session.");
+      }
+    });
   }
 
   function handleToggleWarning(warningText: string) {
@@ -304,11 +330,13 @@ export default function PracticePage() {
         </div>
 
         <div className="fred-training-banner" role="note">
-          Training simulation — use current PBS, product information and jurisdictional references in practice.
+          <span>Training simulation — use current PBS, product information and jurisdictional references in practice.</span>
+          <span className="fred-editorial-status">
+            Case {editorialRecord.version} · pharmacist and jurisdiction review required before paid release
+          </span>
         </div>
 
         <TitleBar />
-        <MenuBar />
         {stage === "dispensing" ? (
           <>
             <Toolbar
@@ -316,6 +344,8 @@ export default function PracticePage() {
               onCaseChange={handleCaseChange}
               cases={STATIC_CASES}
               sessionScore={sessionScore}
+              mode={practiceMode}
+              onModeChange={handleModeChange}
             />
 
             <div className="fred-workspace">
@@ -379,6 +409,7 @@ export default function PracticePage() {
                   decision={clinicalDecision}
                   answersRevealed={answersRevealed}
                   submitted={attemptSubmitted}
+                  allowAnswerReveal={practiceMode !== "exam"}
                 />
               </div>
 
@@ -402,6 +433,7 @@ export default function PracticePage() {
             decision={clinicalDecision}
             onComplete={handleCounsellingComplete}
             onViewResults={() => setOverlayOpen(true)}
+            mode={practiceMode}
           />
         )}
 
