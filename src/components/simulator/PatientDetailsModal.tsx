@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Patient, PatientFormData } from "@/lib/types/patient";
 
 interface Props {
@@ -51,6 +51,56 @@ function patientToForm(p: Patient): PatientFormData {
   };
 }
 
+function initialPatientForm(
+  mode: "add" | "view",
+  patient?: Patient,
+  initialSurname?: string
+): PatientFormData {
+  if (mode === "view" && patient) return patientToForm(patient);
+  return { ...EMPTY, surname: initialSurname ?? "" };
+}
+
+interface PatientDetailFieldProps {
+  label: string;
+  field: keyof PatientFormData;
+  form: PatientFormData;
+  errors: Record<string, string>;
+  placeholder?: string;
+  width?: string;
+  readOnly: boolean;
+  onChange: (field: keyof PatientFormData, value: string) => void;
+}
+
+// This must stay at module scope. Defining it inside PatientDetailsModal gives
+// React a new component type on every keystroke, which remounts the input and
+// drops focus after each character.
+function PatientDetailField({
+  label,
+  field,
+  form,
+  errors,
+  placeholder,
+  width,
+  readOnly,
+  onChange,
+}: PatientDetailFieldProps) {
+  const id = `patient-${field}`;
+  return (
+    <div className="fred-pdtl-field" style={width ? { gridColumn: `span ${width}` } : undefined}>
+      <label className="fred-pdtl-label" htmlFor={id}>{label}</label>
+      <input
+        id={id}
+        className={`fred-pdtl-input${errors[field] ? " error" : ""}`}
+        value={(form[field] as string) ?? ""}
+        onChange={(event) => onChange(field, event.target.value)}
+        placeholder={placeholder}
+        readOnly={readOnly}
+      />
+      {errors[field] && <div className="fred-pdtl-err-msg">{errors[field]}</div>}
+    </div>
+  );
+}
+
 export function PatientDetailsModal({
   open,
   mode,
@@ -59,15 +109,23 @@ export function PatientDetailsModal({
   onSave,
   onClose,
 }: Props) {
-  const [form, setForm] = useState<PatientFormData>(() => {
-    if (mode === "view" && patient) return patientToForm(patient);
-    const f = { ...EMPTY };
-    if (initialSurname) f.surname = initialSurname;
-    return f;
-  });
+  const [form, setForm] = useState<PatientFormData>(() =>
+    initialPatientForm(mode, patient, initialSurname)
+  );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
+  const wasOpenRef = useRef(false);
+
+  useEffect(() => {
+    if (open && !wasOpenRef.current) {
+      setForm(initialPatientForm(mode, patient, initialSurname));
+      setErrors({});
+      setSaving(false);
+      setSaveError("");
+    }
+    wasOpenRef.current = open;
+  }, [open, mode, patient, initialSurname]);
 
   if (!open) return null;
 
@@ -77,6 +135,8 @@ export function PatientDetailsModal({
     setForm((prev) => ({ ...prev, [field]: value }));
     setErrors((prev) => ({ ...prev, [field]: "" }));
   }
+
+  const patientFieldProps = { form, errors, readOnly, onChange: set };
 
   function validate(): boolean {
     const errs: Record<string, string> = {};
@@ -133,36 +193,6 @@ export function PatientDetailsModal({
       : form.surname || form.firstname
       ? `${form.surname}${form.firstname ? ", " + form.firstname : ""}`
       : "New Patient";
-
-  function Field({
-    label,
-    field,
-    placeholder,
-    width,
-  }: {
-    label: string;
-    field: keyof PatientFormData;
-    placeholder?: string;
-    width?: string;
-  }) {
-    const id = `patient-${field}`;
-    return (
-      <div className="fred-pdtl-field" style={width ? { gridColumn: `span ${width}` } : undefined}>
-        <label className="fred-pdtl-label" htmlFor={id}>{label}</label>
-        <input
-          id={id}
-          className={`fred-pdtl-input${errors[field] ? " error" : ""}`}
-          value={(form[field] as string) ?? ""}
-          onChange={(e) => set(field, e.target.value)}
-          placeholder={placeholder}
-          readOnly={readOnly}
-        />
-        {errors[field] && (
-          <div className="fred-pdtl-err-msg">{errors[field]}</div>
-        )}
-      </div>
-    );
-  }
 
   return (
     <div
@@ -278,8 +308,8 @@ export function PatientDetailsModal({
 
           {/* DOB + Phone */}
           <div className="fred-pdtl-grid-3">
-            <Field label="Date of Birth" field="dateOfBirth" placeholder="DD/MM/YYYY" />
-            <Field label="Phone" field="phone" placeholder="(00) 0000 0000" />
+            <PatientDetailField {...patientFieldProps} label="Date of Birth" field="dateOfBirth" placeholder="DD/MM/YYYY" />
+            <PatientDetailField {...patientFieldProps} label="Phone" field="phone" placeholder="(00) 0000 0000" />
             <div />
           </div>
 
@@ -287,11 +317,11 @@ export function PatientDetailsModal({
           <div className="fred-pdtl-section">
             <div className="fred-pdtl-section-title">Address</div>
             <div className="fred-pdtl-grid-2">
-              <Field label="Street Address" field="address" placeholder="1 MAIN STREET" />
-              <Field label="Suburb" field="suburb" placeholder="SUBURB" />
+              <PatientDetailField {...patientFieldProps} label="Street Address" field="address" placeholder="1 MAIN STREET" />
+              <PatientDetailField {...patientFieldProps} label="Suburb" field="suburb" placeholder="SUBURB" />
             </div>
             <div className="fred-pdtl-grid-3">
-              <Field label="Postcode" field="postcode" placeholder="0000" />
+              <PatientDetailField {...patientFieldProps} label="Postcode" field="postcode" placeholder="0000" />
               <div />
               <div />
             </div>
@@ -301,8 +331,8 @@ export function PatientDetailsModal({
           <div className="fred-pdtl-section">
             <div className="fred-pdtl-section-title">Medicare / Concession</div>
             <div className="fred-pdtl-grid-3">
-              <Field label="Medicare Card No." field="medicareCard" placeholder="XXXX-XXXXX-X" />
-              <Field label="Valid To (MM/YYYY)" field="medicareValidTo" placeholder="MM/YYYY" />
+              <PatientDetailField {...patientFieldProps} label="Medicare Card No." field="medicareCard" placeholder="XXXX-XXXXX-X" />
+              <PatientDetailField {...patientFieldProps} label="Valid To (MM/YYYY)" field="medicareValidTo" placeholder="MM/YYYY" />
               <div />
             </div>
             <div className="fred-pdtl-grid-3">
@@ -321,8 +351,8 @@ export function PatientDetailsModal({
                   <option value="P">P — Pension</option>
                 </select>
               </div>
-              <Field label="Concession Number" field="concessionNumber" placeholder="C 400 000 000A" />
-              <Field label="Valid To" field="concessionValidTo" placeholder="MM/YYYY" />
+              <PatientDetailField {...patientFieldProps} label="Concession Number" field="concessionNumber" placeholder="C 400 000 000A" />
+              <PatientDetailField {...patientFieldProps} label="Valid To" field="concessionValidTo" placeholder="MM/YYYY" />
             </div>
           </div>
 
