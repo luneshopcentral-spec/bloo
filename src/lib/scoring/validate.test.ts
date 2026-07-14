@@ -6,6 +6,7 @@ import { EMPTY_FORM_STATE, type FormState } from "@/components/simulator/state";
 import type { Patient } from "@/lib/types/patient";
 import type { DrugRow } from "@/lib/types/drug";
 import type { PracticeCase } from "@/lib/types/case";
+import type { Prescriber } from "@/lib/types/prescriber";
 
 const case1 = STATIC_CASES[0];
 const case3 = STATIC_CASES[2];
@@ -42,6 +43,24 @@ function mockDrug(overrides: Partial<DrugRow>): DrugRow {
     cmi_available: true,
     created_at: "",
     ...overrides,
+  };
+}
+
+function prescriberFor(caseData: PracticeCase): Prescriber {
+  const [surname, firstname] = caseData.doctor.split(",").map((part) => part.trim());
+  return {
+    id: `prescriber-${caseData.id}`,
+    seed_id: null,
+    title: "DR",
+    surname,
+    firstname,
+    prescriber_number: caseData.prescriberNo,
+    practice_name: null,
+    address: null,
+    suburb: null,
+    state: null,
+    postcode: null,
+    phone: null,
   };
 }
 
@@ -107,6 +126,7 @@ function correctInput(
     caseData,
     selectedPatient,
     selectedDrug,
+    selectedPrescriber: prescriberFor(caseData),
     decision: caseData.expectedDecision,
     ...overrides,
   };
@@ -118,9 +138,11 @@ describe("validateDispense", () => {
       formState: form({ pharmacistInitials: "AB" }),
       selectedPatient: null,
       selectedDrug: null,
+      selectedPrescriber: null,
       decision: null,
     })).toEqual([
       "patient",
+      "prescriber from directory",
       "specific medicine product",
       "directions",
       "quantity",
@@ -132,6 +154,7 @@ describe("validateDispense", () => {
       formState: form({ directions: "1 cap tds", qty: "25", repeats: "0" }),
       selectedPatient: case1Patient,
       selectedDrug: case1Drug,
+      selectedPrescriber: prescriberFor(case1),
       decision: "dispense",
     })).toEqual([]);
   });
@@ -139,8 +162,8 @@ describe("validateDispense", () => {
   it("passes an accurate, independently completed case", () => {
     const result = validateDispense(correctInput(case1, case1Patient, case1Drug));
 
-    expect(result.pointsEarned).toBe(8);
-    expect(result.pointsTotal).toBe(8);
+    expect(result.pointsEarned).toBe(9);
+    expect(result.pointsTotal).toBe(9);
     expect(result.passed).toBe(true);
     expect(result.criticalFailures).toEqual([]);
     expect(result.countsTowardProgress).toBe(true);
@@ -153,11 +176,25 @@ describe("validateDispense", () => {
       })
     );
 
-    expect(result.pointsEarned).toBe(6);
+    expect(result.pointsEarned).toBe(7);
     expect(result.passed).toBe(false);
     expect(result.criticalFailures).toEqual(
       expect.arrayContaining(["drug", "drug_variant"])
     );
+  });
+
+  it("requires the matching directory prescriber and prescriber number", () => {
+    const wrongPrescriber = {
+      ...prescriberFor(case1),
+      prescriber_number: "0000000",
+    };
+    const result = validateDispense(
+      correctInput(case1, case1Patient, case1Drug, { selectedPrescriber: wrongPrescriber })
+    );
+
+    expect(result.checks.find((check) => check.category === "prescriber")?.passed).toBe(false);
+    expect(result.criticalFailures).toContain("prescriber");
+    expect(result.passed).toBe(false);
   });
 
   it("marks revealed-answer attempts as assisted and excludes them from progress", () => {
@@ -177,17 +214,17 @@ describe("validateDispense", () => {
       correctInput(case1, case1Patient, case1Drug, { selectedWarnings: warnings })
     );
 
-    expect(result.pointsEarned).toBe(7);
+    expect(result.pointsEarned).toBe(8);
     expect(result.passed).toBe(true);
     expect(result.checks.find((check) => check.category === "warnings")?.passed).toBe(false);
   });
 
-  it("fails even at 7/8 when the clinical disposition is unsafe", () => {
+  it("fails even with a high score when the clinical disposition is unsafe", () => {
     const result = validateDispense(
       correctInput(case4, case4Patient, case4Drug, { decision: "dispense" })
     );
 
-    expect(result.pointsEarned).toBe(7);
+    expect(result.pointsEarned).toBe(8);
     expect(result.passed).toBe(false);
     expect(result.criticalFailures).toContain("errors");
   });
@@ -195,7 +232,7 @@ describe("validateDispense", () => {
   it("passes a problem case when the student holds and contacts the prescriber", () => {
     const result = validateDispense(correctInput(case4, case4Patient, case4Drug));
 
-    expect(result.pointsEarned).toBe(8);
+    expect(result.pointsEarned).toBe(9);
     expect(result.passed).toBe(true);
     expect(result.checks.find((check) => check.category === "errors")?.detail).toContain(
       "Hold and contact"
@@ -207,7 +244,7 @@ describe("validateDispense", () => {
       correctInput(case1, case1Patient, case1Drug, { decision: null })
     );
 
-    expect(result.pointsEarned).toBe(7);
+    expect(result.pointsEarned).toBe(8);
     expect(result.passed).toBe(false);
     expect(result.criticalFailures).toContain("errors");
   });

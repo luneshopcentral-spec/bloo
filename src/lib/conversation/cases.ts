@@ -154,10 +154,48 @@ function commonResponseIntents(facts: CommonResponseFacts): ConversationResponse
     {
       id: "current_symptoms",
       fallbackPatterns: [
-        "\\b(?:chest pain|symptom|symptoms|fever|cough|pain|vomit|vomiting|diarrh(?:ea|oea)|nausea)\\b",
+        "\\b(?:do|does|did|are|is|has|have)\\b.*\\b(?:chest pain|symptom|symptoms|fever|cough|pain|vomit|vomiting|diarrh(?:ea|oea)|nausea)\\b",
+        "\\bany\\b.*\\b(?:chest pain|symptom|symptoms|fever|cough|pain|vomit|vomiting|diarrh(?:ea|oea)|nausea)\\b",
         "\\bhow (?:are|have) you (?:been )?feel(?:ing)?\\b",
       ],
       patientReplies: facts.symptomsReplies,
+    },
+    {
+      id: "side_effect_explanation",
+      fallbackPatterns: [
+        "\\b(?:may|might|can|could)\\b.*\\b(?:nausea|feel sick|upset stomach|drows|sleepy|diarrh(?:ea|oea)|headache)\\w*\\b",
+        "\\bcommon side effects?\\b",
+      ],
+      patientReplies: [
+        "Okay. What should I do if that happens?",
+        "Thanks for explaining that. I’ll keep an eye out for it.",
+        "All right. Is there anything that would mean I should seek help?",
+      ],
+    },
+    {
+      id: "courtesy_close",
+      fallbackPatterns: [
+        "\\b(?:thank you|thanks|goodbye|bye|take care)\\b",
+        "\\bthat(?:'s| is) all\\b",
+      ],
+      patientReplies: [
+        "Thank you for taking the time to explain it. Goodbye.",
+        "Thanks. I feel clearer about the plan now.",
+        "Thank you. I’ll follow the label and contact the pharmacy if I’m unsure.",
+      ],
+      suppressConcern: true,
+    },
+    {
+      id: "acknowledgement",
+      fallbackPatterns: [
+        "^(?:okay|ok|great|good|all right|alright|understood)[.! ]*$",
+        "\\bglad (?:that|to)\\b",
+      ],
+      patientReplies: [
+        "Okay. Is there anything else I need to know?",
+        "All right, I’m listening.",
+      ],
+      suppressConcern: true,
     },
   ];
 }
@@ -176,7 +214,7 @@ function closingTopics(teachBackReply: string): ConversationTopic[] {
   return [
     {
       id: "teach_back",
-      label: "Check understanding using teach-back",
+      label: "Use teach-back: ask the patient to explain the plan",
       category: "communication",
       examples: [
         "Just so I know I explained it clearly, can you tell me how you will use it?",
@@ -188,9 +226,13 @@ function closingTopics(teachBackReply: string): ConversationTopic[] {
         "\\brepeat\\b.*\\b(?:back|your own words)\\b",
         "\\bhow (?:will|are) you\\b.*\\b(?:take|use|manage)\\b",
         "\\bcheck (?:that )?I (?:explained|was clear)\\b",
+        "\\bin your own words\\b",
+        "\\b(?:show|tell|explain|describe)\\b.*\\bhow\\b.*\\b(?:take|use|give|measure|store|follow)\\b",
+        "\\bwhat will you do\\b.*\\b(?:medicine|dose|home|next)\\b",
       ],
       patientReplies: [teachBackReply],
       repeatReply: teachBackReply,
+      feedback: "Teach-back is not ‘Do you understand?’. Ask the patient or carer to describe the dose or plan back in their own words, for example: “Just so I know I explained it clearly, can you tell me how you’ll give each dose?”",
     },
     {
       id: "invite_questions",
@@ -487,20 +529,34 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
     concernPrompt: "Should I use a kitchen teaspoon to measure it?",
     patientQuestion: "Where should I keep the bottle once it has been mixed?",
     unknownReplies: variedUnknownReplies("Sorry, could you explain that in simpler terms for me?"),
-    responseIntents: commonResponseIntents({
-      previousUseReplies: [
-        "Liam has had an antibiotic before, but this is his first supply for this infection.",
-        "He has used antibiotics previously, though not for this current infection.",
-      ],
-      conditionsReplies: [
-        "Liam doesn't have any other medical conditions that I know of.",
-        "No other health conditions have been diagnosed.",
-      ],
-      symptomsReplies: [
-        "He has the symptoms the doctor assessed, but no breathing trouble or severe reaction.",
-        "Nothing new since the doctor saw him, and he is breathing normally.",
-      ],
-    }),
+    responseIntents: [
+      {
+        id: "diagnosis_question",
+        fallbackPatterns: [
+          "\\bwhat (?:infection|condition|diagnosis)\\b",
+          "\\bwhich infection\\b",
+          "\\bwhat is (?:it|this) for\\b",
+        ],
+        patientReplies: [
+          "The doctor said it is for the infection they examined Liam for, but I don’t know the clinical name.",
+          "I was told it is for Liam’s current infection. I’m not sure of the exact diagnosis.",
+        ],
+      },
+      ...commonResponseIntents({
+        previousUseReplies: [
+          "Liam has had an antibiotic before, but this is his first supply for this infection.",
+          "He has used antibiotics previously, though not for this current infection.",
+        ],
+        conditionsReplies: [
+          "Liam doesn't have any other medical conditions that I know of.",
+          "No other health conditions have been diagnosed.",
+        ],
+        symptomsReplies: [
+          "He has the symptoms the doctor assessed, but no breathing trouble or severe reaction.",
+          "Nothing new since the doctor saw him, and he is breathing normally.",
+        ],
+      }),
+    ],
     topics: [
       ...commonTopics({
         nameReply: "It's for my son, Liam Henderson.",
@@ -513,8 +569,8 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
         label: "Explain the antibiotic’s purpose",
         category: "clinical_counselling",
         examples: ["Amoxicillin is an antibiotic for Liam’s bacterial infection."],
-        fallbackPatterns: ["\\b(?:amoxicillin|antibiotic)\\b.*\\b(?:infection|bacteria|bacterial|treat)\\b"],
-        requiredPatternGroups: [["\\b(?:infection|bacteria|bacterial)\\b"]],
+        fallbackPatterns: ["\\b(?:amoxicillin|antibiotic)\\b.*\\b(?:infection\\w*|bacteria|bacterial|treat\\w*)\\b"],
+        requiredPatternGroups: [["\\b(?:infection\\w*|bacteria|bacterial)\\b"]],
         patientReplies: ["Okay, it’s for the infection."],
       },
       {
@@ -523,13 +579,13 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
         category: "clinical_counselling",
         critical: true,
         examples: ["Give Liam 10 mL three times a day for 10 days."],
-        fallbackPatterns: ["\\b10\\s*m[lL]\\b", "\\bthree times (?:a|per) day\\b|\\btds\\b"],
+        fallbackPatterns: ["\\b(?:10|ten)\\s*ml\\b", "\\bthree times (?:a|per) day\\b|\\btds\\b"],
         requiredPatternGroups: [
-          ["\\b10\\s*m[lL]\\b"],
+          ["\\b(?:10|ten)\\s*ml\\b"],
           ["\\bthree times (?:a|per) day\\b", "\\btds\\b"],
           ["\\b(?:for )?10 days\\b"],
         ],
-        forbiddenPatterns: ["\\b(?:5|15|20)\\s*m[lL]\\b", "\\b(?:once|twice) daily\\b"],
+        forbiddenPatterns: ["\\b(?:5|15|20|five|fifteen|twenty)\\s*ml\\b", "\\b(?:once|twice) daily\\b"],
         patientReplies: ["Ten millilitres three times a day for ten days. Got it."],
       },
       {
@@ -576,6 +632,26 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
         patientReplies: ["I’ll complete the full course even if Liam improves."],
       },
       {
+        id: "common_effects",
+        label: "Explain common effects and what to do",
+        category: "clinical_counselling",
+        examples: [
+          "Amoxicillin can cause nausea, diarrhoea or an upset stomach; contact us if you are worried or symptoms are troublesome.",
+          "Liam may get mild stomach upset. If it is severe, persistent or you are concerned, seek advice.",
+        ],
+        fallbackPatterns: [
+          "\\b(?:nausea|feel sick|upset stomach|diarrh(?:ea|oea))\\b",
+          "\\b(?:side effect|side effects)\\b",
+        ],
+        requiredPatternGroups: [
+          ["\\b(?:nausea|feel sick|upset stomach|diarrh(?:ea|oea)|side effect|side effects)\\b"],
+        ],
+        patientReplies: [
+          "Okay, I’ll watch for stomach upset and ask for help if it is severe or worrying.",
+          "Thanks. I’ll contact the pharmacy if the side effects are troublesome.",
+        ],
+      },
+      {
         id: "reaction_safety",
         label: "Provide safety-netting for allergic reactions",
         category: "safety_netting",
@@ -583,10 +659,10 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
           "Seek urgent help if Liam develops facial swelling or difficulty breathing.",
           "Get medical help for a serious rash or allergic reaction.",
         ],
-        fallbackPatterns: ["\\b(?:rash|swelling|breathing|allergic reaction)\\b.*\\b(?:help|urgent|doctor|hospital|emergency)\\b"],
+        fallbackPatterns: ["\\b(?:rash|hives|swelling|breathing|allergic reaction|blistering)\\b"],
         requiredPatternGroups: [
-          ["\\b(?:rash|swelling|breathing|allergic reaction)\\b"],
-          ["\\b(?:help|urgent|doctor|hospital|emergency)\\b"],
+          ["\\b(?:rash|hives|swelling|breathing|allergic reaction|blistering)\\b"],
+          ["\\b(?:help|urgent|doctor|hospital|emergency|medical attention|medical care|ambulance|000)\\b"],
         ],
         patientReplies: ["I’ll get help if Liam develops signs of a serious reaction."],
       },

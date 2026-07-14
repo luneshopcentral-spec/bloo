@@ -45,7 +45,7 @@ export function DrugSelectionModal({ open, query, onDrugSelected, onClose }: Pro
     const { data, error } = await supabase
       .from("drugs")
       .select("*")
-      .or(`generic_name.ilike.${safe}%,full_display_name.ilike.%${safe}%`)
+      .or(`generic_name.ilike.${safe}%,brand_name.ilike.${safe}%,full_display_name.ilike.%${safe}%`)
       .order("generic_name")
       .order("is_generic")
       .order("brand_name")
@@ -111,7 +111,7 @@ export function DrugSelectionModal({ open, query, onDrugSelected, onClose }: Pro
         </div>
 
         <div className="fred-dsel-search-row">
-          <label htmlFor="drug-selection-search">Drug&nbsp;Name:</label>
+          <label htmlFor="drug-selection-search">Brand / generic:</label>
           <input
             id="drug-selection-search"
             ref={inputRef}
@@ -119,7 +119,7 @@ export function DrugSelectionModal({ open, query, onDrugSelected, onClose }: Pro
             value={internalQuery}
             onChange={(e) => setInternalQuery(e.target.value.toUpperCase())}
             onKeyDown={handleKeyDown}
-            placeholder="Type drug name to search..."
+            placeholder="Type a brand or active ingredient..."
             autoComplete="off"
           />
           {loading && <span className="fred-dsel-loading">Loading…</span>}
@@ -127,7 +127,9 @@ export function DrugSelectionModal({ open, query, onDrugSelected, onClose }: Pro
 
         <div className="fred-dsel-col-headers">
           <span></span>
-          <span>Drug Name</span>
+          <span>Brand / product</span>
+          <span>Active ingredient</span>
+          <span>Kind</span>
           <span className="right">Qty</span>
           <span className="right">Rp</span>
           <span>Type</span>
@@ -170,7 +172,14 @@ export function DrugSelectionModal({ open, query, onDrugSelected, onClose }: Pro
                 onDoubleClick={() => onDrugSelected(drug)}
               >
                 <span className="fred-dsel-letter">{letter}</span>
-                <span className="fred-dsel-name">{drug.full_display_name}</span>
+                <span className="fred-dsel-name">
+                  <strong>{drug.brand_name ?? "GENERIC"}</strong>
+                  <small>{drug.form} {drug.strength}</small>
+                </span>
+                <span className="fred-dsel-generic-name">{drug.generic_name}</span>
+                <span className={`fred-dsel-kind ${drug.is_generic ? "generic" : "brand"}`}>
+                  {drug.is_generic ? "GENERIC" : "BRAND"}
+                </span>
                 <span className="right">{drug.qty_default}</span>
                 <span className="right">{drug.repeats_default}</span>
                 <span>{drug.supply_type}</span>
@@ -184,7 +193,7 @@ export function DrugSelectionModal({ open, query, onDrugSelected, onClose }: Pro
         </div>
 
         <div className="fred-dsel-footer">
-          <span>Type to search · Click or use ↑↓ to highlight · Enter or double-click to confirm · Esc closes</span>
+          <span>Brand is shown first. GENERIC is explicitly labelled · Click or use ↑↓ · Enter confirms</span>
           <button
             type="button"
             className="fred-dsel-confirm"

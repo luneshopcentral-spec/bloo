@@ -2,6 +2,8 @@ import type { FormState } from "@/components/simulator/state";
 import type { DispenseDecision, PracticeCase } from "@/lib/types/case";
 import type { Patient } from "@/lib/types/patient";
 import type { DrugRow } from "@/lib/types/drug";
+import type { Prescriber } from "@/lib/types/prescriber";
+import { formatPrescriberName } from "@/lib/types/prescriber";
 import { expandAbbrevs } from "./abbreviations";
 import type { CheckResult, DispenseResult } from "./types";
 import { POINTS_TO_PASS } from "./types";
@@ -12,6 +14,7 @@ export interface ValidateInput {
   caseData: PracticeCase;
   selectedPatient?: Patient | null;
   selectedDrug?: DrugRow | null;
+  selectedPrescriber?: Prescriber | null;
   decision?: DispenseDecision | null;
   assisted?: boolean;
 }
@@ -72,12 +75,17 @@ function normFirst4(s: string): string {
   return s.toLowerCase().replace(/[^a-z]/g, "").slice(0, 4);
 }
 
+function normComparable(value: string): string {
+  return value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+}
+
 export function validateDispense({
   formState,
   selectedWarnings,
   caseData,
   selectedPatient = null,
   selectedDrug = null,
+  selectedPrescriber = null,
   decision = null,
   assisted = false,
 }: ValidateInput): DispenseResult {
@@ -178,6 +186,27 @@ export function validateDispense({
   // ── a. Drug (generic name) ────────────────────────────────────────
   // Matches first word of caseData.drug against selectedDrug.generic_name
   // using 4-char prefix to tolerate amoxicillin/amoxycillin spelling variants.
+  const selectedPrescriberName = selectedPrescriber ? formatPrescriberName(selectedPrescriber) : "";
+  const prescriberPassed =
+    selectedPrescriber !== null &&
+    normComparable(selectedPrescriberName) === normComparable(caseData.doctor) &&
+    selectedPrescriber.prescriber_number.replace(/\D/g, "") === caseData.prescriberNo.replace(/\D/g, "");
+  checks.push({
+    category: "prescriber",
+    label: "Prescriber selected",
+    passed: prescriberPassed,
+    isCritical: true,
+    expected: `${caseData.doctor} · ${caseData.prescriberNo}`,
+    actual: selectedPrescriber
+      ? `${selectedPrescriberName} · ${selectedPrescriber.prescriber_number}`
+      : "No directory prescriber selected",
+    detail: prescriberPassed
+      ? "Correct prescriber and prescriber number selected from the directory."
+      : selectedPrescriber
+        ? "Wrong prescriber. Check both the name and number against the prescription."
+        : "Select the prescriber from the directory before dispensing.",
+  });
+
   const caseFirstWord = caseData.drug.split(" ")[0];
   const drugPassed =
     selectedDrug !== null &&
@@ -214,7 +243,7 @@ export function validateDispense({
 
   checks.push({
     category: "drug_variant",
-    label: "Drug variant",
+    label: "Brand / generic product",
     passed: variantPassed,
     isCritical: true,
     detail: variantDetail,

@@ -6,7 +6,6 @@ import type {
   ConversationCase,
   ConversationMatcherMode,
   ConversationMessage,
-  ConversationResponseIntent,
   CounsellingResult,
   UnsafeAdviceFinding,
 } from "@/lib/conversation/types";
@@ -17,6 +16,7 @@ import {
   matchResponseIntent,
 } from "@/lib/conversation/matcher";
 import { scoreCounselling } from "@/lib/conversation/score";
+import { buildPatientReply } from "@/lib/conversation/reply";
 import { useSemanticMatcher } from "@/hooks/useSemanticMatcher";
 
 interface CounsellingStageProps {
@@ -31,47 +31,6 @@ function decisionLabel(decision: DispenseDecision | null): string {
   if (decision === "hold_contact_prescriber") return "Hold supply and contact prescriber";
   if (decision === "do_not_supply") return "Do not supply";
   return "No decision recorded";
-}
-
-function nextPatientReply(
-  conversation: ConversationCase,
-  matchedTopicIds: string[],
-  previouslyAddressed: Set<string>,
-  studentTurns: number,
-  concernShown: boolean,
-  responseIntent: ConversationResponseIntent | null
-): { text: string; showConcern: boolean } {
-  const topicById = new Map(conversation.topics.map((topic) => [topic.id, topic]));
-  const newTopicIds = matchedTopicIds.filter((id) => !previouslyAddressed.has(id));
-  const selectedIds = newTopicIds.length > 0 ? newTopicIds : matchedTopicIds.slice(0, 1);
-
-  let response: string;
-  if (selectedIds.length > 0) {
-    response = selectedIds.slice(0, 3).map((selectedId, index) => {
-      if (selectedId === "invite_questions") return conversation.patientQuestion;
-      const selectedTopic = topicById.get(selectedId);
-      if (!selectedTopic) return "";
-      if (previouslyAddressed.has(selectedTopic.id) && selectedTopic.repeatReply) {
-        return selectedTopic.repeatReply;
-      }
-      return selectedTopic.patientReplies[(studentTurns + index) % selectedTopic.patientReplies.length];
-    }).filter(Boolean).join(" ");
-  } else if (responseIntent) {
-    response = responseIntent.patientReplies[studentTurns % responseIntent.patientReplies.length];
-  } else {
-    response = conversation.unknownReplies[studentTurns % conversation.unknownReplies.length];
-  }
-
-  const shouldShowConcern =
-    !concernShown &&
-    studentTurns >= conversation.concernAfterTurns &&
-    !previouslyAddressed.has(conversation.concernTopicId) &&
-    !matchedTopicIds.includes(conversation.concernTopicId);
-
-  return {
-    text: shouldShowConcern ? `${response} ${conversation.concernPrompt}` : response,
-    showConcern: shouldShowConcern,
-  };
 }
 
 export function CounsellingStage({
@@ -132,7 +91,7 @@ export function CounsellingStage({
     const nextAddressed = new Set(addressedTopicIds);
     for (const topicId of matchedTopicIds) nextAddressed.add(topicId);
 
-    const patientReply = nextPatientReply(
+    const patientReply = buildPatientReply(
       conversation,
       matchedTopicIds,
       addressedTopicIds,
@@ -278,8 +237,16 @@ export function CounsellingStage({
               <li>Gather information before making assumptions.</li>
               <li>Use patient-friendly language.</li>
               <li>Give exact, safe instructions.</li>
-              <li>Check understanding and invite questions.</li>
+              <li>Use teach-back: ask the patient to explain the plan back in their own words.</li>
+              <li>Invite questions, answer them, then close professionally.</li>
             </ul>
+            <details className="fred-teachback-help">
+              <summary>What does teach-back mean?</summary>
+              <p>
+                Ask the patient or carer to describe how they will use the medicine. Frame it as a check of
+                your explanation, not a test of them. “Do you understand?” does not demonstrate teach-back.
+              </p>
+            </details>
           </section>
 
           <section className="fred-model-card" aria-live="polite">
@@ -298,7 +265,7 @@ export function CounsellingStage({
             </p>
             {matcher.status === "loading" && (
               <button type="button" onClick={matcher.activateRulesFallback}>
-                Continue with basic local matching
+                Continue with expanded local matching
               </button>
             )}
           </section>

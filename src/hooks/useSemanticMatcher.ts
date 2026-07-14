@@ -33,7 +33,7 @@ export function useSemanticMatcher(conversation: ConversationCase) {
     setStatus("fallback");
     setBackend("rules");
     setProgress(null);
-    setStatusMessage("Basic on-device matcher active");
+    setStatusMessage("Expanded on-device matcher active");
   }, []);
 
   useEffect(() => {
@@ -51,7 +51,7 @@ export function useSemanticMatcher(conversation: ConversationCase) {
     } catch {
       setStatus("fallback");
       setBackend("rules");
-      setStatusMessage("Basic on-device matcher active");
+      setStatusMessage("Expanded on-device matcher active");
       return;
     }
 
@@ -93,12 +93,12 @@ export function useSemanticMatcher(conversation: ConversationCase) {
           }
         }
         activateRulesFallback();
-        setStatusMessage("Semantic model unavailable — basic on-device matcher active");
+        setStatusMessage("Semantic model unavailable — expanded on-device matcher active");
       }
     };
     worker.onerror = () => {
       activateRulesFallback();
-      setStatusMessage("Semantic model unavailable — basic on-device matcher active");
+      setStatusMessage("Semantic model unavailable — expanded on-device matcher active");
     };
 
     const request: SemanticWorkerRequest = {

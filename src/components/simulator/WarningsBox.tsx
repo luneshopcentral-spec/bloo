@@ -3,7 +3,6 @@
 import { useState } from "react";
 import type { WarningLabel } from "@/lib/types/case";
 import { MedicinesReferenceDesk } from "@/components/simulator/MedicinesReferenceDesk";
-import { resolveWarningLabelInput } from "@/lib/warnings/resolve";
 
 interface WarningsBoxProps {
   warnings: WarningLabel[];
@@ -18,16 +17,16 @@ export function WarningsBox({
   onToggle,
   medicineName,
 }: WarningsBoxProps) {
-  const [draft, setDraft] = useState("");
+  const [selectedOption, setSelectedOption] = useState("");
   const [entryMessage, setEntryMessage] = useState("");
   const selectedLabels = Array.from(selectedWarnings).map((text) =>
     warnings.find((warning) => warning.text === text) ?? { lbl: "?", sig: "CUSTOM", text }
   );
 
-  function addWrittenLabel() {
-    const match = resolveWarningLabelInput(warnings, draft);
+  function addSelectedLabel() {
+    const match = warnings.find((warning) => warning.text === selectedOption);
     if (!match) {
-      setEntryMessage("Label not recognised. Use the standard wording or a training label code.");
+      setEntryMessage("Choose a warning label first.");
       return;
     }
     if (selectedWarnings.has(match.text)) {
@@ -35,7 +34,7 @@ export function WarningsBox({
       return;
     }
     onToggle(match.text);
-    setDraft("");
+    setSelectedOption("");
     setEntryMessage(`${match.text} added`);
   }
 
@@ -45,7 +44,7 @@ export function WarningsBox({
         Warnings — <span className="fred-warn-title-red">F2T</span>
       </legend>
       <div className="fred-warn-subtitle">
-        <span>Write applicable labels:</span>
+        <span>Select applicable labels:</span>
         <MedicinesReferenceDesk medicineName={medicineName} />
       </div>
 
@@ -53,24 +52,29 @@ export function WarningsBox({
         className="fred-warn-entry"
         onSubmit={(event) => {
           event.preventDefault();
-          addWrittenLabel();
+          addSelectedLabel();
         }}
       >
-        <label htmlFor="warning-label-entry">Warning label or code</label>
+        <label htmlFor="warning-label-entry">Available warning labels</label>
         <div>
-          <input
+          <select
             id="warning-label-entry"
-            value={draft}
+            value={selectedOption}
             onChange={(event) => {
-              setDraft(event.target.value);
+              setSelectedOption(event.target.value);
               setEntryMessage("");
             }}
-            placeholder="e.g. Shake well before use"
-            autoComplete="off"
-          />
-          <button type="submit" disabled={!draft.trim()}>Add</button>
+          >
+            <option value="">— Select a label —</option>
+            {warnings.map((warning) => (
+              <option key={warning.text} value={warning.text} disabled={selectedWarnings.has(warning.text)}>
+                {warning.lbl} · {warning.sig} · {warning.text}
+              </option>
+            ))}
+          </select>
+          <button type="submit" disabled={!selectedOption}>Add</button>
         </div>
-        <p>The available-label list is hidden during the attempt. Common equivalent wording is accepted.</p>
+        <p>Use the medicines reference to decide which standard labels apply, then choose them here.</p>
         {entryMessage && <span className="fred-warn-entry-message" role="status">{entryMessage}</span>}
       </form>
 

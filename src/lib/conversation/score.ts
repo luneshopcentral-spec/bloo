@@ -34,8 +34,8 @@ export function scoreCounselling({
       detail: passed
         ? "Addressed appropriately during the patient conversation."
         : topic.critical
-          ? "Required safety-critical communication was not demonstrated."
-          : "This counselling or communication point was not demonstrated.",
+          ? `Required safety-critical communication was not demonstrated. ${topic.feedback ?? `Try: “${topic.examples[0]}”`}`
+          : `This counselling or communication point was not demonstrated. ${topic.feedback ?? `Try: “${topic.examples[0]}”`}`,
     } as const;
   });
 
