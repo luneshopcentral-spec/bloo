@@ -114,6 +114,20 @@ describe("conversation configuration", () => {
     expect(repeat.text).toBe("No other questions, thank you.");
   });
 
+  it("does not reopen a concern that was already answered when closing the handover", () => {
+    const conversation = getConversationCase("case-6");
+    const reply = buildPatientReply(
+      conversation,
+      ["invite_questions"],
+      new Set([conversation.concernTopicId]),
+      9,
+      true,
+      null
+    );
+
+    expect(reply.text).toBe("No further questions, thank you.");
+  });
+
   it("recognises teach-back only when the patient is asked to explain the plan", () => {
     const conversation = getConversationCase("case-3");
     expect(classifyWithRules(conversation, "Do you understand?").map((match) => match.topicId))

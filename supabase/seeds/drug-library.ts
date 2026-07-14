@@ -149,33 +149,33 @@ const AMOXYCILLIN: SeedDrug[] = [
 ];
 
 // ── GROUP 4: TEMAZEPAM (Case 4 correct = temazepam-temaze-tab-10) ───────────────
-// VIC treats temazepam as S8 (state override of federal S4 schedule).
+// Temazepam is Schedule 4 and is monitored in SafeScript in Victoria.
 
 const TEMAZEPAM: SeedDrug[] = [
   d({ seed_id: "temazepam-temaze-tab-10", generic_name: "TEMAZEPAM", brand_name: "TEMAZE",
       full_display_name: "TEMAZE TAB 10MG",
       form: "TAB", strength: "10MG", pack_size: "30", qty_default: 30, repeats_default: 0,
-      supply_type: "Private", schedule: "S8", pbs_code: null, ws_cost: 8.50, retail_price: 18.00,
+      supply_type: "Private", schedule: "S4", pbs_code: null, ws_cost: 8.50, retail_price: 18.00,
       manufacturer_code: "EA", manufacturer_full: "Alphapharm Pty Ltd", is_generic: false, cmi_available: true }),
   d({ seed_id: "temazepam-normison-tab-10", generic_name: "TEMAZEPAM", brand_name: "NORMISON",
       full_display_name: "NORMISON TAB 10MG",
       form: "TAB", strength: "10MG", pack_size: "30", qty_default: 30, repeats_default: 0,
-      supply_type: "Private", schedule: "S8", pbs_code: null, ws_cost: 9.00, retail_price: 20.00,
+      supply_type: "Private", schedule: "S4", pbs_code: null, ws_cost: 9.00, retail_price: 20.00,
       manufacturer_code: "PF", manufacturer_full: "Pfizer Australia Pty Ltd", is_generic: false, cmi_available: true }),
   d({ seed_id: "temazepam-sandoz-tab-10", generic_name: "TEMAZEPAM", brand_name: "SANDOZ",
       full_display_name: "TEMAZEPAM (SANDOZ) TAB 10MG",
       form: "TAB", strength: "10MG", pack_size: "30", qty_default: 30, repeats_default: 0,
-      supply_type: "Private", schedule: "S8", pbs_code: null, ws_cost: 7.50, retail_price: 16.00,
+      supply_type: "Private", schedule: "S4", pbs_code: null, ws_cost: 7.50, retail_price: 16.00,
       manufacturer_code: "SZ", manufacturer_full: "Sandoz Pty Ltd", is_generic: false, cmi_available: true }),
   d({ seed_id: "temazepam-apo-tab-10", generic_name: "TEMAZEPAM", brand_name: "APO",
       full_display_name: "TEMAZEPAM (APO) TAB 10MG",
       form: "TAB", strength: "10MG", pack_size: "30", qty_default: 30, repeats_default: 0,
-      supply_type: "Private", schedule: "S8", pbs_code: null, ws_cost: 7.00, retail_price: 15.00,
+      supply_type: "Private", schedule: "S4", pbs_code: null, ws_cost: 7.00, retail_price: 15.00,
       manufacturer_code: "TX", manufacturer_full: "Apotex Pty Ltd", is_generic: false, cmi_available: true }),
   d({ seed_id: "temazepam-base-tab-10", generic_name: "TEMAZEPAM", brand_name: null,
       full_display_name: "TEMAZEPAM TAB 10MG",
       form: "TAB", strength: "10MG", pack_size: "30", qty_default: 30, repeats_default: 0,
-      supply_type: "Private", schedule: "S8", pbs_code: null, ws_cost: 6.50, retail_price: 14.00,
+      supply_type: "Private", schedule: "S4", pbs_code: null, ws_cost: 6.50, retail_price: 14.00,
       manufacturer_code: "GN", manufacturer_full: "Generic Health Pty Ltd", is_generic: true, cmi_available: true }),
 ];
 

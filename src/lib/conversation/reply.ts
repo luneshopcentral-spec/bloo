@@ -30,7 +30,14 @@ export function buildPatientReply(
         if (previouslyAddressed.has(selectedId) && selectedTopic.repeatReply) {
           return selectedTopic.repeatReply;
         }
-        if (selectedId === "invite_questions") return conversation.patientQuestion;
+        if (selectedId === "invite_questions") {
+          const concernAlreadyResolved =
+            previouslyAddressed.has(conversation.concernTopicId) ||
+            matchedTopicIds.includes(conversation.concernTopicId);
+          return concernAlreadyResolved
+            ? "No further questions, thank you."
+            : conversation.patientQuestion;
+        }
         return selectedTopic.patientReplies[
           (studentTurns + index) % selectedTopic.patientReplies.length
         ];

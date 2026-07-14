@@ -169,6 +169,12 @@
   margin-bottom: 1px;
 }
 
+.pbs-patient-dob {
+  margin-top: 2px;
+  font-size: 9px;
+  font-weight: 700;
+}
+
 .pbs-patient-addr {
   font-size: 8px;
 }
@@ -233,6 +239,14 @@
   margin-bottom: 3px;
   padding-bottom: 3px;
   border-bottom: 1px dashed #aaa;
+}
+
+.pbs-product-instruction {
+  margin: 2px 0 5px;
+  color: #073f78;
+  font-size: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
 }
 
 .pbs-drug-dirs {

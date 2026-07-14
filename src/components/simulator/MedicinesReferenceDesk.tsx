@@ -77,8 +77,8 @@ export function MedicinesReferenceDesk({ medicineName }: MedicinesReferenceDeskP
           >
             <header className="fred-reference-titlebar">
               <div>
-                <h2 id="medicines-reference-title">Medicines learning reference</h2>
-                <span>Free study profiles · public Australian sources · no answer key</span>
+                <h2 id="medicines-reference-title">Australian medicines learning portal</h2>
+                <span>Structured study profiles · exact-product checks · public Australian sources</span>
               </div>
               <button
                 type="button"
@@ -141,18 +141,65 @@ export function MedicinesReferenceDesk({ medicineName }: MedicinesReferenceDeskP
                         <h3>{activeProfile.genericName}</h3>
                         <span>{activeProfile.medicineClass}</span>
                       </div>
-                      <span className="fred-reference-review-badge">Educator review required</span>
+                      <span className="fred-reference-review-badge">Pharmacist review required</span>
                     </div>
                     <p className="fred-reference-summary">{activeProfile.summary}</p>
 
-                    <div className="fred-reference-section-grid">
+                    <dl className="fred-reference-quick-facts">
+                      {activeProfile.quickFacts.map((fact) => (
+                        <div key={fact.label}>
+                          <dt>{fact.label}</dt>
+                          <dd>{fact.value}</dd>
+                        </div>
+                      ))}
+                    </dl>
+
+                    <nav className="fred-reference-section-nav" aria-label={`${activeProfile.genericName} sections`}>
                       {activeProfile.sections.map((section) => (
-                        <section key={section.heading}>
+                        <a key={section.id} href={`#medicine-${activeProfile.id}-${section.id}`}>
+                          {section.heading}
+                        </a>
+                      ))}
+                      <a href={`#medicine-${activeProfile.id}-products`}>Products</a>
+                      <a href={`#medicine-${activeProfile.id}-sources`}>References</a>
+                    </nav>
+
+                    <div className="fred-reference-sections">
+                      {activeProfile.sections.map((section) => (
+                        <section key={section.id} id={`medicine-${activeProfile.id}-${section.id}`}>
                           <h4>{section.heading}</h4>
-                          <p>{section.detail}</p>
+                          <p>{section.summary}</p>
+                          <ul>
+                            {section.bullets.map((bullet) => <li key={bullet}>{bullet}</li>)}
+                          </ul>
                         </section>
                       ))}
                     </div>
+
+                    <section
+                      className="fred-reference-products"
+                      id={`medicine-${activeProfile.id}-products`}
+                    >
+                      <h4>Products and formulation checks</h4>
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Product</th>
+                            <th>Form / strength</th>
+                            <th>Learning note</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {activeProfile.products.map((product) => (
+                            <tr key={`${product.product}-${product.formAndStrength}`}>
+                              <td>{product.product}</td>
+                              <td>{product.formAndStrength}</td>
+                              <td>{product.learningNote}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </section>
 
                     <section className="fred-reference-reasoning">
                       <h4>Derive the labels—do not copy an answer</h4>
@@ -162,7 +209,29 @@ export function MedicinesReferenceDesk({ medicineName }: MedicinesReferenceDeskP
                       </ul>
                     </section>
 
-                    <p className="fred-reference-review-note">{activeProfile.reviewNote}</p>
+                    <section
+                      className="fred-reference-profile-sources"
+                      id={`medicine-${activeProfile.id}-sources`}
+                    >
+                      <h4>Profile references</h4>
+                      <div>
+                        {activeProfile.sources.map((profileSource) => (
+                          <a key={profileSource.url} href={profileSource.url} target="_blank" rel="noreferrer">
+                            <strong>{profileSource.label} ↗</strong>
+                            <span>{profileSource.sourceType} · checked {profileSource.lastChecked}</span>
+                          </a>
+                        ))}
+                      </div>
+                    </section>
+
+                    <footer className="fred-reference-governance">
+                      <div>
+                        <strong>Profile {activeProfile.version}</strong>
+                        <span>Updated {activeProfile.contentUpdatedAt}</span>
+                        <span>Next review: {activeProfile.nextReviewDue}</span>
+                      </div>
+                      <p>{activeProfile.reviewNote}</p>
+                    </footer>
                   </>
                 ) : (
                   <div className="fred-reference-no-profile">

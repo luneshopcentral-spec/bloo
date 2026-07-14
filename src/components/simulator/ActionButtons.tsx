@@ -8,6 +8,7 @@ interface ActionButtonsProps {
   decision: DispenseDecision | null;
   answersRevealed: boolean;
   submitted: boolean;
+  allowAnswerReveal: boolean;
 }
 
 export function ActionButtons({
@@ -18,6 +19,7 @@ export function ActionButtons({
   decision,
   answersRevealed,
   submitted,
+  allowAnswerReveal,
 }: ActionButtonsProps) {
   const submitLabel =
     decision === "dispense"
@@ -33,9 +35,11 @@ export function ActionButtons({
       >
         {submitted ? "Dispensing stage submitted" : submitLabel}
       </button>
-      <button className="fred-main-btn" onClick={onShowAnswers} disabled={answersRevealed}>
-        {answersRevealed ? "Answers revealed (assisted)" : "Show Correct Answers"}
-      </button>
+      {allowAnswerReveal && (
+        <button className="fred-main-btn" onClick={onShowAnswers} disabled={answersRevealed}>
+          {answersRevealed ? "Answers revealed (assisted)" : "Show Correct Answers"}
+        </button>
+      )}
       <button className="fred-main-btn btn-red" onClick={onClear}>
         ✕ Clear
       </button>

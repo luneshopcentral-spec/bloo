@@ -18,7 +18,7 @@ const features = [
     icon: Zap,
     title: "Instant, detailed feedback",
     description:
-      "Eight checks are scored on submission, with mandatory safety gates for the patient, medicine, directions, quantity, repeats and final decision.",
+      "Each dispensing-stage check is scored on submission, with mandatory safety gates for the patient, prescriber, medicine, directions, quantity, repeats and final decision.",
   },
   {
     icon: FileText,

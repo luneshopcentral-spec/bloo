@@ -120,7 +120,6 @@ export function validateDispense({
       const expectedFieldMatches = [
         ["title", exp.title, selectedPatient.title],
         ["sex", exp.sex, selectedPatient.sex],
-        ["date of birth", exp.dateOfBirth, selectedPatient.date_of_birth],
         ["suburb", exp.suburb, selectedPatient.suburb],
         ["postcode", exp.postcode, selectedPatient.postcode],
         ["Medicare valid-to", exp.medicareValidTo, selectedPatient.medicare_valid_to],
@@ -132,7 +131,6 @@ export function validateDispense({
         [
           [!selectedPatient.title?.trim(),         "title"],
           [!selectedPatient.sex?.trim(),            "sex"],
-          [!selectedPatient.date_of_birth?.trim(),  "date of birth"],
           [!selectedPatient.suburb?.trim(),         "suburb"],
           [!selectedPatient.postcode?.trim(),       "postcode"],
         ] as [boolean, string][]
@@ -150,6 +148,10 @@ export function validateDispense({
             ? `${label} expected "${expected}", got "${actual ?? "(empty)"}"`
             : false
         ),
+        selectedPatient.date_of_birth?.trim() && exp.dateOfBirth &&
+          normStr(selectedPatient.date_of_birth) !== normStr(exp.dateOfBirth)
+          ? `date of birth expected "${exp.dateOfBirth}", got "${selectedPatient.date_of_birth}"`
+          : false,
       ].filter(Boolean) as string[];
 
       patientPassed = requiredMissing.length === 0 && mismatches.length === 0;

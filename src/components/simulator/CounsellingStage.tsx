@@ -18,12 +18,14 @@ import {
 import { scoreCounselling } from "@/lib/conversation/score";
 import { buildPatientReply } from "@/lib/conversation/reply";
 import { useSemanticMatcher } from "@/hooks/useSemanticMatcher";
+import type { PracticeMode } from "@/lib/practice/modes";
 
 interface CounsellingStageProps {
   conversation: ConversationCase;
   decision: DispenseDecision | null;
   onComplete: (result: CounsellingResult) => void;
   onViewResults: () => void;
+  mode: PracticeMode;
 }
 
 function decisionLabel(decision: DispenseDecision | null): string {
@@ -38,6 +40,7 @@ export function CounsellingStage({
   decision,
   onComplete,
   onViewResults,
+  mode,
 }: CounsellingStageProps) {
   const [messages, setMessages] = useState<ConversationMessage[]>([
     {
@@ -231,22 +234,28 @@ export function CounsellingStage({
           <section className="fred-assessment-card">
             <h2>Assessment conditions</h2>
             <p>
-              Communicate as you would in an exam. Checklist progress and marks stay hidden until you finish.
+              {mode === "exam"
+                ? "Exam mode: coaching and checklist detail stay hidden until you finish."
+                : "Communicate as you would in an exam. Checklist progress and marks stay hidden until you finish."}
             </p>
-            <ul>
-              <li>Gather information before making assumptions.</li>
-              <li>Use patient-friendly language.</li>
-              <li>Give exact, safe instructions.</li>
-              <li>Use teach-back: ask the patient to explain the plan back in their own words.</li>
-              <li>Invite questions, answer them, then close professionally.</li>
-            </ul>
-            <details className="fred-teachback-help">
-              <summary>What does teach-back mean?</summary>
-              <p>
-                Ask the patient or carer to describe how they will use the medicine. Frame it as a check of
-                your explanation, not a test of them. “Do you understand?” does not demonstrate teach-back.
-              </p>
-            </details>
+            {mode !== "exam" && (
+              <>
+                <ul>
+                  <li>Gather information before making assumptions.</li>
+                  <li>Use patient-friendly language.</li>
+                  <li>Give exact, safe instructions.</li>
+                  <li>Use teach-back: ask the patient to explain the plan back in their own words.</li>
+                  <li>Invite questions, answer them, then close professionally.</li>
+                </ul>
+                <details className="fred-teachback-help">
+                  <summary>What does teach-back mean?</summary>
+                  <p>
+                    Ask the patient or carer to describe how they will use the medicine. Frame it as a check of
+                    your explanation, not a test of them. “Do you understand?” does not demonstrate teach-back.
+                  </p>
+                </details>
+              </>
+            )}
           </section>
 
           <section className="fred-model-card" aria-live="polite">

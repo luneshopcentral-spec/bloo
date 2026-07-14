@@ -34,6 +34,17 @@
   padding: 3px 8px;
   font-size: 11px;
   text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.fred-root .fred-editorial-status {
+  border-left: 1px solid #aa7e00;
+  padding-left: 12px;
+  color: #7a2d00;
+  font-weight: 700;
 }
 
 /* ─── NARROW-SCREEN BANNER ───────────────────────────────────── */
@@ -141,6 +152,27 @@
   user-select: none;
   flex: 0 0 auto;
   min-width: 0;
+}
+.fred-root .fred-toolbar-label {
+  color: #333;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.fred-root .fred-mode-select {
+  border: 1px solid #777;
+  padding: 2px 5px;
+  background: #fff;
+  font-size: 11px;
+  font-weight: 700;
+}
+.fred-root .fred-mode-description {
+  min-width: 100px;
+  overflow: hidden;
+  color: #444;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .fred-root .fred-toolbar-reference {
   display: flex;
@@ -498,10 +530,10 @@
   background: rgba(0, 0, 0, 0.5);
 }
 .fred-root .fred-reference-dialog {
-  width: 960px;
-  max-width: 96vw;
-  height: min(680px, 88vh);
-  max-height: 88vh;
+  width: 1180px;
+  max-width: 97vw;
+  height: min(820px, 92vh);
+  max-height: 92vh;
   overflow: hidden;
   border: 3px outset #fff;
   background: #d4d0c8;
@@ -645,6 +677,70 @@
   white-space: nowrap;
 }
 .fred-root .fred-reference-summary { margin: 9px 0; line-height: 1.45; }
+.fred-root .fred-reference-quick-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 10px 0;
+  border: 1px solid #8a9aae;
+  background: #edf5ff;
+}
+.fred-root .fred-reference-quick-facts > div {
+  min-width: 0;
+  padding: 7px 9px;
+  border-right: 1px solid #c1cede;
+  border-bottom: 1px solid #c1cede;
+}
+.fred-root .fred-reference-quick-facts dt {
+  color: #31516f;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.fred-root .fred-reference-quick-facts dd {
+  margin: 2px 0 0;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.fred-root .fred-reference-section-nav {
+  position: sticky;
+  top: -12px;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin: 0 -12px 10px;
+  padding: 6px 12px;
+  border-top: 1px solid #6684a0;
+  border-bottom: 1px solid #6684a0;
+  background: #dfeaf5;
+}
+.fred-root .fred-reference-section-nav a {
+  padding: 4px 7px;
+  border-right: 1px solid #9cb0c4;
+  color: #003f7f;
+  font-size: 10px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.fred-root .fred-reference-sections {
+  display: grid;
+  gap: 8px;
+}
+.fred-root .fred-reference-sections section {
+  scroll-margin-top: 50px;
+  border: 1px solid #a9b5c0;
+  padding: 9px 10px;
+  background: #fff;
+}
+.fred-root .fred-reference-sections section:nth-child(odd) {
+  border-left: 4px solid #2e6595;
+}
+.fred-root .fred-reference-sections p { margin: 0; }
+.fred-root .fred-reference-sections ul {
+  margin: 6px 0 0 18px;
+  padding: 0;
+}
+.fred-root .fred-reference-sections li { margin: 0 0 4px; line-height: 1.4; }
 .fred-root .fred-reference-section-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -663,6 +759,29 @@
 .fred-root .fred-reference-profile p { line-height: 1.4; }
 .fred-root .fred-reference-section-grid p,
 .fred-root .fred-reference-reasoning p { margin: 0; }
+.fred-root .fred-reference-products {
+  scroll-margin-top: 50px;
+  margin-top: 10px;
+}
+.fred-root .fred-reference-products table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+}
+.fred-root .fred-reference-products th,
+.fred-root .fred-reference-products td {
+  border: 1px solid #9ca8b3;
+  padding: 6px 7px;
+  text-align: left;
+  vertical-align: top;
+  line-height: 1.35;
+}
+.fred-root .fred-reference-products th {
+  background: #dfeaf5;
+  color: #173c5c;
+  font-size: 10px;
+  text-transform: uppercase;
+}
 .fred-root .fred-reference-reasoning {
   margin-top: 9px;
   border: 1px solid #8a7a32;
@@ -678,6 +797,43 @@
   color: #5f4200;
   font-size: 10px;
 }
+.fred-root .fred-reference-profile-sources {
+  scroll-margin-top: 50px;
+  margin-top: 10px;
+}
+.fred-root .fred-reference-profile-sources > div {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+.fred-root .fred-reference-profile-sources a {
+  border: 1px solid #8a9aae;
+  padding: 7px;
+  background: #edf5ff;
+  color: #003f7f;
+  text-decoration: none;
+}
+.fred-root .fred-reference-profile-sources strong,
+.fred-root .fred-reference-profile-sources span { display: block; }
+.fred-root .fred-reference-profile-sources span {
+  margin-top: 2px;
+  color: #4b5966;
+  font-size: 10px;
+}
+.fred-root .fred-reference-governance {
+  margin-top: 10px;
+  border: 1px solid #b57700;
+  padding: 8px;
+  background: #fff3cc;
+  color: #5f4200;
+}
+.fred-root .fred-reference-governance > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 14px;
+}
+.fred-root .fred-reference-governance span { font-size: 10px; }
+.fred-root .fred-reference-governance p { margin: 6px 0 0; font-size: 10px; }
 .fred-root .fred-reference-public-sources { margin-top: 10px; }
 .fred-root .fred-reference-public-sources > div {
   display: grid;
