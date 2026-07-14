@@ -315,21 +315,21 @@ export const STATIC_CASES: PracticeCase[] = [
 ];
 
 export const ALL_WARNINGS: WarningLabel[] = [
-  { lbl: "18", sig: "L18",  text: "Take with food or milk" },
-  { lbl: "5",  sig: "L5",   text: "Complete the full course" },
-  { lbl: "A",  sig: "SW",   text: "Shake well before use" },
-  { lbl: "C",  sig: "30AC", text: "Keep refrigerated" },
-  { lbl: "D",  sig: "UAF",  text: "May cause nausea" },
-  { lbl: "E",  sig: "UAD",  text: "May cause drowsiness" },
-  { lbl: "F",  sig: "ALC",  text: "Avoid alcohol" },
-  { lbl: "G",  sig: "DRV",  text: "Avoid driving/machinery" },
-  { lbl: "H",  sig: "SUN",  text: "Avoid sunlight / use sunscreen" },
-  { lbl: "I",  sig: "WTR",  text: "Take with a full glass of water" },
-  { lbl: "K",  sig: "BT",   text: "Regular blood tests required" },
-  { lbl: "L",  sig: "LYD",  text: "Do not lie down for 30 min after taking" },
-  { lbl: "M",  sig: "DAI",  text: "Avoid dairy/antacids within 2 hours" },
-  { lbl: "N",  sig: "STP",  text: "Do not stop suddenly" },
-  { lbl: "O",  sig: "ASP",  text: "Do not take aspirin/NSAIDs without advice" },
+  { lbl: "18", sig: "L18", text: "Take with food or milk", aliases: ["take with food", "with food", "with meals", "take after food"] },
+  { lbl: "5", sig: "L5", text: "Complete the full course", aliases: ["finish the full course", "finish the course", "complete course", "take until finished"] },
+  { lbl: "A", sig: "SW", text: "Shake well before use", aliases: ["shake well", "shake before use"] },
+  { lbl: "C", sig: "30AC", text: "Keep refrigerated", aliases: ["store in the fridge", "keep in fridge", "refrigerate"] },
+  { lbl: "D", sig: "UAF", text: "May cause nausea", aliases: ["may cause stomach upset", "may make you feel sick", "can cause nausea"] },
+  { lbl: "E", sig: "UAD", text: "May cause drowsiness", aliases: ["may make you drowsy", "may cause sleepiness", "can cause drowsiness"] },
+  { lbl: "F", sig: "ALC", text: "Avoid alcohol", aliases: ["do not drink alcohol", "no alcohol"] },
+  { lbl: "G", sig: "DRV", text: "Avoid driving/machinery", aliases: ["do not drive or operate machinery", "avoid driving", "do not drive"] },
+  { lbl: "H", sig: "SUN", text: "Avoid sunlight / use sunscreen", aliases: ["avoid sun and use sunscreen", "use sunscreen", "sun sensitivity", "protect from sunlight"] },
+  { lbl: "I", sig: "WTR", text: "Take with a full glass of water", aliases: ["take with plenty of water", "full glass of water"] },
+  { lbl: "K", sig: "BT", text: "Regular blood tests required", aliases: ["regular blood tests", "blood test monitoring", "requires blood tests"] },
+  { lbl: "L", sig: "LYD", text: "Do not lie down for 30 min after taking", aliases: ["stay upright for 30 minutes", "do not lie down for 30 minutes", "remain upright"] },
+  { lbl: "M", sig: "DAI", text: "Avoid dairy/antacids within 2 hours", aliases: ["separate dairy and antacids by 2 hours", "avoid antacids within 2 hours", "separate minerals by 2 hours"] },
+  { lbl: "N", sig: "STP", text: "Do not stop suddenly", aliases: ["do not stop abruptly", "dont stop suddenly", "do not suddenly stop"] },
+  { lbl: "O", sig: "ASP", text: "Do not take aspirin/NSAIDs without advice", aliases: ["avoid aspirin and nsaids", "check before taking ibuprofen", "do not take ibuprofen without advice"] },
 ];
 
 export const ABBREVS: Record<string, string> = {

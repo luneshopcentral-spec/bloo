@@ -72,6 +72,7 @@ export interface WarningLabel {
   lbl: string;
   sig: string;
   text: string;
+  aliases?: string[];
 }
 
 export interface MessageRow {
