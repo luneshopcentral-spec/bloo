@@ -6,6 +6,7 @@ import {
   buildOutePrompt,
   estimateOuteMaxTokens,
   extractOuteAudioCodes,
+  extractOuteAudioCodesFromTokenIds,
   getOuteVoiceProfile,
   OUTETTS_MODEL_FILE,
   OUTETTS_MODEL_REPO,
@@ -38,10 +39,16 @@ type AudioWindow = Window & {
   webkitAudioContext?: typeof AudioContext;
 };
 
+interface CompletionLogprobs {
+  tokens?: unknown;
+  content?: Array<{ id?: unknown; token?: unknown }>;
+}
+
 const MODEL_PROGRESS_WEIGHT = 0.79;
 const DECODER_PROGRESS_WEIGHT = 0.21;
 const SILENCE_SECONDS = 0.12;
-const GENERATION_TIMEOUT_MS = 60_000;
+const GENERATION_TIMEOUT_MS = 120_000;
+const AUDIO_RESUME_TIMEOUT_MS = 2_000;
 
 function friendlyOuteError(message: string): string {
   if (/memory|allocation|out of memory|array buffer/i.test(message)) {
@@ -50,11 +57,17 @@ function friendlyOuteError(message: string): string {
   if (/webgpu|gpu|adapter/i.test(message)) {
     return "WebGPU could not start and the local WASM fallback was unavailable";
   }
+  if (/webassembly|wasm|jspi|memory64|compat/i.test(message)) {
+    return "this browser could not initialise the local OuteTTS compatibility runtime";
+  }
   if (/fetch|network|download|failed to load|huggingface/i.test(message)) {
     return "the OuteTTS model or audio decoder could not be downloaded";
   }
   if (/audio tokens|waveform|decoder/i.test(message)) {
     return "OuteTTS did not produce a playable patient reply";
+  }
+  if (/audio playback|blocked/i.test(message)) {
+    return "the browser blocked local audio playback";
   }
   if (/timed out/i.test(message)) {
     return "OuteTTS took too long to generate on this laptop";
@@ -77,6 +90,29 @@ function concatenateAudio(parts: Float32Array[]): Float32Array {
   return output;
 }
 
+function getCompletionTokenStrings(logprobs: unknown): string[] {
+  if (!logprobs || typeof logprobs !== "object") return [];
+  const value = logprobs as CompletionLogprobs;
+  if (Array.isArray(value.tokens)) {
+    return value.tokens.filter((token): token is string => typeof token === "string");
+  }
+  if (Array.isArray(value.content)) {
+    return value.content
+      .map((entry) => entry?.token)
+      .filter((token): token is string => typeof token === "string");
+  }
+  return [];
+}
+
+function getCompletionTokenIds(logprobs: unknown): number[] {
+  if (!logprobs || typeof logprobs !== "object") return [];
+  const value = logprobs as CompletionLogprobs;
+  if (!Array.isArray(value.content)) return [];
+  return value.content
+    .map((entry) => entry?.id)
+    .filter((tokenId): tokenId is number => typeof tokenId === "number");
+}
+
 export function useOutePatientVoice({
   patientKey,
   onActivity,
@@ -87,6 +123,7 @@ export function useOutePatientVoice({
   const [backend, setBackend] = useState<OuteBackend | null>(null);
   const [progress, setProgress] = useState<number | null>(null);
   const [modelReady, setModelReady] = useState(false);
+  const [diagnostic, setDiagnostic] = useState<string | null>(null);
   const wllamaRef = useRef<Wllama | null>(null);
   const runtimePromiseRef = useRef<Promise<Wllama> | null>(null);
   const decoderWorkerRef = useRef<Worker | null>(null);
@@ -126,6 +163,7 @@ export function useOutePatientVoice({
     console.error("OuteTTS patient voice failed:", message);
     const text = pendingTextRef.current;
     const reason = friendlyOuteError(message);
+    setDiagnostic(message.slice(0, 240));
     failedReasonRef.current = reason;
     requestIdRef.current = null;
     setEngine("system");
@@ -211,32 +249,60 @@ export function useOutePatientVoice({
         "../../node_modules/@wllama/wllama/esm/wasm/wllama.wasm",
         import.meta.url
       ).href;
-      const runtime = new Wllama(
-        { default: wasmUrl },
-        { allowOffline: true, logger: LoggerWithoutDebug, suppressNativeLog: true }
-      );
-      runtime.setCompat(null);
-      const webgpu = runtime.isSupportWebGPU();
-      setBackend(webgpu ? "webgpu+wasm" : "wasm");
-      wllamaRef.current = runtime;
+      const compatWasmUrl = new URL(
+        "../../node_modules/@wllama/wllama-compat/wasm/wllama.wasm",
+        import.meta.url
+      ).href;
+      const compatWorkerUrl = new URL(
+        "../../node_modules/@wllama/wllama-compat/wasm/wllama.js",
+        import.meta.url
+      ).href;
 
-      await Promise.all([
-        runtime.loadModelFromHF(
+      const createRuntime = () => {
+        const runtime = new Wllama(
+          { default: wasmUrl },
+          { allowOffline: true, logger: LoggerWithoutDebug, suppressNativeLog: true }
+        );
+        runtime.setCompat({ wasm: compatWasmUrl, worker: compatWorkerUrl });
+        return runtime;
+      };
+
+      const loadRuntime = async (runtime: Wllama, useWebGpu: boolean) => {
+        setBackend(useWebGpu ? "webgpu+wasm" : "wasm");
+        wllamaRef.current = runtime;
+        await runtime.loadModelFromHF(
           { repo: OUTETTS_MODEL_REPO, file: OUTETTS_MODEL_FILE },
           {
             n_ctx: 4_096,
             n_threads: Math.max(1, Math.min(4, Math.floor((navigator.hardwareConcurrency || 2) / 2))),
-            n_gpu_layers: webgpu ? 99_999 : 0,
-            cache_type_k: "q8_0",
-            cache_type_v: "q8_0",
+            n_gpu_layers: useWebGpu ? 99_999 : 0,
             progressCallback: ({ loaded, total }) => {
               modelProgressRef.current = total > 0 ? (loaded / total) * 100 : 0;
               updateProgress();
             },
           }
-        ),
-        prepareDecoder(),
-      ]);
+        );
+        return runtime;
+      };
+
+      const decoderPromise = prepareDecoder();
+      let runtime = createRuntime();
+      const webgpu = runtime.isSupportWebGPU();
+      try {
+        runtime = await loadRuntime(runtime, webgpu);
+      } catch (error) {
+        if (!webgpu) throw error;
+        console.warn("OuteTTS WebGPU initialisation failed; retrying with WASM.", error);
+        try {
+          await runtime.exit();
+        } catch {
+          // The failed WebGPU runtime may already be closed.
+        }
+        modelProgressRef.current = 0;
+        updateProgress();
+        runtime = await loadRuntime(createRuntime(), false);
+      }
+      await decoderPromise;
 
       modelProgressRef.current = 100;
       decoderProgressRef.current = 100;
@@ -258,7 +324,23 @@ export function useOutePatientVoice({
     if (!AudioContextConstructor) throw new Error("audio playback is unavailable in this browser");
     const context = contextRef.current ?? new AudioContextConstructor();
     contextRef.current = context;
-    if (context.state === "suspended") await context.resume();
+    if (context.state === "suspended") {
+      let resumeTimeout: number | null = null;
+      try {
+        await Promise.race([
+          context.resume(),
+          new Promise<never>((_resolve, reject) => {
+            resumeTimeout = window.setTimeout(
+              () => reject(new Error("The browser blocked local audio playback.")),
+              AUDIO_RESUME_TIMEOUT_MS
+            );
+          }),
+        ]);
+      } finally {
+        if (resumeTimeout !== null) window.clearTimeout(resumeTimeout);
+      }
+    }
+    if (context.state !== "running") throw new Error("The browser blocked local audio playback.");
     const audioBuffer = context.createBuffer(1, samples.length, OUTETTS_SAMPLE_RATE);
     audioBuffer.getChannelData(0).set(samples);
     sourceRef.current?.stop();
@@ -276,6 +358,19 @@ export function useOutePatientVoice({
     updateActivity("speaking");
     source.start();
   }, [updateActivity]);
+
+  const primeAudioContext = useCallback(() => {
+    const audioWindow = window as AudioWindow;
+    const AudioContextConstructor = window.AudioContext || audioWindow.webkitAudioContext;
+    if (!AudioContextConstructor) throw new Error("audio playback is unavailable in this browser");
+    const context = contextRef.current ?? new AudioContextConstructor();
+    contextRef.current = context;
+    if (context.state === "suspended") {
+      void context.resume().catch(() => {
+        // playAudio will report a useful fallback if playback is still blocked later.
+      });
+    }
+  }, []);
 
   const cancel = useCallback(() => {
     abortRef.current?.abort();
@@ -295,10 +390,18 @@ export function useOutePatientVoice({
       return;
     }
 
+    try {
+      primeAudioContext();
+    } catch (error) {
+      fallback(error instanceof Error ? error.message : String(error));
+      return;
+    }
+
     const requestId = crypto.randomUUID();
     const abortController = new AbortController();
     requestIdRef.current = requestId;
     abortRef.current = abortController;
+    setDiagnostic(null);
     setEngine("outetts");
     updateActivity(modelReady ? "generating" : "loading");
 
@@ -330,12 +433,22 @@ export function useOutePatientVoice({
             penalty_last_n: 64,
             seed: profile.seed + index,
             stop: ["<|audio_end|>", "<|im_end|>"],
+            logprobs: 1,
             abortSignal: abortController.signal,
           });
-          const generated = response.choices[0]?.text ?? "";
-          const codes = extractOuteAudioCodes(generated);
-          if (codes.length === 0) throw new Error("OuteTTS returned no audio tokens.");
-          audioParts.push(await decode(codes, `${requestId}-${index}`));
+          const choice = response.choices[0];
+          if (!choice) throw new Error("OuteTTS returned no completion response.");
+          const tokenStrings = getCompletionTokenStrings(choice.logprobs);
+          const generated = tokenStrings.join("") || choice.text;
+          const textCodes = extractOuteAudioCodes(generated);
+          const codes = textCodes.length > 0
+            ? textCodes
+            : extractOuteAudioCodesFromTokenIds(getCompletionTokenIds(choice.logprobs));
+          if (codes.length === 0) {
+            throw new Error("OuteTTS returned no audio tokens.");
+          }
+          const decoded = await decode(codes, `${requestId}-${index}`);
+          audioParts.push(decoded);
         }
 
         if (requestIdRef.current !== requestId || abortController.signal.aborted) return;
@@ -349,7 +462,7 @@ export function useOutePatientVoice({
         if (generationTimeout !== null) window.clearTimeout(generationTimeout);
       }
     })();
-  }, [cancel, decode, ensureRuntime, fallback, modelReady, patientKey, playAudio, updateActivity]);
+  }, [cancel, decode, ensureRuntime, fallback, modelReady, patientKey, playAudio, primeAudioContext, updateActivity]);
 
   useEffect(() => {
     const audioWindow = window as AudioWindow;
@@ -378,6 +491,7 @@ export function useOutePatientVoice({
     quantization: "Q4_K_M + q8 decoder" as const,
     progress,
     modelReady,
+    diagnostic,
     profile: getOuteVoiceProfile(patientKey),
     speak,
     cancel,

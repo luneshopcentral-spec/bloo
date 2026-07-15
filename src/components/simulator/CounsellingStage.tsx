@@ -302,6 +302,12 @@ export function CounsellingStage({
                 {voice.patientVoiceNotice && (
                   <p className="fred-voice-quality-warning">{voice.patientVoiceNotice}</p>
                 )}
+                {voice.patientVoiceNotice && voice.outeDiagnostic && (
+                  <details className="fred-voice-quality-warning">
+                    <summary>Voice diagnostics</summary>
+                    <code>{voice.outeDiagnostic}</code>
+                  </details>
+                )}
                 <div className="fred-voice-buttons">
                   <button
                     type="button"
@@ -347,7 +353,7 @@ export function CounsellingStage({
                 </p>
                 <p className="fred-voice-disclosure">
                   OuteTTS-0.1 patient audio is generated locally with no API key or per-conversation charge. Its
-                  first-use Q4 model and q8 audio decoder download is about {OUTETTS_DOWNLOAD_MB} MB, plus browser
+                  first-use Q4 model and quantized audio decoder download is about {OUTETTS_DOWNLOAD_MB} MB, plus browser
                   runtime files, and is cached where the browser permits. It is used under CC BY 4.0 with attribution
                   to OuteAI. Slow or unsupported devices automatically use the system voice. Student speech recognition
                   may use the browser or operating-system voice service. Text mode is always available.

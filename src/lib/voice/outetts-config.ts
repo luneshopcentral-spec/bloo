@@ -9,6 +9,9 @@ export const OUTETTS_MODEL_FILE = "OuteTTS-0.1-350M-Q4_K_M.gguf";
 export const OUTETTS_DECODER_ID = "onnx-community/WavTokenizer-large-speech-75token_decode";
 export const OUTETTS_SAMPLE_RATE = 24_000;
 export const OUTETTS_DOWNLOAD_MB = 348;
+// OuteTTS 0.1 tokenizer IDs for <|0|> through <|4099|>.
+const OUTETTS_AUDIO_TOKEN_ID_START = 61_447;
+const OUTETTS_AUDIO_TOKEN_ID_END = OUTETTS_AUDIO_TOKEN_ID_START + 4_099;
 
 export interface OuteSpeakerWord {
   word: string;
@@ -117,6 +120,14 @@ export function extractOuteAudioCodes(output: string): number[] {
     if (Number.isInteger(code) && code >= 0 && code < 4_100) codes.push(code);
   }
   return codes;
+}
+
+export function extractOuteAudioCodesFromTokenIds(tokenIds: number[]): number[] {
+  return tokenIds
+    .filter((tokenId) => Number.isInteger(tokenId)
+      && tokenId >= OUTETTS_AUDIO_TOKEN_ID_START
+      && tokenId <= OUTETTS_AUDIO_TOKEN_ID_END)
+    .map((tokenId) => tokenId - OUTETTS_AUDIO_TOKEN_ID_START);
 }
 
 export function estimateOuteMaxTokens(text: string): number {
