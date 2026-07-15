@@ -3,6 +3,7 @@ import { expandAbbrevs } from "@/lib/scoring/abbreviations";
 import type { FormState, FormAction } from "@/components/simulator/state";
 import type { DrugRow } from "@/lib/types/drug";
 import type { Prescriber } from "@/lib/types/prescriber";
+import type { PracticeCase } from "@/lib/types/case";
 
 interface ScriptFormProps {
   formState: FormState;
@@ -13,6 +14,7 @@ interface ScriptFormProps {
   onOpenDrugModal: (query: string) => void;
   selectedPrescriber: Prescriber | null;
   onOpenPrescriberModal: (query: string) => void;
+  authorityRequirement?: PracticeCase["authority"];
 }
 
 function onChange(dispatch: React.Dispatch<FormAction>, name: keyof FormState) {
@@ -29,10 +31,12 @@ export function ScriptForm({
   onOpenDrugModal,
   selectedPrescriber,
   onOpenPrescriberModal,
+  authorityRequirement,
 }: ScriptFormProps) {
   const initialsDisplay  = formState.pharmacistInitials.trim() || "__";
   const expandedDirections = expandAbbrevs(formState.directions);
   const drugDebounceRef  = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const controlledDrugSelected = /\bS8\b/i.test(selectedDrug?.schedule ?? "");
 
   function handleDrugInput(e: React.ChangeEvent<HTMLInputElement>) {
     const val = e.target.value;
@@ -139,6 +143,32 @@ export function ScriptForm({
           <span style={{ color: "#006600", fontWeight: "bold" }}>$0.00</span>
         </div>
       </div>
+
+      {controlledDrugSelected && (
+        <div className="fred-authority-entry" role="group" aria-labelledby="authority-number-label">
+          <div>
+            <label id="authority-number-label" className="fred-field-label" htmlFor="authority-number">
+              {authorityRequirement?.type === "streamlined"
+                ? "Streamlined authority code"
+                : "PBS authority approval number"}
+            </label>
+            <input
+              id="authority-number"
+              className="fred-field-input"
+              placeholder={authorityRequirement?.type === "streamlined" ? "4 or 5 digit code" : "e.g. H1234RX"}
+              value={formState.authorityNumber}
+              onChange={onChange(dispatch, "authorityNumber")}
+              disabled={disabled}
+              autoComplete="off"
+              aria-required={Boolean(authorityRequirement?.required)}
+            />
+          </div>
+          <p>
+            Transcribe this from the authority prescription. It is separate from the pharmacy PBS approval number.
+            {authorityRequirement?.required ? " This case cannot proceed until it is entered." : ""}
+          </p>
+        </div>
+      )}
 
       {/* Abbreviation reference */}
       <div className="fred-abbrev-ref mx-1 mb-1">

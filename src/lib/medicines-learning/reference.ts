@@ -27,6 +27,34 @@ export interface MedicineProfileSource {
   lastChecked: string;
 }
 
+export interface MedicineWarningLabelAnswer {
+  code: string;
+  label: string;
+  appliesWhen: string;
+  rationale: string;
+}
+
+export interface MedicineDoseGuideRow {
+  population: string;
+  indication: string;
+  productInformationDose: string;
+  notes: string;
+}
+
+export interface MedicineInteractionRow {
+  medicineOrClass: string;
+  risk: string;
+  action: string;
+}
+
+export interface MedicineClinicalGuide {
+  warningLabels: MedicineWarningLabelAnswer[];
+  dosing: MedicineDoseGuideRow[];
+  commonSideEffects: string[];
+  urgentCare: string[];
+  interactions: MedicineInteractionRow[];
+}
+
 export interface MedicineLearningProfile {
   id: string;
   genericName: string;
@@ -37,6 +65,7 @@ export interface MedicineLearningProfile {
   sections: MedicineLearningSection[];
   products: MedicineProductRow[];
   labelReasoningClues: string[];
+  clinicalGuide: MedicineClinicalGuide;
   sources: MedicineProfileSource[];
   version: string;
   contentUpdatedAt: string;
@@ -77,6 +106,18 @@ export const PUBLIC_MEDICINE_REFERENCES: PublicMedicineReference[] = [
     description: "Check current item codes, forms, pack sizes, restrictions, quantities, repeats and listed brands.",
     url: "https://www.pbs.gov.au/pbs/search?search-type=medicines",
   },
+  {
+    id: "pbs-authorities",
+    label: "PBS authority prescription guidance",
+    description: "Distinguish prior approval numbers from streamlined authority codes and verify what must appear on an authority prescription.",
+    url: "https://www.pbs.gov.au/info/healthpro/explanatory-notes/section1/Section_1_2_Explanatory_Notes",
+  },
+  {
+    id: "victoria-pharmacists",
+    label: "Victorian pharmacist legal requirements",
+    description: "Check prescription authentication, Schedule 8, SafeScript, intervention and lawful-supply duties for Victorian cases.",
+    url: "https://www.health.vic.gov.au/drugs-and-poisons/pharmacists",
+  },
 ];
 
 const CONTENT_UPDATED = "15 July 2026";
@@ -92,7 +133,9 @@ function source(
   return { label, sourceType, url, lastChecked: CONTENT_UPDATED };
 }
 
-export const MEDICINE_LEARNING_PROFILES: MedicineLearningProfile[] = [
+type MedicineLearningProfileBase = Omit<MedicineLearningProfile, "clinicalGuide">;
+
+const BASE_MEDICINE_LEARNING_PROFILES: MedicineLearningProfileBase[] = [
   {
     id: "erythromycin",
     genericName: "Erythromycin",
@@ -631,6 +674,409 @@ export const MEDICINE_LEARNING_PROFILES: MedicineLearningProfile[] = [
     reviewNote: REVIEW_NOTE,
   },
 ];
+
+interface ComplexProfileConfig {
+  id: string;
+  genericName: string;
+  aliases: string[];
+  medicineClass: string;
+  summary: string;
+  caseProduct: string;
+  schedule: string;
+  sourceUrl: string;
+  extraSource?: MedicineProfileSource;
+}
+
+function complexProfile(config: ComplexProfileConfig): MedicineLearningProfileBase {
+  return {
+    id: config.id,
+    genericName: config.genericName,
+    aliases: config.aliases,
+    medicineClass: config.medicineClass,
+    summary: config.summary,
+    quickFacts: [
+      { label: "Case product", value: config.caseProduct },
+      { label: "Schedule", value: config.schedule },
+      { label: "Dose rule", value: "Confirm the indication, patient factors and exact formulation before supply" },
+      { label: "Release gate", value: "Draft requires Australian pharmacist educator review" },
+    ],
+    sections: [
+      {
+        id: "indications",
+        heading: "Indications and place in therapy",
+        summary: "The intended condition changes the dose, duration and PBS restriction.",
+        bullets: [
+          "Confirm the documented indication rather than inferring it from the medicine name.",
+          "Check the current Australian product information and PBS restriction for the exact strength and form.",
+        ],
+      },
+      {
+        id: "before-supply",
+        heading: "Before supply",
+        summary: "Reconcile identity, age, allergies, current medicines, organ function and previous exposure.",
+        bullets: [
+          "Resolve prescription, prescriber, authority and patient-record discrepancies before supply.",
+          "Use the history and patient conversation to identify contraindications, interactions and monitoring gaps.",
+        ],
+      },
+      {
+        id: "dose",
+        heading: "Dose and administration",
+        summary: "Use the structured dose table below as a learning prompt, then verify the current exact-product PI.",
+        bullets: [
+          "Do not transfer a dose between indications, age groups, formulations or renal-function categories.",
+          "Treat unusual frequency, dose, quantity or release-form manipulation as a reason to stop and clarify.",
+        ],
+      },
+      {
+        id: "safety",
+        heading: "Adverse effects, interactions and escalation",
+        summary: "Separate common effects from symptoms requiring urgent assessment.",
+        bullets: [
+          "Give the patient a specific action for each serious red flag.",
+          "Ask the patient to explain the dose and safety plan back in their own words.",
+        ],
+      },
+    ],
+    products: [
+      { product: config.caseProduct, formAndStrength: "Exact simulator product", learningNote: "Brand-specific selection is required in this case." },
+      { product: `Other ${config.genericName} products`, formAndStrength: "Strengths and formulations vary", learningNote: "Do not assume interchangeability; check release form, strength, pack and substitution instruction." },
+    ],
+    labelReasoningClues: [
+      "Which labels apply to this exact formulation and route?",
+      "Which patient factor changes the dose or supply decision?",
+      "Which interaction or urgent-care symptom must be discussed?",
+    ],
+    sources: [
+      source(`TGA product information: ${config.caseProduct}`, "TGA PI/CMI", config.sourceUrl),
+      source(`PBS medicine search: ${config.genericName}`, "PBS", `https://www.pbs.gov.au/pbs/search?search-type=medicines&term=${encodeURIComponent(config.genericName)}`),
+      ...(config.extraSource ? [config.extraSource] : []),
+    ],
+    version: "0.3.0-draft",
+    contentUpdatedAt: CONTENT_UPDATED,
+    nextReviewDue: NEXT_REVIEW,
+    reviewStatus: "pharmacist_review_required",
+    reviewNote: REVIEW_NOTE,
+  };
+}
+
+const CONTROLLED_MEDICINES_SOURCE = source(
+  "Victorian legislative requirements for pharmacists",
+  "jurisdiction",
+  "https://www.health.vic.gov.au/drugs-and-poisons/pharmacists"
+);
+
+const COMPLEX_MEDICINE_PROFILES: MedicineLearningProfileBase[] = [
+  complexProfile({
+    id: "oxycodone",
+    genericName: "Oxycodone",
+    aliases: ["oxycontin", "oxycodone mr", "opioid", "controlled drug"],
+    medicineClass: "Strong opioid analgesic",
+    summary: "Modified-release oxycodone requires confirmed opioid history, exact 12-hour dosing, intact-tablet administration, overdose safety-netting and secure Schedule 8 handling.",
+    caseProduct: "OxyContin modified-release tablet 20 mg",
+    schedule: "S8 / SafeScript monitored in Victoria",
+    sourceUrl: "https://www.tga.gov.au/resources/artg/200033",
+    extraSource: CONTROLLED_MEDICINES_SOURCE,
+  }),
+  complexProfile({
+    id: "fentanyl",
+    genericName: "Fentanyl",
+    aliases: ["durogesic", "fentanyl patch", "transdermal opioid", "controlled drug"],
+    medicineClass: "Potent transdermal opioid analgesic",
+    summary: "Transdermal fentanyl is a high-risk formulation for opioid-tolerant patients; heat, patch duplication and accidental exposure can cause fatal overdose.",
+    caseProduct: "Durogesic transdermal patch 25 micrograms/hour",
+    schedule: "S8 / SafeScript monitored in Victoria",
+    sourceUrl: "https://www.tga.gov.au/resources/artg/112368",
+    extraSource: CONTROLLED_MEDICINES_SOURCE,
+  }),
+  complexProfile({
+    id: "dexamfetamine",
+    genericName: "Dexamfetamine",
+    aliases: ["dexamphetamine", "aspen dexamfetamine", "stimulant", "adhd"],
+    medicineClass: "Central nervous system psychostimulant",
+    summary: "Dexamfetamine requires age- and indication-specific specialist oversight, cardiovascular and growth monitoring, secure storage and Schedule 8 prescription authentication.",
+    caseProduct: "Aspen Dexamfetamine tablet 5 mg",
+    schedule: "S8 special Schedule 8 psychostimulant",
+    sourceUrl: "https://www.tga.gov.au/resources/artg/19684",
+    extraSource: CONTROLLED_MEDICINES_SOURCE,
+  }),
+  complexProfile({
+    id: "methotrexate",
+    genericName: "Methotrexate",
+    aliases: ["methotrexate cipla", "mtx", "weekly medicine", "antimetabolite"],
+    medicineClass: "Antimetabolite and immunomodulator",
+    summary: "For inflammatory disease, methotrexate is normally weekly, not daily. Dose-day, folate, pregnancy status, interactions and laboratory monitoring are critical.",
+    caseProduct: "Methotrexate Cipla tablet 10 mg",
+    schedule: "S4 high-risk medicine",
+    sourceUrl: "https://www.tga.gov.au/resources/artg/365594",
+  }),
+  complexProfile({
+    id: "lithium",
+    genericName: "Lithium carbonate",
+    aliases: ["quilonum", "quilonum sr", "lithicarb", "mood stabiliser"],
+    medicineClass: "Mood stabiliser with a narrow therapeutic index",
+    summary: "Lithium dosing is concentration-guided. Dehydration, renal-function change, salt change and interacting medicines can quickly produce toxicity.",
+    caseProduct: "Quilonum SR tablet 450 mg",
+    schedule: "S4",
+    sourceUrl: "https://www.tga.gov.au/sites/default/files/2022-11/foi-3988-02.pdf",
+  }),
+  complexProfile({
+    id: "apixaban",
+    genericName: "Apixaban",
+    aliases: ["eliquis", "factor xa inhibitor", "doac", "anticoagulant"],
+    medicineClass: "Direct factor Xa inhibitor anticoagulant",
+    summary: "Apixaban dose and duration depend on indication, renal function and patient factors. Missed doses, interacting medicines and bleeding plans need explicit counselling.",
+    caseProduct: "Eliquis film-coated tablet 5 mg",
+    schedule: "S4",
+    sourceUrl: "https://www.tga.gov.au/resources/artg/193474",
+  }),
+];
+
+const CLINICAL_GUIDES: Record<string, MedicineClinicalGuide> = {
+  erythromycin: {
+    warningLabels: [
+      { code: "18 / L18", label: "Take with food or milk", appliesWhen: "Use only when supported by the exact erythromycin salt/formulation PI; food advice differs between products.", rationale: "Reduces gastrointestinal upset for applicable products without overriding formulation-specific absorption advice." },
+      { code: "5 / L5", label: "Complete the full course", appliesWhen: "When prescribed as a defined antibacterial course.", rationale: "Supports adherence to the prescribed duration; do not apply automatically to long-term non-infective use." },
+      { code: "D / UAF", label: "May cause nausea", appliesWhen: "Oral erythromycin products.", rationale: "Gastrointestinal adverse effects are common." },
+    ],
+    dosing: [
+      { population: "Adults", indication: "Susceptible infection", productInformationDose: "Common PI range: 1–2 g/day in divided doses; up to 4 g/day for severe infection.", notes: "Exact interval, salt and maximum vary by product and infection." },
+      { population: "Children", indication: "Susceptible infection", productInformationDose: "Common PI range: 30–50 mg/kg/day in divided doses; higher specialist-directed doses may be used for severe infection.", notes: "Use weight, infection and exact formulation; do not exceed the verified product maximum." },
+    ],
+    commonSideEffects: ["Nausea", "Abdominal pain or cramps", "Diarrhoea", "Vomiting"],
+    urgentCare: ["Breathing difficulty or facial/throat swelling", "Fainting, marked palpitations or new irregular heartbeat", "Severe or persistent diarrhoea, especially with blood", "Blistering or widespread rash", "Jaundice or dark urine"],
+    interactions: [
+      { medicineOrClass: "QT-prolonging medicines", risk: "Additive cardiac rhythm risk", action: "Check the full list and escalate clinically significant combinations." },
+      { medicineOrClass: "CYP3A4 substrates/inhibitors, including some statins", risk: "Raised concentrations and toxicity", action: "Use the exact product PI and interaction checker; contact prescriber if unresolved." },
+      { medicineOrClass: "Warfarin", risk: "INR/bleeding effect may increase", action: "Confirm monitoring plan." },
+    ],
+  },
+  warfarin: {
+    warningLabels: [
+      { code: "K / BT", label: "Regular blood tests required", appliesWhen: "All warfarin therapy.", rationale: "Dose is individualised to INR and indication." },
+      { code: "O / ASP", label: "Do not take aspirin/NSAIDs without advice", appliesWhen: "All warfarin therapy unless specifically co-prescribed and monitored.", rationale: "These products can substantially increase bleeding risk." },
+      { code: "F / ALC", label: "Avoid alcohol", appliesWhen: "Use the local label set and patient-specific plan; avoid binge or unstable intake.", rationale: "Alcohol can destabilise anticoagulation and increase bleeding/fall risk." },
+    ],
+    dosing: [
+      { population: "Adults", indication: "Initiation", productInformationDose: "Individualised initiation is commonly 2–5 mg daily with early INR testing.", notes: "Use a validated local protocol; age, frailty, liver disease and interactions often require lower doses." },
+      { population: "Adults", indication: "Maintenance", productInformationDose: "No fixed dose; titrate to the indication-specific INR target.", notes: "The same tablet strength can represent very different weekly schedules." },
+      { population: "Children", indication: "Any anticoagulation indication", productInformationDose: "Specialist-only, weight- and INR-guided dosing.", notes: "Do not extrapolate an adult starting dose." },
+    ],
+    commonSideEffects: ["Easy bruising", "Longer bleeding from cuts", "Minor nose or gum bleeding"],
+    urgentCare: ["Bleeding that will not stop", "Black stools, vomiting blood or blood in urine", "Sudden severe headache, weakness, speech change or collapse", "Significant head injury even without immediate symptoms"],
+    interactions: [
+      { medicineOrClass: "NSAIDs, aspirin and antiplatelets", risk: "Major bleeding", action: "Avoid unless specifically prescribed with a documented plan." },
+      { medicineOrClass: "Many antibiotics/antifungals and amiodarone", risk: "INR may rise or fall", action: "Check interaction and arrange extra INR monitoring as indicated." },
+      { medicineOrClass: "Vitamin K intake and complementary products", risk: "Unstable anticoagulation", action: "Keep diet consistent and check supplements before use." },
+    ],
+  },
+  amoxicillin: {
+    warningLabels: [
+      { code: "A / SW", label: "Shake well before use", appliesWhen: "All reconstituted suspensions.", rationale: "Ensures a uniform dose." },
+      { code: "C / 30AC", label: "Keep refrigerated", appliesWhen: "Only when the exact reconstituted product PI/label requires refrigeration.", rationale: "Storage and in-use shelf life are product-specific." },
+      { code: "5 / L5", label: "Complete the full course", appliesWhen: "A defined antibacterial course.", rationale: "Supports the prescribed duration." },
+    ],
+    dosing: [
+      { population: "Adults and children ≥40 kg", indication: "Common susceptible infections", productInformationDose: "Common PI regimens include 250–500 mg every 8 hours or 500–875 mg every 12 hours.", notes: "Infection severity, site and renal function change the regimen." },
+      { population: "Children <40 kg", indication: "Common susceptible infections", productInformationDose: "Common PI range: 20–90 mg/kg/day divided into 2 or 3 doses.", notes: "Use current weight, indication, severity, concentration and maximum." },
+      { population: "All ages", indication: "Renal impairment", productInformationDose: "Dose or interval may require adjustment.", notes: "Use current renal guidance and exact product PI." },
+    ],
+    commonSideEffects: ["Nausea", "Diarrhoea", "Mild rash", "Oral or vaginal thrush"],
+    urgentCare: ["Breathing difficulty, facial/throat swelling or collapse", "Blistering or peeling rash", "Severe or bloody diarrhoea", "New jaundice or dark urine"],
+    interactions: [
+      { medicineOrClass: "Warfarin", risk: "Anticoagulant effect may change", action: "Confirm INR monitoring." },
+      { medicineOrClass: "Methotrexate", risk: "Methotrexate toxicity may increase", action: "Escalate for clinical review." },
+      { medicineOrClass: "Allopurinol", risk: "Rash risk may increase", action: "Check indication and counsel/monitor." },
+    ],
+  },
+  temazepam: {
+    warningLabels: [
+      { code: "E / UAD", label: "May cause drowsiness", appliesWhen: "All supplies.", rationale: "Sedation and impaired coordination are expected risks." },
+      { code: "F / ALC", label: "Avoid alcohol", appliesWhen: "All supplies.", rationale: "Additive sedation and respiratory impairment." },
+      { code: "G / DRV", label: "Avoid driving/machinery", appliesWhen: "Until individual effects and next-day impairment are known.", rationale: "Psychomotor impairment may persist." },
+      { code: "N / STP", label: "Do not stop suddenly", appliesWhen: "Regular or prolonged use.", rationale: "Abrupt withdrawal can cause rebound symptoms and withdrawal." },
+    ],
+    dosing: [
+      { population: "Adults", indication: "Short-term insomnia", productInformationDose: "Common PI dose: 10–20 mg at bedtime.", notes: "Use the lowest effective dose for the shortest duration." },
+      { population: "Older or debilitated adults", indication: "Short-term insomnia", productInformationDose: "Common PI starting dose: 10 mg at bedtime.", notes: "Higher fall, confusion and next-day impairment risk." },
+      { population: "Children", indication: "Insomnia", productInformationDose: "Not routinely recommended; safety/effectiveness not established for general paediatric use.", notes: "Specialist review required." },
+    ],
+    commonSideEffects: ["Drowsiness", "Dizziness", "Impaired coordination", "Memory problems", "Next-day fatigue"],
+    urgentCare: ["Slow or difficult breathing", "Extreme sleepiness or inability to wake", "Severe confusion, agitation or unusual behaviour", "Fall or head injury"],
+    interactions: [
+      { medicineOrClass: "Alcohol, opioids and other sedatives", risk: "Profound sedation, respiratory depression, coma", action: "Avoid/hold and escalate unsafe combinations." },
+      { medicineOrClass: "Sedating antihistamines, antipsychotics and some antidepressants", risk: "Additive impairment and falls", action: "Review total sedative burden." },
+    ],
+  },
+  metformin: {
+    warningLabels: [
+      { code: "18 / L18", label: "Take with food or milk", appliesWhen: "Immediate-release oral metformin.", rationale: "Reduces gastrointestinal intolerance." },
+      { code: "K / BT", label: "Regular blood tests required", appliesWhen: "All ongoing therapy.", rationale: "Renal function, glycaemic control and sometimes vitamin B12 require monitoring." },
+    ],
+    dosing: [
+      { population: "Adults", indication: "Type 2 diabetes — immediate release", productInformationDose: "Common PI start: 500 mg once or twice daily with meals, titrated gradually; product maximum may be up to 3 g/day in divided doses.", notes: "Use the exact product, tolerability and renal function." },
+      { population: "Children ≥10 years", indication: "Type 2 diabetes", productInformationDose: "Common PI start: 500 mg once daily with food; titrate, commonly to a maximum of 2 g/day.", notes: "Confirm age approval for the exact product." },
+      { population: "Older adults or renal impairment", indication: "Type 2 diabetes", productInformationDose: "No automatic age dose; select/titrate from renal function and tolerability.", notes: "Contraindicated at severe renal impairment thresholds in the current PI; reassess during acute illness." },
+    ],
+    commonSideEffects: ["Nausea", "Diarrhoea", "Abdominal discomfort", "Reduced appetite", "Metallic taste"],
+    urgentCare: ["Marked weakness, unusual sleepiness or breathing difficulty during acute illness", "Persistent vomiting or severe dehydration", "Severe abdominal symptoms with systemic illness", "Possible allergy"],
+    interactions: [
+      { medicineOrClass: "Cimetidine and other renal cation transport competitors", risk: "Metformin exposure may rise", action: "Review renal function and clinical significance with prescriber." },
+      { medicineOrClass: "Iodinated contrast", risk: "Acute kidney injury can increase lactic-acidosis risk", action: "Follow current contrast procedure/sick-day guidance." },
+      { medicineOrClass: "Alcohol excess", risk: "Lactic-acidosis and hypoglycaemia risk", action: "Avoid excessive intake and counsel on acute illness." },
+    ],
+  },
+  doxycycline: {
+    warningLabels: [
+      { code: "I / WTR", label: "Take with a full glass of water", appliesWhen: "Oral tablets/capsules.", rationale: "Reduces oesophageal injury." },
+      { code: "L / LYD", label: "Do not lie down for 30 min after taking", appliesWhen: "Oral tablets/capsules.", rationale: "Reduces oesophageal irritation/ulceration." },
+      { code: "M / DAI", label: "Avoid dairy/antacids within 2 hours", appliesWhen: "When the selected product/interacting cation requires separation.", rationale: "Calcium, magnesium, aluminium, iron and zinc can reduce absorption." },
+      { code: "H / SUN", label: "Avoid sunlight / use sunscreen", appliesWhen: "All systemic doxycycline courses.", rationale: "Photosensitivity can occur." },
+      { code: "5 / L5", label: "Complete the full course", appliesWhen: "A defined antibacterial course, not every long-term indication.", rationale: "Supports prescribed duration." },
+    ],
+    dosing: [
+      { population: "Adults", indication: "Acute susceptible infection", productInformationDose: "Common PI regimen: 200 mg on day 1, then 100 mg daily; severe infections may use 100 mg twice daily.", notes: "Indication-specific regimens differ." },
+      { population: "Adults", indication: "Acne/rosacea or other long-term indication", productInformationDose: "Often 50–100 mg daily depending on product and indication.", notes: "Do not apply antibiotic-course language automatically." },
+      { population: "Children ≥8 years and <50 kg", indication: "Selected serious infections", productInformationDose: "Common PI approach: 4 mg/kg on day 1 then 2 mg/kg/day; severe infection may use 4 mg/kg/day.", notes: "Specialist/indication review; age restrictions and maximums apply." },
+    ],
+    commonSideEffects: ["Nausea", "Abdominal discomfort", "Diarrhoea", "Headache", "Photosensitivity"],
+    urgentCare: ["Painful swallowing or severe chest pain after a dose", "Breathing difficulty or facial/throat swelling", "Severe headache with visual disturbance", "Blistering rash", "Severe or bloody diarrhoea"],
+    interactions: [
+      { medicineOrClass: "Antacids, iron, calcium, magnesium, zinc and multivitamins", risk: "Reduced doxycycline absorption", action: "Separate using the exact product PI interval." },
+      { medicineOrClass: "Warfarin", risk: "Anticoagulant effect may increase", action: "Confirm INR/bleeding monitoring." },
+      { medicineOrClass: "Oral retinoids", risk: "Intracranial-hypertension risk", action: "Avoid combination and escalate." },
+    ],
+  },
+  oxycodone: {
+    warningLabels: [
+      { code: "E / UAD", label: "May cause drowsiness", appliesWhen: "All oral oxycodone products.", rationale: "Sedation and impaired reaction time can occur." },
+      { code: "F / ALC", label: "Avoid alcohol", appliesWhen: "All supplies.", rationale: "Additive sedation and respiratory depression." },
+      { code: "G / DRV", label: "Avoid driving/machinery", appliesWhen: "When starting/changing dose or if impaired.", rationale: "Opioids impair psychomotor performance." },
+      { code: "P / WHO", label: "Swallow whole — do not crush or chew", appliesWhen: "Modified-release tablets.", rationale: "Manipulation can release a potentially fatal dose." },
+      { code: "Q / SEC", label: "Keep locked away and out of reach", appliesWhen: "All opioid supplies.", rationale: "Prevents accidental ingestion, diversion and child exposure." },
+    ],
+    dosing: [
+      { population: "Adults already opioid-tolerant", indication: "Severe chronic pain", productInformationDose: "Individualise from current opioid exposure; OxyContin is normally dosed every 12 hours.", notes: "Use a verified conversion and specialist plan; case dose is 20 mg every 12 hours for an established patient." },
+      { population: "Opioid-naive adults", indication: "Severe pain requiring modified-release opioid", productInformationDose: "Some PIs describe 10 mg every 12 hours as a low starting dose, but initiation requires careful selection and review.", notes: "Do not infer suitability from age alone; assess respiratory and sedative risks." },
+      { population: "Children", indication: "Pain", productInformationDose: "Not a routine community initiation; specialist paediatric dosing only where the exact product is approved.", notes: "Do not extrapolate adult doses." },
+    ],
+    commonSideEffects: ["Constipation", "Nausea", "Drowsiness", "Dizziness", "Itching"],
+    urgentCare: ["Slow, shallow or difficult breathing", "Blue lips, collapse or inability to wake", "Severe confusion", "Suspected accidental ingestion or overdose"],
+    interactions: [
+      { medicineOrClass: "Benzodiazepines, alcohol, gabapentinoids and other sedatives", risk: "Profound sedation and fatal respiratory depression", action: "Review total sedative burden; avoid unsafe combinations." },
+      { medicineOrClass: "Strong CYP3A4 inhibitors/inducers", risk: "Oxycodone concentration may change", action: "Check exact interaction and monitor/escalate." },
+      { medicineOrClass: "MAO inhibitors", risk: "Serious interaction", action: "Check recent use and seek specialist advice." },
+    ],
+  },
+  fentanyl: {
+    warningLabels: [
+      { code: "E / UAD", label: "May cause drowsiness", appliesWhen: "All transdermal fentanyl supplies.", rationale: "Potent opioid sedation." },
+      { code: "F / ALC", label: "Avoid alcohol", appliesWhen: "All supplies.", rationale: "Fatal additive respiratory depression is possible." },
+      { code: "G / DRV", label: "Avoid driving/machinery", appliesWhen: "When starting/changing dose or if impaired.", rationale: "Psychomotor impairment." },
+      { code: "R / HTP", label: "Avoid heat on the patch", appliesWhen: "All patches.", rationale: "External heat and fever can increase fentanyl absorption." },
+      { code: "S / ROP", label: "Remove old patch before applying a new one", appliesWhen: "Every patch change.", rationale: "Prevents unintentional dose stacking." },
+      { code: "Q / SEC", label: "Keep locked away and out of reach", appliesWhen: "Used and unused patches.", rationale: "Used patches retain enough fentanyl to cause fatal exposure." },
+    ],
+    dosing: [
+      { population: "Opioid-tolerant adults", indication: "Severe chronic pain", productInformationDose: "Select initial patch from a verified current oral-opioid conversion; change at the product-specified interval, commonly 72 hours.", notes: "Not interchangeable microgram-for-milligram; monitor after initiation and changes." },
+      { population: "Opioid-naive patients", indication: "Pain", productInformationDose: "Do not initiate the 25 microgram/hour patch in an opioid-naive patient.", notes: "Risk of fatal respiratory depression; contact prescriber." },
+      { population: "Children ≥2 years who are opioid-tolerant", indication: "Severe chronic pain", productInformationDose: "Specialist conversion from established opioid exposure only.", notes: "Not for opioid-naive children; exact age/product restrictions apply." },
+    ],
+    commonSideEffects: ["Constipation", "Nausea", "Drowsiness", "Dizziness", "Application-site irritation"],
+    urgentCare: ["Slow or difficult breathing", "Inability to wake, blue lips or collapse", "Patch stuck to another person or swallowed", "Severe confusion or suspected overdose"],
+    interactions: [
+      { medicineOrClass: "Alcohol, benzodiazepines and other CNS depressants", risk: "Fatal sedation and respiratory depression", action: "Avoid unsafe combinations and provide overdose plan." },
+      { medicineOrClass: "Strong CYP3A4 inhibitors/inducers", risk: "Fentanyl exposure may rise or fall", action: "Check and monitor closely or escalate." },
+      { medicineOrClass: "Heat sources and fever", risk: "Accelerated absorption and overdose", action: "Avoid heating pads/hot baths over patch; seek advice for significant fever." },
+    ],
+  },
+  dexamfetamine: {
+    warningLabels: [
+      { code: "Q / SEC", label: "Keep locked away and out of reach", appliesWhen: "All Schedule 8 psychostimulant supplies.", rationale: "Prevents diversion and accidental ingestion." },
+      { code: "G / DRV", label: "Avoid driving/machinery", appliesWhen: "If dizziness, visual change or impaired judgment occurs.", rationale: "Individual CNS effects vary." },
+    ],
+    dosing: [
+      { population: "Children 3–5 years", indication: "ADHD", productInformationDose: "Common PI start: 2.5 mg daily, increased cautiously at weekly intervals.", notes: "Specialist diagnosis/oversight and jurisdictional requirements apply." },
+      { population: "Children ≥6 years and adolescents", indication: "ADHD", productInformationDose: "Common PI start: 5 mg once or twice daily; increase gradually. Doses above 40 mg/day are rarely necessary.", notes: "Give earlier in the day; monitor growth, appetite, sleep, BP and pulse." },
+      { population: "Adults", indication: "Narcolepsy", productInformationDose: "Common PI range: 5–60 mg/day in divided doses.", notes: "ADHD adult use and approval vary; verify exact indication and specialist plan." },
+    ],
+    commonSideEffects: ["Reduced appetite", "Insomnia", "Dry mouth", "Abdominal discomfort", "Headache", "Increased heart rate"],
+    urgentCare: ["Chest pain, fainting or marked palpitations", "Severe agitation, hallucinations or mania", "Seizure", "Cold, painful or colour-changing fingers/toes"],
+    interactions: [
+      { medicineOrClass: "MAO inhibitors", risk: "Hypertensive crisis and serious toxicity", action: "Contraindicated with recent use; stop and escalate." },
+      { medicineOrClass: "Other stimulants and sympathomimetics, including some decongestants", risk: "Additive cardiovascular/CNS effects", action: "Reconcile OTC products and monitor/escalate." },
+      { medicineOrClass: "Urinary pH-altering products", risk: "Dexamfetamine exposure can change", action: "Check product information when clinically relevant." },
+    ],
+  },
+  methotrexate: {
+    warningLabels: [
+      { code: "T / WKY", label: "Take once weekly on the same day", appliesWhen: "Low-dose methotrexate for inflammatory disease.", rationale: "Daily administration errors can be fatal." },
+      { code: "K / BT", label: "Regular blood tests required", appliesWhen: "All long-term low-dose therapy.", rationale: "FBC, liver and renal monitoring detect toxicity." },
+      { code: "O / ASP", label: "Do not take aspirin/NSAIDs without advice", appliesWhen: "All supplies unless a prescriber has reviewed the combination.", rationale: "Toxicity and renal risk can increase." },
+    ],
+    dosing: [
+      { population: "Adults", indication: "Rheumatoid arthritis", productInformationDose: "Common PI start: 7.5 mg once weekly; titrate to response and monitoring, with product-specific maximums.", notes: "Never daily for this indication. Record the weekly day prominently." },
+      { population: "Adults", indication: "Severe psoriasis", productInformationDose: "Common PI range: 10–25 mg once weekly after a test/assessment strategy where specified.", notes: "Specialist oversight and monitoring required." },
+      { population: "Children", indication: "Juvenile inflammatory disease", productInformationDose: "Specialist weight/body-surface-area weekly regimen only.", notes: "Use paediatric specialist reference; do not extrapolate adult tablets." },
+    ],
+    commonSideEffects: ["Nausea", "Reduced appetite", "Fatigue", "Mouth soreness", "Mild hair thinning"],
+    urgentCare: ["Fever or signs of infection", "Mouth ulcers or severe sore throat", "Unusual bruising or bleeding", "Shortness of breath or persistent cough", "Severe rash, jaundice or marked vomiting"],
+    interactions: [
+      { medicineOrClass: "Trimethoprim or trimethoprim-sulfamethoxazole", risk: "Severe bone-marrow suppression", action: "Avoid and urgently clarify." },
+      { medicineOrClass: "NSAIDs, penicillins and other medicines affecting renal clearance", risk: "Methotrexate exposure/toxicity may increase", action: "Assess dose, renal function and monitoring; contact prescriber if unresolved." },
+      { medicineOrClass: "Live vaccines and alcohol excess", risk: "Infection or liver toxicity", action: "Check immunisation and alcohol plan with treating team." },
+    ],
+  },
+  lithium: {
+    warningLabels: [
+      { code: "K / BT", label: "Regular blood tests required", appliesWhen: "All lithium therapy.", rationale: "Serum concentration, renal, thyroid and calcium monitoring are essential." },
+      { code: "O / ASP", label: "Do not take aspirin/NSAIDs without advice", appliesWhen: "All supplies.", rationale: "NSAIDs can raise lithium concentrations." },
+      { code: "U / FLS", label: "Maintain normal fluid and salt intake", appliesWhen: "All supplies.", rationale: "Dehydration or major sodium change can precipitate toxicity." },
+      { code: "P / WHO", label: "Swallow whole — do not crush or chew", appliesWhen: "Sustained-release tablets such as Quilonum SR.", rationale: "Preserves the release profile." },
+    ],
+    dosing: [
+      { population: "Adults", indication: "Acute mania", productInformationDose: "Common PI total: approximately 900–1800 mg/day in divided doses, adjusted to serum concentration and response.", notes: "Product, formulation and target concentration vary; frequent early levels required." },
+      { population: "Adults", indication: "Maintenance", productInformationDose: "Often approximately 900–1200 mg/day in divided doses, but entirely concentration-guided.", notes: "Some patients require much lower or higher doses." },
+      { population: "Older adults or renal impairment", indication: "Any", productInformationDose: "Use lower individualised doses and closer monitoring.", notes: "No safe age-only dose; renal function and interacting medicines dominate." },
+    ],
+    commonSideEffects: ["Fine tremor", "Thirst", "Increased urination", "Nausea", "Mild diarrhoea", "Weight gain"],
+    urgentCare: ["Worsening/coarse tremor", "Persistent vomiting or diarrhoea", "Unsteady walking, slurred speech or confusion", "Marked drowsiness, muscle jerks or seizure"],
+    interactions: [
+      { medicineOrClass: "NSAIDs", risk: "Lithium concentration and toxicity may increase", action: "Avoid self-treatment; arrange level/clinical review when combined." },
+      { medicineOrClass: "ACE inhibitors, ARBs and thiazide diuretics", risk: "Lithium concentration may rise substantially", action: "Only combine with a documented monitoring/dose plan." },
+      { medicineOrClass: "Dehydration or sudden low-salt intake", risk: "Lithium retention and toxicity", action: "Use sick-day escalation plan and seek prompt advice." },
+    ],
+  },
+  apixaban: {
+    warningLabels: [
+      { code: "N / STP", label: "Do not stop suddenly", appliesWhen: "All anticoagulation indications unless a clinician directs interruption.", rationale: "Premature discontinuation increases thrombosis/stroke risk." },
+      { code: "O / ASP", label: "Do not take aspirin/NSAIDs without advice", appliesWhen: "All supplies.", rationale: "Bleeding risk increases." },
+      { code: "V / BLD", label: "Report unusual bleeding urgently", appliesWhen: "All supplies.", rationale: "Supports early recognition of significant bleeding." },
+    ],
+    dosing: [
+      { population: "Adults", indication: "Non-valvular atrial fibrillation", productInformationDose: "5 mg twice daily; reduce to 2.5 mg twice daily when at least 2 apply: age ≥80 years, weight ≤60 kg, serum creatinine ≥133 micromol/L.", notes: "Check current PI and severe renal-impairment guidance." },
+      { population: "Adults", indication: "Acute DVT or PE", productInformationDose: "10 mg twice daily for 7 days, then 5 mg twice daily.", notes: "Confirm indication and treatment phase." },
+      { population: "Adults", indication: "Prevention of recurrent DVT/PE", productInformationDose: "2.5 mg twice daily after at least 6 months of treatment.", notes: "Do not use the AF reduction rule for this indication." },
+      { population: "Adults", indication: "VTE prevention after hip/knee replacement", productInformationDose: "2.5 mg twice daily for the product/operation-specific duration.", notes: "Timing after surgery and duration differ by procedure." },
+      { population: "Children", indication: "Any", productInformationDose: "Use only if the current Australian PI specifically approves the age/indication and a specialist plan is documented.", notes: "Do not extrapolate adult regimens." },
+    ],
+    commonSideEffects: ["Bruising", "Nosebleed", "Minor bleeding", "Nausea", "Anaemia"],
+    urgentCare: ["Bleeding that will not stop", "Black stools, vomiting blood or blood in urine", "Sudden severe headache, weakness, speech change or collapse", "Significant head injury"],
+    interactions: [
+      { medicineOrClass: "NSAIDs, aspirin and antiplatelets", risk: "Bleeding risk increases", action: "Avoid unless specifically reviewed and co-prescribed." },
+      { medicineOrClass: "Strong dual CYP3A4/P-gp inhibitors or inducers", risk: "Apixaban exposure may rise or fall", action: "Check the exact PI and avoid/adjust only under prescriber direction." },
+      { medicineOrClass: "Other anticoagulants", risk: "Major bleeding", action: "Use only during a documented switching/procedural plan." },
+    ],
+  },
+};
+
+export const MEDICINE_LEARNING_PROFILES: MedicineLearningProfile[] = [
+  ...BASE_MEDICINE_LEARNING_PROFILES,
+  ...COMPLEX_MEDICINE_PROFILES,
+].map((profile) => ({
+  ...profile,
+  clinicalGuide: CLINICAL_GUIDES[profile.id],
+}));
 
 export function normalizeMedicineQuery(value: string): string {
   return value

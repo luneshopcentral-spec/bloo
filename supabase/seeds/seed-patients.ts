@@ -52,6 +52,30 @@ const PATIENT_SCRIPTS: Record<
     { script_date: "01/06/17", drug: "RAMIPRIL TAB 5mg", qty: "56", repeats: 2, rx_number: "3302" },
     { script_date: "20/06/17", drug: "CIMETIDINE TAB 400mg", qty: "28", repeats: 0, rx_number: "3389" },
   ],
+  "patient-peter-morales-richmond": [
+    { script_date: "17/06/26", drug: "OXYCONTIN MR TAB 20mg", qty: "28", repeats: 0, rx_number: "S8-7741" },
+    { script_date: "20/05/26", drug: "OXYCONTIN MR TAB 20mg", qty: "28", repeats: 0, rx_number: "S8-7480" },
+    { script_date: "20/05/26", drug: "OXYCODONE IR TAB 5mg", qty: "20", repeats: 0, rx_number: "S8-7481" },
+  ],
+  "patient-helen-brooks-kew": [
+    { script_date: "03/07/26", drug: "PARACETAMOL TAB 500mg", qty: "100", repeats: 2, rx_number: "6112" },
+  ],
+  "patient-noah-williams-brunswick": [
+    { script_date: "18/06/26", drug: "ASPEN DEXAMFETAMINE TAB 5mg", qty: "100", repeats: 0, rx_number: "S8-8201" },
+    { script_date: "19/05/26", drug: "ASPEN DEXAMFETAMINE TAB 5mg", qty: "100", repeats: 0, rx_number: "S8-7940" },
+  ],
+  "patient-grace-lim-box-hill": [
+    { script_date: "21/06/26", drug: "METHOTREXATE TAB 10mg — once weekly", qty: "12", repeats: 2, rx_number: "7012" },
+    { script_date: "21/06/26", drug: "FOLIC ACID TAB 5mg", qty: "20", repeats: 5, rx_number: "7013" },
+  ],
+  "patient-rahul-mehta-footscray": [
+    { script_date: "15/06/26", drug: "QUILONUM SR TAB 450mg", qty: "100", repeats: 2, rx_number: "7182" },
+    { script_date: "12/07/26", drug: "IBUPROFEN TAB 400mg", qty: "30", repeats: 0, rx_number: "7241" },
+  ],
+  "patient-evelyn-scott-camberwell": [
+    { script_date: "16/06/26", drug: "ELIQUIS TAB 2.5mg", qty: "60", repeats: 5, rx_number: "7318" },
+    { script_date: "16/06/26", drug: "NAPROXEN TAB 500mg", qty: "50", repeats: 1, rx_number: "7319" },
+  ],
   "patient-john-smith-richmond": [
     { script_date: "10/05/17", drug: "ATORVASTATIN TAB 20mg", qty: "30", repeats: 5, rx_number: "4001" },
   ],

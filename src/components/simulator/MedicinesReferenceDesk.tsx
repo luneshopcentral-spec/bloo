@@ -155,6 +155,10 @@ export function MedicinesReferenceDesk({ medicineName }: MedicinesReferenceDeskP
                     </dl>
 
                     <nav className="fred-reference-section-nav" aria-label={`${activeProfile.genericName} sections`}>
+                      <a href={`#medicine-${activeProfile.id}-labels`}>Warning labels</a>
+                      <a href={`#medicine-${activeProfile.id}-doses`}>Dose guide</a>
+                      <a href={`#medicine-${activeProfile.id}-safety`}>Side effects & urgent care</a>
+                      <a href={`#medicine-${activeProfile.id}-interactions`}>Interactions</a>
                       {activeProfile.sections.map((section) => (
                         <a key={section.id} href={`#medicine-${activeProfile.id}-${section.id}`}>
                           {section.heading}
@@ -163,6 +167,78 @@ export function MedicinesReferenceDesk({ medicineName }: MedicinesReferenceDeskP
                       <a href={`#medicine-${activeProfile.id}-products`}>Products</a>
                       <a href={`#medicine-${activeProfile.id}-sources`}>References</a>
                     </nav>
+
+                    <div className="fred-reference-answer-banner" role="note">
+                      <strong>Exam-style answer guide</strong>
+                      <span>
+                        The applicable label wording and product-information dose ranges are shown below.
+                        Match them to the exact brand, formulation, indication, age, weight, renal function and prescription.
+                      </span>
+                    </div>
+
+                    <section className="fred-reference-clinical" id={`medicine-${activeProfile.id}-labels`}>
+                      <h4>Dispensing warning-label answers</h4>
+                      <table>
+                        <thead><tr><th>Code</th><th>Label wording</th><th>When it applies</th><th>Why</th></tr></thead>
+                        <tbody>
+                          {activeProfile.clinicalGuide.warningLabels.map((label) => (
+                            <tr key={`${label.code}-${label.label}`}>
+                              <td><strong>{label.code}</strong></td>
+                              <td>{label.label}</td>
+                              <td>{label.appliesWhen}</td>
+                              <td>{label.rationale}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </section>
+
+                    <section className="fred-reference-clinical" id={`medicine-${activeProfile.id}-doses`}>
+                      <h4>Product-information dose guide by population and indication</h4>
+                      <p className="fred-reference-dose-warning">
+                        Learning summary, not a patient-specific recommendation. Verify the current exact-product PI and the assessment reference before acting.
+                      </p>
+                      <table>
+                        <thead><tr><th>Population</th><th>Indication</th><th>PI dose or range</th><th>Checks</th></tr></thead>
+                        <tbody>
+                          {activeProfile.clinicalGuide.dosing.map((row) => (
+                            <tr key={`${row.population}-${row.indication}`}>
+                              <td>{row.population}</td>
+                              <td>{row.indication}</td>
+                              <td>{row.productInformationDose}</td>
+                              <td>{row.notes}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </section>
+
+                    <section className="fred-reference-safety-grid" id={`medicine-${activeProfile.id}-safety`}>
+                      <div>
+                        <h4>Common side effects</h4>
+                        <ul>{activeProfile.clinicalGuide.commonSideEffects.map((effect) => <li key={effect}>{effect}</li>)}</ul>
+                      </div>
+                      <div className="urgent">
+                        <h4>Seek urgent care or immediate advice</h4>
+                        <ul>{activeProfile.clinicalGuide.urgentCare.map((symptom) => <li key={symptom}>{symptom}</li>)}</ul>
+                      </div>
+                    </section>
+
+                    <section className="fred-reference-clinical" id={`medicine-${activeProfile.id}-interactions`}>
+                      <h4>Important medicine and product interactions</h4>
+                      <table>
+                        <thead><tr><th>Medicine / class</th><th>Risk</th><th>Dispensing action</th></tr></thead>
+                        <tbody>
+                          {activeProfile.clinicalGuide.interactions.map((row) => (
+                            <tr key={`${row.medicineOrClass}-${row.risk}`}>
+                              <td>{row.medicineOrClass}</td>
+                              <td>{row.risk}</td>
+                              <td>{row.action}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </section>
 
                     <div className="fred-reference-sections">
                       {activeProfile.sections.map((section) => (
@@ -202,8 +278,8 @@ export function MedicinesReferenceDesk({ medicineName }: MedicinesReferenceDeskP
                     </section>
 
                     <section className="fred-reference-reasoning">
-                      <h4>Derive the labels—do not copy an answer</h4>
-                      <p>Use the exact product information to answer these questions, then write the applicable labels in the dispensing screen.</p>
+                      <h4>Apply the answer to the case</h4>
+                      <p>The tables show the reference answer. Use these questions to decide which entries apply to this patient and prescription.</p>
                       <ul>
                         {activeProfile.labelReasoningClues.map((clue) => <li key={clue}>{clue}</li>)}
                       </ul>

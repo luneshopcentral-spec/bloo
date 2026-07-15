@@ -1,6 +1,7 @@
 export type CheckCategory =
   | "patient"
   | "prescriber"
+  | "authority"
   | "drug"
   | "drug_variant"
   | "directions"

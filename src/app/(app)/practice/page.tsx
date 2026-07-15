@@ -40,6 +40,7 @@ import { PatientDetailsModal } from "@/components/simulator/PatientDetailsModal"
 import { DrugSelectionModal }  from "@/components/simulator/DrugSelectionModal";
 import { PrescriberDirectoryModal } from "@/components/simulator/PrescriberDirectoryModal";
 import { CounsellingStage }    from "@/components/simulator/CounsellingStage";
+import { ExamStopwatch }       from "@/components/simulator/ExamStopwatch";
 
 const DEFAULT_STATUS =
   "Search for patient by surname, then enter drug details and complete the label.";
@@ -61,6 +62,7 @@ export default function PracticePage() {
   const [clinicalDecision, setClinicalDecision] = useState<DispenseDecision | null>(null);
   const [answersRevealed, setAnswersRevealed] = useState(false);
   const [attemptSubmitted, setAttemptSubmitted] = useState(false);
+  const [attemptResetCounter, setAttemptResetCounter] = useState(0);
 
   // Keep the prescription available without covering the core laptop workspace.
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -153,6 +155,7 @@ export default function PracticePage() {
   function handleNextFromOverlay() { setCurrentCaseIndex((i) => (i + 1) % STATIC_CASES.length); }
 
   function handleClear() {
+    setAttemptResetCounter((value) => value + 1);
     dispatch({ type: "RESET" });
     setSelectedWarnings(new Set());
     setSelectedDrug(null);
@@ -186,7 +189,7 @@ export default function PracticePage() {
     const { data: prescriberData } = await supabase
       .from("prescribers")
       .select("*")
-      .eq("prescriber_number", current.prescriberNo)
+      .eq("prescriber_number", current.expectedPrescriberNo ?? current.prescriberNo)
       .single();
     if (drugData) setSelectedDrug(drugData as DrugRow);
     if (prescriberData) setSelectedPrescriber(prescriberData as Prescriber);
@@ -206,6 +209,7 @@ export default function PracticePage() {
       selectedDrug,
       selectedPrescriber,
       decision: clinicalDecision,
+      caseData: current,
     });
 
     if (incompleteItems.length > 0) {
@@ -337,6 +341,9 @@ export default function PracticePage() {
         </div>
 
         <TitleBar />
+        {practiceMode === "exam" && (
+          <ExamStopwatch resetKey={`${current.id}-${attemptResetCounter}`} />
+        )}
         {stage === "dispensing" ? (
           <>
             <Toolbar
@@ -370,6 +377,7 @@ export default function PracticePage() {
                   onOpenDrugModal={handleOpenDrugModal}
                   selectedPrescriber={selectedPrescriber}
                   onOpenPrescriberModal={handleOpenPrescriberModal}
+                  authorityRequirement={current.authority}
                 />
                 <DrugDetailsBox
                   selectedDrug={selectedDrug}

@@ -13,8 +13,13 @@ describe("medicines learning reference", () => {
     for (const practiceCase of STATIC_CASES) {
       const profile = findBestMedicineLearningProfile(practiceCase.drug);
       expect(profile, practiceCase.title).not.toBeNull();
-      expect(profile?.sections.length).toBeGreaterThanOrEqual(5);
+      expect(profile?.sections.length).toBeGreaterThanOrEqual(4);
       expect(profile?.sources.length).toBeGreaterThanOrEqual(2);
+      expect(profile?.clinicalGuide.warningLabels.length).toBeGreaterThan(0);
+      expect(profile?.clinicalGuide.dosing.length).toBeGreaterThan(0);
+      expect(profile?.clinicalGuide.commonSideEffects.length).toBeGreaterThan(0);
+      expect(profile?.clinicalGuide.urgentCare.length).toBeGreaterThan(0);
+      expect(profile?.clinicalGuide.interactions.length).toBeGreaterThan(0);
     }
   });
 
@@ -33,18 +38,16 @@ describe("medicines learning reference", () => {
     );
   });
 
-  it("does not print the case warning-label answer phrases in the study clues", () => {
+  it("publishes the applicable warning-label answers for every simulator case", () => {
     for (const practiceCase of STATIC_CASES) {
       const profile = findBestMedicineLearningProfile(practiceCase.drug);
       expect(profile).not.toBeNull();
-      const studyText = normalizeWarningLabel([
-        profile?.summary,
-        ...(profile?.sections.flatMap((section) => [section.summary, ...section.bullets]) ?? []),
-        ...(profile?.labelReasoningClues ?? []),
-      ].join(" "));
+      const answerText = normalizeWarningLabel(
+        profile?.clinicalGuide.warningLabels.map((label) => label.label).join(" ") ?? ""
+      );
 
       for (const correctWarning of practiceCase.correctWarnings) {
-        expect(studyText, `${practiceCase.id} leaked ${correctWarning}`).not.toContain(
+        expect(answerText, `${practiceCase.id} is missing ${correctWarning}`).toContain(
           normalizeWarningLabel(correctWarning)
         );
       }

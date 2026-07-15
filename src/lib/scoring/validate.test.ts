@@ -11,6 +11,7 @@ import type { Prescriber } from "@/lib/types/prescriber";
 const case1 = STATIC_CASES[0];
 const case3 = STATIC_CASES[2];
 const case4 = STATIC_CASES[3];
+const case7 = STATIC_CASES[6];
 
 function form(overrides: Partial<FormState> = {}): FormState {
   return { ...EMPTY_FORM_STATE, ...overrides };
@@ -140,6 +141,7 @@ describe("validateDispense", () => {
       selectedDrug: null,
       selectedPrescriber: null,
       decision: null,
+      caseData: case1,
     })).toEqual([
       "patient",
       "prescriber from directory",
@@ -156,6 +158,7 @@ describe("validateDispense", () => {
       selectedDrug: case1Drug,
       selectedPrescriber: prescriberFor(case1),
       decision: "dispense",
+      caseData: case1,
     })).toEqual([]);
   });
 
@@ -167,6 +170,42 @@ describe("validateDispense", () => {
     expect(result.passed).toBe(true);
     expect(result.criticalFailures).toEqual([]);
     expect(result.countsTowardProgress).toBe(true);
+  });
+
+  it("requires and marks the authority number for controlled authority cases", () => {
+    const controlledDrug = mockDrug({
+      seed_id: case7.correctDrugSeedId,
+      generic_name: "OXYCODONE",
+      full_display_name: case7.drug,
+      schedule: "S8",
+    });
+    const controlledPatient = mockPatient({
+      seed_id: case7.patientLookup.existingPatientSeedId,
+      surname: "MORALES",
+      firstname: "PETER",
+    });
+    const base = correctInput(case7, controlledPatient, controlledDrug);
+
+    expect(getDispenseReadinessIssues({
+      formState: base.formState,
+      selectedPatient: controlledPatient,
+      selectedDrug: controlledDrug,
+      selectedPrescriber: prescriberFor(case7),
+      decision: case7.expectedDecision,
+      caseData: case7,
+    })).toContain("authority number from the prescription");
+
+    const incorrect = validateDispense({
+      ...base,
+      formState: { ...base.formState, authorityNumber: "H0000XX" },
+    });
+    expect(incorrect.criticalFailures).toContain("authority");
+
+    const correct = validateDispense({
+      ...base,
+      formState: { ...base.formState, authorityNumber: case7.authority?.number ?? "" },
+    });
+    expect(correct.checks.find((check) => check.category === "authority")?.passed).toBe(true);
   });
 
   it("cannot pass without a selected drug and product variant", () => {

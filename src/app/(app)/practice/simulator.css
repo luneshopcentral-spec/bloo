@@ -159,6 +159,50 @@
   font-weight: 700;
   white-space: nowrap;
 }
+
+.fred-root .fred-exam-stopwatch {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border-top: 2px solid #7a5200;
+  border-bottom: 2px solid #7a5200;
+  background: #fff1bd;
+  color: #2f250f;
+  font-size: 11px;
+}
+.fred-root .fred-exam-stopwatch-label { font-weight: 800; letter-spacing: .06em; }
+.fred-root .fred-exam-stopwatch strong {
+  min-width: 68px;
+  font: 800 20px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
+  color: #7a2600;
+}
+.fred-root .fred-exam-stopwatch button {
+  border: 1px solid #6e5516;
+  background: #fffaf0;
+  padding: 3px 9px;
+  font-weight: bold;
+  cursor: pointer;
+}
+.fred-root .fred-exam-stopwatch > span:last-child { margin-left: auto; }
+
+.fred-root .fred-authority-entry {
+  margin: 3px 4px 5px;
+  padding: 6px;
+  display: grid;
+  grid-template-columns: minmax(190px, 280px) 1fr;
+  gap: 8px;
+  align-items: end;
+  border: 2px solid #9a4f00;
+  background: #fff0cf;
+}
+.fred-root .fred-authority-entry p {
+  margin: 0 0 2px;
+  color: #5b3100;
+  font-size: 10px;
+  line-height: 1.35;
+}
 .fred-root .fred-mode-select {
   border: 1px solid #777;
   padding: 2px 5px;
@@ -722,6 +766,62 @@
   font-weight: 700;
   text-decoration: none;
 }
+.fred-root .fred-reference-answer-banner {
+  margin: 10px 0;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  border: 1px solid #1e5d8d;
+  border-left-width: 5px;
+  background: #e7f3ff;
+  line-height: 1.4;
+}
+.fred-root .fred-reference-clinical {
+  margin: 10px 0;
+  scroll-margin-top: 8px;
+}
+.fred-root .fred-reference-clinical table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10.5px;
+}
+.fred-root .fred-reference-clinical th,
+.fred-root .fred-reference-clinical td {
+  border: 1px solid #aeb8c1;
+  padding: 6px;
+  text-align: left;
+  vertical-align: top;
+  line-height: 1.35;
+}
+.fred-root .fred-reference-clinical th { background: #dcecff; color: #123e65; }
+.fred-root .fred-reference-clinical tbody tr:nth-child(even) { background: #f6f9fc; }
+.fred-root .fred-reference-dose-warning {
+  margin: 0 0 6px;
+  padding: 5px 7px;
+  border: 1px solid #c67a00;
+  background: #fff4d8;
+  color: #5a3900;
+  font-weight: bold;
+}
+.fred-root .fred-reference-safety-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 10px 0;
+  scroll-margin-top: 8px;
+}
+.fred-root .fred-reference-safety-grid > div {
+  border: 1px solid #91a4b5;
+  background: #f4f8fb;
+  padding: 7px 9px;
+}
+.fred-root .fred-reference-safety-grid > div.urgent {
+  border-color: #b82222;
+  background: #fff0f0;
+}
+.fred-root .fred-reference-safety-grid ul { margin: 5px 0 0 18px; padding: 0; }
+.fred-root .fred-reference-safety-grid li { margin-bottom: 4px; line-height: 1.35; }
 .fred-root .fred-reference-sections {
   display: grid;
   gap: 8px;

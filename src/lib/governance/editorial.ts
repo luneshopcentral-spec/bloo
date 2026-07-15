@@ -58,6 +58,33 @@ const CASE_REFERENCES: Record<string, CaseEditorialRecord["references"]> = {
     { title: "TGA PI repository — doxycycline", url: "https://www.ebs.tga.gov.au/ebs/picmi/picmirepository.nsf/PICMI?OpenForm=&q=doxycycline&t=pi", sourceVersion: "last updated 2025-07-28; checked 2026-07-15" },
     { title: "PBS medicine search — doxycycline", url: "https://www.pbs.gov.au/pbs/search?search-type=medicines&term=doxycycline", sourceVersion: "checked 2026-07-15" },
   ],
+  "case-7": [
+    { title: "TGA ARTG and product information — OxyContin 20 mg", url: "https://www.tga.gov.au/resources/artg/200033", sourceVersion: "checked 2026-07-15" },
+    { title: "Victorian legislative requirements for pharmacists", url: "https://www.health.vic.gov.au/drugs-and-poisons/pharmacists", sourceVersion: "checked 2026-07-15" },
+    { title: "PBS authority prescription requirements", url: "https://www.pbs.gov.au/info/healthpro/explanatory-notes/section1/Section_1_2_Explanatory_Notes", sourceVersion: "checked 2026-07-15" },
+  ],
+  "case-8": [
+    { title: "TGA ARTG and product information — Durogesic 25 micrograms/hour", url: "https://www.tga.gov.au/resources/artg/112368", sourceVersion: "checked 2026-07-15" },
+    { title: "Victorian legislative requirements for pharmacists", url: "https://www.health.vic.gov.au/drugs-and-poisons/pharmacists", sourceVersion: "checked 2026-07-15" },
+    { title: "PBS authority prescription requirements", url: "https://www.pbs.gov.au/info/healthpro/explanatory-notes/section1/Section_1_2_Explanatory_Notes", sourceVersion: "checked 2026-07-15" },
+  ],
+  "case-9": [
+    { title: "TGA ARTG and product information — Aspen Dexamfetamine 5 mg", url: "https://www.tga.gov.au/resources/artg/19684", sourceVersion: "checked 2026-07-15" },
+    { title: "Victorian Schedule 8 permits and psychostimulant requirements", url: "https://www.health.vic.gov.au/drugs-and-poisons/schedule-8-permits-and-notifications", sourceVersion: "checked 2026-07-15" },
+    { title: "Victorian pharmacist prescription authentication requirements", url: "https://www.health.vic.gov.au/drugs-and-poisons/pharmacists", sourceVersion: "checked 2026-07-15" },
+  ],
+  "case-10": [
+    { title: "TGA ARTG and CMI — Methotrexate Cipla 10 mg", url: "https://www.tga.gov.au/resources/artg/365594", sourceVersion: "checked 2026-07-15" },
+    { title: "PBS medicine search — methotrexate", url: "https://www.pbs.gov.au/pbs/search?search-type=medicines&term=methotrexate", sourceVersion: "checked 2026-07-15" },
+  ],
+  "case-11": [
+    { title: "TGA product information — Quilonum SR", url: "https://www.tga.gov.au/sites/default/files/2022-11/foi-3988-02.pdf", sourceVersion: "checked 2026-07-15" },
+    { title: "PBS medicine search — lithium carbonate", url: "https://www.pbs.gov.au/pbs/search?search-type=medicines&term=lithium%20carbonate", sourceVersion: "checked 2026-07-15" },
+  ],
+  "case-12": [
+    { title: "TGA ARTG and product information — Eliquis 5 mg", url: "https://www.tga.gov.au/resources/artg/193474", sourceVersion: "checked 2026-07-15" },
+    { title: "PBS medicine search — apixaban", url: "https://www.pbs.gov.au/pbs/search?search-type=medicines&term=apixaban", sourceVersion: "checked 2026-07-15" },
+  ],
 };
 
 export const CASE_EDITORIAL_RECORDS: CaseEditorialRecord[] = STATIC_CASES.map((caseData) => ({

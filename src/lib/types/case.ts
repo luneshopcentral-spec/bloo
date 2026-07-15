@@ -53,7 +53,8 @@ export interface PracticeCase {
   patientLookup: PatientLookupSpec;
   price: string;
   doctor: string;
-  prescriberNo: string;
+  prescriberNo: string; // number printed on the prescription
+  expectedPrescriberNo?: string; // directory number when the printed number is deliberately incorrect
   date: string;
   scriptType: string;
   drug: string;           // what the doctor wrote (used for drug-check first-word matching)
@@ -64,6 +65,12 @@ export interface PracticeCase {
   repeats: string;
   qty: string | number;
   price2: string;
+  authority?: {
+    required: true;
+    type: "approval" | "streamlined";
+    number: string;
+    indication: string;
+  };
   correctWarnings: string[];
   errors: string[];
   expectedDecision: DispenseDecision;
