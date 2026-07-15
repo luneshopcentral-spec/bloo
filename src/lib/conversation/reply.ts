@@ -8,6 +8,23 @@ export interface PatientReplyResult {
   showConcern: boolean;
 }
 
+// The teach-back reply must only repeat instructions the student has actually
+// given; a canned full-plan recital would hand the remaining answers to the student.
+function buildTeachBackText(
+  conversation: ConversationCase,
+  addressedTopicIds: Set<string>
+): string {
+  const covered = conversation.topics.filter(
+    (topic) =>
+      (topic.category === "clinical_counselling" || topic.category === "safety_netting") &&
+      addressedTopicIds.has(topic.id)
+  );
+  if (covered.length === 0) {
+    return "I’m not sure I could repeat it back yet — could you go through the instructions with me first?";
+  }
+  return covered.map((topic) => topic.patientReplies[0]).join(" ");
+}
+
 export function buildPatientReply(
   conversation: ConversationCase,
   matchedTopicIds: string[],
@@ -27,6 +44,11 @@ export function buildPatientReply(
       .map((selectedId, index) => {
         const selectedTopic = topicById.get(selectedId);
         if (!selectedTopic) return "";
+        if (selectedId === "teach_back") {
+          const addressed = new Set([...previouslyAddressed, ...matchedTopicIds]);
+          addressed.delete("teach_back");
+          return buildTeachBackText(conversation, addressed);
+        }
         if (previouslyAddressed.has(selectedId) && selectedTopic.repeatReply) {
           return selectedTopic.repeatReply;
         }

@@ -228,10 +228,13 @@ export function validateDispense({
     });
   }
 
+  // The prescription may be written by generic or brand name (e.g. "DUROGESIC"
+  // with generic_name FENTANYL), so accept a first-word match against either.
   const caseFirstWord = caseData.drug.split(" ")[0];
   const drugPassed =
     selectedDrug !== null &&
-    normFirst4(selectedDrug.generic_name) === normFirst4(caseFirstWord);
+    [selectedDrug.generic_name, selectedDrug.brand_name ?? "", selectedDrug.full_display_name]
+      .some((name) => name && normFirst4(name) === normFirst4(caseFirstWord));
 
   checks.push({
     category: "drug",

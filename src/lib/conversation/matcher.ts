@@ -19,7 +19,8 @@ export function normalizeConversationText(text: string): string {
     .replace(/(\d)([a-z])/g, "$1 $2")
     .replace(/([a-z])(\d)/g, "$1 $2")
     .replace(/\b(?:mls|millilitres?|milliliters?)\b/g, "ml")
-    .replace(/\b(?:medications?|medicines?|drugs?)\b/g, "medicine")
+    .replace(/\b(?:medications?|medicines?|meds|drugs?)\b/g, "medicine")
+    .replace(/\bopoids?\b/g, "opioid")
     .replace(/\b(?:refrigerator|refrigerated|refrigeration)\b/g, "fridge")
     .replace(/\s+/g, " ")
     .trim();
