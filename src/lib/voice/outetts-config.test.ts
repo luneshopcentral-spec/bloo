@@ -3,6 +3,7 @@ import {
   buildOutePrompt,
   estimateOuteMaxTokens,
   extractOuteAudioCodes,
+  extractOuteAudioCodesFromTokenIds,
   formatModelProgress,
   getOuteVoiceProfile,
   splitOuteSpeech,
@@ -30,6 +31,11 @@ describe("OuteTTS patient voice configuration", () => {
       .toEqual([12, 4099]);
     expect(extractOuteAudioCodes("<|4100|><|99999|><|audio_end|>"))
       .toEqual([]);
+  });
+
+  it("extracts hidden WavTokenizer codes from llama.cpp token IDs", () => {
+    expect(extractOuteAudioCodesFromTokenIds([186, 61_446, 61_447, 61_448, 65_546, 65_547]))
+      .toEqual([0, 1, 4099]);
   });
 
   it("chunks longer replies and keeps generation limits bounded", () => {

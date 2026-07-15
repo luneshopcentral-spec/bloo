@@ -236,6 +236,7 @@ export function useVoiceConversation({
     outeQuantization: outetts.quantization,
     outeProgress: outetts.progress,
     outeModelReady: outetts.modelReady,
+    outeDiagnostic: outetts.diagnostic,
     patientVoiceNotice,
     activity,
     errorMessage,
