@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useKokoroPatientVoice } from "@/hooks/useKokoroPatientVoice";
+import { useOutePatientVoice } from "@/hooks/useOutePatientVoice";
 import {
   getSpeechRecognitionConstructor,
   patientSpeechRate,
@@ -51,9 +51,9 @@ export function useVoiceConversation({
     const recognitionConstructor = getSpeechRecognitionConstructor(window);
     const canUseSystemSpeech = "speechSynthesis" in window && "SpeechSynthesisUtterance" in window;
     const audioWindow = window as AudioWindow;
-    const canUseKokoro = Boolean(window.Worker && (window.AudioContext || audioWindow.webkitAudioContext));
+    const canUseOuteTTS = Boolean(window.Worker && (window.AudioContext || audioWindow.webkitAudioContext));
     setRecognitionSupported(Boolean(recognitionConstructor));
-    setSynthesisSupported(canUseKokoro || canUseSystemSpeech);
+    setSynthesisSupported(canUseOuteTTS || canUseSystemSpeech);
 
     const loadVoices = () => setVoices(window.speechSynthesis.getVoices());
     if (canUseSystemSpeech) {
@@ -104,7 +104,7 @@ export function useVoiceConversation({
 
     window.speechSynthesis.cancel();
     if (fallbackReason) {
-      setPatientVoiceNotice(`Kokoro fallback: ${fallbackReason}. The system voice is being used for this session.`);
+      setPatientVoiceNotice(`OuteTTS fallback: ${fallbackReason}. The system voice is being used for this session.`);
     }
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = systemPatientVoice?.lang || "en-AU";
@@ -122,24 +122,24 @@ export function useVoiceConversation({
     window.speechSynthesis.speak(utterance);
   }, [patientKey, systemPatientVoice]);
 
-  const handleKokoroActivity = useCallback((nextActivity: "idle" | "loading" | "generating" | "speaking") => {
+  const handleOuteActivity = useCallback((nextActivity: "idle" | "loading" | "generating" | "speaking") => {
     setActivity(nextActivity);
   }, []);
 
-  const handleKokoroFallback = useCallback((text: string, reason: string) => {
+  const handleOuteFallback = useCallback((text: string, reason: string) => {
     speakWithSystemVoice(text, reason);
   }, [speakWithSystemVoice]);
 
-  const kokoro = useKokoroPatientVoice({
+  const outetts = useOutePatientVoice({
     patientKey,
-    onActivity: handleKokoroActivity,
-    onFallback: handleKokoroFallback,
+    onActivity: handleOuteActivity,
+    onFallback: handleOuteFallback,
   });
-  const cancelKokoro = kokoro.cancel;
-  const speakWithKokoro = kokoro.speak;
+  const cancelOute = outetts.cancel;
+  const speakWithOute = outetts.speak;
 
   const cancelSpeech = useCallback(() => {
-    cancelKokoro();
+    cancelOute();
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       window.speechSynthesis.cancel();
     }
@@ -148,7 +148,7 @@ export function useVoiceConversation({
         ? "idle"
         : current
     ));
-  }, [cancelKokoro]);
+  }, [cancelOute]);
 
   const stopListening = useCallback(() => {
     try {
@@ -219,23 +219,23 @@ export function useVoiceConversation({
   const speak = useCallback((text: string) => {
     abortListening();
     setErrorMessage(null);
-    speakWithKokoro(preparePatientSpeech(text));
-  }, [abortListening, speakWithKokoro]);
+    speakWithOute(preparePatientSpeech(text));
+  }, [abortListening, speakWithOute]);
 
-  const usingKokoro = kokoro.engine === "kokoro";
+  const usingOute = outetts.engine === "outetts";
   return {
     recognitionSupported,
     synthesisSupported,
-    patientVoiceName: usingKokoro ? kokoro.profile.name : systemPatientVoice?.name ?? null,
-    patientVoiceLanguage: usingKokoro ? kokoro.profile.language : systemPatientVoice?.lang ?? null,
-    patientVoiceIsAustralian: usingKokoro
+    patientVoiceName: usingOute ? outetts.profile.name : systemPatientVoice?.name ?? null,
+    patientVoiceLanguage: usingOute ? outetts.profile.language : systemPatientVoice?.lang ?? null,
+    patientVoiceIsAustralian: usingOute
       ? false
       : systemPatientVoice?.lang.toLowerCase().replace("_", "-").startsWith("en-au") ?? false,
-    patientVoiceEngine: kokoro.engine,
-    kokoroBackend: kokoro.backend,
-    kokoroDType: kokoro.dtype,
-    kokoroProgress: kokoro.progress,
-    kokoroModelReady: kokoro.modelReady,
+    patientVoiceEngine: outetts.engine,
+    outeBackend: outetts.backend,
+    outeQuantization: outetts.quantization,
+    outeProgress: outetts.progress,
+    outeModelReady: outetts.modelReady,
     patientVoiceNotice,
     activity,
     errorMessage,

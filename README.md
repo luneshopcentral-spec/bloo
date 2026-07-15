@@ -93,6 +93,19 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) — you should see the landing page.
 
+### Local patient voice
+
+Voice-mode patient replies use
+[OuteTTS-0.1-350M](https://huggingface.co/OuteAI/OuteTTS-0.1-350M),
+created by OuteAI and licensed under
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The simulator runs the
+Q4_K_M model and q8 WavTokenizer decoder in the student's browser; no TTS API
+key or per-conversation service is used. The first voice session downloads
+about 348 MB of model files plus the local browser runtime. Generated audio is
+an optional simulation aid and the written patient transcript remains the
+authoritative exam-practice content. If local generation exceeds 60 seconds,
+the simulator switches to an installed system voice so the attempt can continue.
+
 ---
 
 ## Project structure
