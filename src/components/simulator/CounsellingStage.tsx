@@ -19,7 +19,7 @@ import { scoreCounselling } from "@/lib/conversation/score";
 import { buildPatientReply } from "@/lib/conversation/reply";
 import { useSemanticMatcher } from "@/hooks/useSemanticMatcher";
 import { useVoiceConversation } from "@/hooks/useVoiceConversation";
-import { formatModelProgress } from "@/lib/voice/kokoro-config";
+import { formatModelProgress, OUTETTS_DOWNLOAD_MB } from "@/lib/voice/outetts-config";
 import type { PracticeMode } from "@/lib/practice/modes";
 
 interface CounsellingStageProps {
@@ -118,9 +118,9 @@ export function CounsellingStage({
 
   const voiceStatus = voice.errorMessage
     ?? (voice.activity === "loading"
-      ? `Loading Kokoro-82M locally — current model file${formatModelProgress(voice.kokoroProgress)}. The first use is the longest.`
+      ? `Loading OuteTTS-0.1 locally${formatModelProgress(voice.outeProgress)}. The first use is the longest.`
       : voice.activity === "generating"
-        ? `Kokoro-82M is generating ${conversation.patientRole}'s reply on this laptop.`
+        ? `OuteTTS-0.1 is generating ${conversation.patientRole}'s reply on this laptop.`
         : voice.activity === "starting"
       ? "Waiting for microphone permission or the browser speech service."
       : voice.activity === "listening"
@@ -288,14 +288,14 @@ export function CounsellingStage({
                 <div className="fred-voice-controls-heading">
                   <strong id="voice-controls-title">Voice controls</strong>
                   <span>
-                    Patient voice: {voice.patientVoiceEngine === "kokoro"
-                      ? `Kokoro-82M · ${voice.patientVoiceName} (${voice.patientVoiceLanguage})`
+                    Patient voice: {voice.patientVoiceEngine === "outetts"
+                      ? `OuteTTS-0.1 · ${voice.patientVoiceName} (${voice.patientVoiceLanguage})`
                       : `System fallback · ${voice.patientVoiceName ?? "default voice"}`}
                   </span>
                 </div>
                 {voice.patientVoiceEngine === "system" && voice.patientVoiceName && !voice.patientVoiceIsAustralian && (
                   <p className="fred-voice-quality-warning">
-                    Kokoro is unavailable in this session and no Australian system voice is installed. The best
+                    OuteTTS is unavailable in this session and no Australian system voice is installed. The best
                     available English system voice will be used while the written transcript remains available.
                   </p>
                 )}
@@ -346,10 +346,11 @@ export function CounsellingStage({
                   {voiceStatus}
                 </p>
                 <p className="fred-voice-disclosure">
-                  Kokoro patient audio is generated locally with no API key or per-conversation charge. Its first-use
-                  model file is about 326 MB for WebGPU or 92 MB for the q8 WASM fallback, plus smaller browser runtime
-                  files; the browser can cache them. Student speech recognition may use the browser or operating system
-                  voice service. Text mode is always available.
+                  OuteTTS-0.1 patient audio is generated locally with no API key or per-conversation charge. Its
+                  first-use Q4 model and q8 audio decoder download is about {OUTETTS_DOWNLOAD_MB} MB, plus browser
+                  runtime files, and is cached where the browser permits. It is used under CC BY 4.0 with attribution
+                  to OuteAI. Slow or unsupported devices automatically use the system voice. Student speech recognition
+                  may use the browser or operating-system voice service. Text mode is always available.
                 </p>
               </section>
             )}
