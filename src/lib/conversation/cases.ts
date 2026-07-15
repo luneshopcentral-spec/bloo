@@ -5,11 +5,17 @@ import type {
   UnsafeAdviceRule,
 } from "./types";
 
+type ReplySpec = string | string[];
+
+function asReplies(spec: ReplySpec): string[] {
+  return Array.isArray(spec) ? spec : [spec];
+}
+
 interface CommonTopicFacts {
-  nameReply: string;
-  ageReply: string;
-  allergiesReply: string;
-  medicinesReply: string;
+  nameReply: ReplySpec;
+  ageReply: ReplySpec;
+  allergiesReply: ReplySpec;
+  medicinesReply: ReplySpec;
   medicinesCritical?: boolean;
 }
 
@@ -27,7 +33,11 @@ function commonTopics(facts: CommonTopicFacts): ConversationTopic[] {
         "\\b(?:hello|hi|good (?:morning|afternoon))\\b.*\\b(?:pharmacist|pharmacy)\\b",
         "\\bmy name is\\b.*\\b(?:pharmacist|pharmacy)\\b",
       ],
-      patientReplies: ["Hello. Yes, that would be helpful.", "Hi. Okay, I'm listening."],
+      patientReplies: [
+        "Hello. Yes, that would be helpful.",
+        "Hi. Okay, I'm listening.",
+        "Oh good, thank you. Go ahead.",
+      ],
       repeatReply: "Yes, hello again.",
     },
     {
@@ -45,8 +55,8 @@ function commonTopics(facts: CommonTopicFacts): ConversationTopic[] {
         "\\b(?:your|patient'?s) (?:full )?name\\b",
         "\\bwho (?:is|was) this (?:medicine|prescription) for\\b",
       ],
-      patientReplies: [facts.nameReply],
-      repeatReply: facts.nameReply,
+      patientReplies: asReplies(facts.nameReply),
+      repeatReply: asReplies(facts.nameReply)[0],
     },
     {
       id: "confirm_age",
@@ -64,8 +74,8 @@ function commonTopics(facts: CommonTopicFacts): ConversationTopic[] {
         "\\b(?:your|patient'?s|child'?s|son'?s|daughter'?s) age\\b",
         "\\bconfirm\\b.*\\bage\\b",
       ],
-      patientReplies: [facts.ageReply],
-      repeatReply: facts.ageReply,
+      patientReplies: asReplies(facts.ageReply),
+      repeatReply: asReplies(facts.ageReply)[0],
     },
     {
       id: "allergies",
@@ -86,8 +96,8 @@ function commonTopics(facts: CommonTopicFacts): ConversationTopic[] {
         "\\byou (?:do not|don't) have (?:any )?allerg",
         "\\byou have no allerg",
       ],
-      patientReplies: [facts.allergiesReply],
-      repeatReply: facts.allergiesReply,
+      patientReplies: asReplies(facts.allergiesReply),
+      repeatReply: asReplies(facts.allergiesReply)[0],
     },
     {
       id: "current_medicines",
@@ -104,9 +114,11 @@ function commonTopics(facts: CommonTopicFacts): ConversationTopic[] {
         "\\b(?:vitamin|supplement|herbal|over the counter|otc)\\b",
         "\\bwhat (?:else )?(?:do you|does .*?) take\\b",
         "\\bregular (?:medicine|medication|tablet)s?\\b",
+        "\\b(?:are|do) (?:you|they) (?:taking|using|on)\\b.*\\bmedicine\\b",
+        "\\bmedicine\\b.*\\bare you (?:on|taking|using)\\b",
       ],
-      patientReplies: [facts.medicinesReply],
-      repeatReply: facts.medicinesReply,
+      patientReplies: asReplies(facts.medicinesReply),
+      repeatReply: asReplies(facts.medicinesReply)[0],
     },
   ];
 }
@@ -154,8 +166,11 @@ function commonResponseIntents(facts: CommonResponseFacts): ConversationResponse
     {
       id: "current_symptoms",
       fallbackPatterns: [
-        "\\b(?:do|does|did|are|is|has|have)\\b.*\\b(?:chest pain|symptom|symptoms|fever|cough|pain|vomit|vomiting|diarrh(?:ea|oea)|nausea)\\b",
-        "\\bany\\b.*\\b(?:chest pain|symptom|symptoms|fever|cough|pain|vomit|vomiting|diarrh(?:ea|oea)|nausea)\\b",
+        // Require a person after the auxiliary verb so counselling statements such as
+        // "this medicine is for pain treatment" are not mistaken for symptom questions.
+        "\\b(?:do|does|did|are|is|has|have) (?:you|your|he|she|they|the patient)\\b.*\\b(?:chest pain|symptom|symptoms|fever|cough|pain|vomit|vomiting|diarrh(?:ea|oea)|nausea)\\b",
+        "\\bany\\b.*\\b(?:chest pain|symptom|symptoms|fever|cough|vomit|vomiting|diarrh(?:ea|oea)|nausea)\\b",
+        "\\b(?:in|having|experiencing) any pain\\b",
         "\\bhow (?:are|have) you (?:been )?feel(?:ing)?\\b",
       ],
       patientReplies: facts.symptomsReplies,
@@ -173,9 +188,38 @@ function commonResponseIntents(facts: CommonResponseFacts): ConversationResponse
       ],
     },
     {
+      id: "medicine_explanation",
+      fallbackPatterns: [
+        "\\b(?:extended|slow|modified|sustained)[- ]release\\b",
+        "\\bused to treat\\b",
+        "\\b(?:treats?|relieves?|prevents?|reduces?|helps with|works (?:by|on|for))\\b",
+        "\\bcontain(?:s|ing)\\b.*\\b(?:mg|microgram|milligram|active ingredient|ingredient)\\b",
+        "\\b(?:is|it's) an? (?:strong|mild)? ?(?:opioid|antibiotic|painkiller|steroid|anticoagulant|blood thinner|mood stabiliser|mood stabilizer|antidepressant)\\b",
+      ],
+      patientReplies: [
+        "Okay, that helps me understand what it is.",
+        "Thanks, that makes sense.",
+      ],
+    },
+    {
+      id: "dosing_instruction",
+      fallbackPatterns: [
+        "\\btake (?:one|two|three|1|2|3|a|half)\\b.*\\b(?:capsule|tablet|dose|patch|puff)\\b",
+        "\\b(?:once|twice|two times|three times)\\b.*\\b(?:a|per|every) day\\b",
+        "\\bevery \\d+ (?:hours?|days?)\\b",
+        "\\bswallow\\w*\\b.*\\bwhole\\b",
+        "\\b(?:do not|don't|never)\\b.*\\b(?:crush|chew)\\b",
+      ],
+      patientReplies: [
+        "Okay, I follow how to take it.",
+        "Understood, thank you.",
+      ],
+    },
+    {
       id: "courtesy_close",
       fallbackPatterns: [
         "\\b(?:thank you|thanks|goodbye|bye|take care)\\b",
+        "\\bno worries\\b",
         "\\bthat(?:'s| is) all\\b",
       ],
       patientReplies: [
@@ -184,6 +228,31 @@ function commonResponseIntents(facts: CommonResponseFacts): ConversationResponse
         "Thank you. I’ll follow the label and contact the pharmacy if I’m unsure.",
       ],
       suppressConcern: true,
+    },
+    {
+      id: "negative_answer",
+      fallbackPatterns: [
+        "^no\\b",
+        "\\byou can ?not\\b",
+        "\\byou can't\\b",
+        "\\b(?:should not|shouldn't|must not|mustn't)\\b.*\\b(?:take|use|keep)\\b",
+        "\\b(?:stop|do not take|don't take)\\b",
+      ],
+      patientReplies: [
+        "Okay, I won't. What exactly should I do instead?",
+        "All right. Could you tell me exactly what to do?",
+      ],
+    },
+    {
+      id: "affirmative_answer",
+      fallbackPatterns: [
+        "^yes\\b",
+        "\\byou can (?:keep|continue|carry on)\\b",
+      ],
+      patientReplies: [
+        "Okay, thank you for confirming.",
+        "Good, that's a relief to hear.",
+      ],
     },
     {
       id: "acknowledgement",
@@ -203,9 +272,9 @@ function commonResponseIntents(facts: CommonResponseFacts): ConversationResponse
 function variedUnknownReplies(...caseSpecific: string[]): string[] {
   return [
     ...caseSpecific,
-    "I'm not sure how that relates to this medicine. Could you rephrase the question?",
-    "Could you ask that in a different way? I'm not sure what information you need.",
-    "I didn't quite follow that. Could you explain why you're asking?",
+    "I'm not sure how that relates to this medicine. Could you put it another way?",
+    "I'm not quite following. Could you say that in a different way?",
+    "I didn't quite follow that. Could you say it more simply for me?",
     "I'm not certain what you mean. Could you use a little more detail?",
   ];
 }
@@ -318,10 +387,16 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
     ],
     topics: [
       ...commonTopics({
-        nameReply: "John Smith.",
-        ageReply: "My date of birth is 14 March 1965.",
-        allergiesReply: "I don’t have any medicine allergies that I know of.",
-        medicinesReply: "I’m not taking any other regular medicines or supplements at the moment.",
+        nameReply: ["John Smith.", "It's John Smith."],
+        ageReply: ["My date of birth is 14 March 1965.", "14 March 1965."],
+        allergiesReply: [
+          "I don’t have any medicine allergies that I know of.",
+          "No, no allergies to any medicines as far as I know.",
+        ],
+        medicinesReply: [
+          "I’m not taking any other regular medicines or supplements at the moment.",
+          "Nothing else at the moment — no other tablets or vitamins.",
+        ],
       }),
       {
         id: "purpose",
@@ -331,9 +406,15 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
           "This is an antibiotic used to treat the infection your doctor diagnosed.",
           "Erythromycin treats bacterial infections.",
         ],
-        fallbackPatterns: ["\\b(?:antibiotic|erythromycin)\\b.*\\b(?:infection|bacteria|bacterial|treat)\\b"],
+        fallbackPatterns: [
+          "\\b(?:antibiotic|erythromycin)\\b.*\\b(?:infection|bacteria|bacterial|treat)\\b",
+          "\\b(?:treat|fight|clear|kill)\\w*\\b.*\\b(?:infection|bacteria)\\w*\\b",
+        ],
         requiredPatternGroups: [["\\b(?:infection|bacteria|bacterial)\\b"]],
-        patientReplies: ["Okay, that makes sense."],
+        patientReplies: [
+          "Okay, that makes sense.",
+          "Right, so it's for the infection. Good to know.",
+        ],
       },
       {
         id: "directions",
@@ -344,13 +425,20 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
           "Take one capsule three times a day.",
           "The label says one capsule three times daily.",
         ],
-        fallbackPatterns: ["\\b(?:take|use)\\b.*\\b(?:capsule|erythromycin)\\b", "\\bthree times (?:a|per) day\\b|\\btds\\b"],
+        fallbackPatterns: [
+          "\\b(?:take|use)\\b.*\\b(?:capsule|erythromycin)\\b",
+          "\\bthree times (?:a|per) day\\b|\\bthree times daily\\b|\\btds\\b",
+          "\\bevery (?:8|eight) hours\\b",
+        ],
         requiredPatternGroups: [
           ["\\b(?:one|1)\\b"],
-          ["\\bthree times (?:a|per) day\\b", "\\btds\\b"],
+          ["\\bthree times (?:a|per) day\\b", "\\bthree times daily\\b", "\\btds\\b", "\\bevery (?:8|eight) hours\\b"],
         ],
         forbiddenPatterns: ["\\b(?:two|2|four|4) capsules?\\b", "\\b(?:once|twice) daily\\b"],
-        patientReplies: ["One capsule three times a day. Okay."],
+        patientReplies: [
+          "One capsule three times a day. Okay.",
+          "Got it — one capsule, three times each day.",
+        ],
       },
       {
         id: "complete_course",
@@ -360,9 +448,17 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
           "Complete the full course even if you start feeling better.",
           "Keep taking it for the prescribed course unless your doctor tells you otherwise.",
         ],
-        fallbackPatterns: ["\\b(?:complete|finish)\\b.*\\b(?:course|antibiotic|medicine)\\b", "\\bkeep taking\\b.*\\bfeel better\\b"],
+        fallbackPatterns: [
+          "\\b(?:complete|finish)\\b.*\\b(?:course|antibiotic|medicine)\\b",
+          "\\b(?:whole|full|entire) course\\b",
+          "\\bkeep taking\\b.*\\b(?:feel better|even if|until)\\b",
+          "\\b(?:do not|don't) stop (?:early|taking)\\b",
+        ],
         forbiddenPatterns: ["\\b(?:can|should) stop\\b.*\\bfeel better\\b"],
-        patientReplies: ["Right, I’ll finish the prescribed course."],
+        patientReplies: [
+          "Right, I’ll finish the prescribed course.",
+          "Okay, I'll keep taking them until they're all done, even if I feel better.",
+        ],
       },
       {
         id: "nausea_advice",
@@ -376,7 +472,10 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
           "\\b(?:nausea|nauseous|sick|upset stomach)\\b",
           "\\b(?:food|milk)\\b.*\\b(?:nausea|stomach|sick|take)\\b",
         ],
-        patientReplies: ["I’ll try it with food if my stomach feels unsettled."],
+        patientReplies: [
+          "I’ll try it with food if my stomach feels unsettled.",
+          "Good to know I can have it with a meal if it makes me queasy.",
+        ],
       },
       {
         id: "allergic_reaction_safety",
@@ -387,13 +486,18 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
           "Get urgent medical assistance for signs of a serious allergic reaction.",
         ],
         fallbackPatterns: [
-          "\\b(?:rash|swelling|breathing|allergic reaction)\\b.*\\b(?:help|urgent|doctor|hospital|emergency)\\b",
+          "\\b(?:rash|swelling|breathing|allergic reaction)\\b.*\\b(?:help|urgent|doctor|hospital|emergency|000|ambulance)\\b",
+          "\\b(?:help|urgent|emergency|hospital|000|ambulance)\\b.*\\b(?:rash|swelling|breathing|allergic)\\w*\\b",
+          "\\b(?:difficulty|trouble) breathing\\b",
         ],
         requiredPatternGroups: [
-          ["\\b(?:swelling|breathing|allergic reaction)\\b"],
-          ["\\b(?:help|urgent|doctor|hospital|emergency)\\b"],
+          ["\\b(?:swelling|breathing|allergic reaction|rash)\\b"],
+          ["\\b(?:help|urgent|doctor|hospital|emergency|000|ambulance)\\b"],
         ],
-        patientReplies: ["I’ll seek help straight away if I have a serious reaction."],
+        patientReplies: [
+          "I’ll seek help straight away if I have a serious reaction.",
+          "Understood — swelling or breathing trouble means I get help immediately.",
+        ],
       },
       ...closingTopics("I’ll take one capsule three times each day and finish the prescribed course."),
     ],
@@ -439,10 +543,16 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
     }),
     topics: [
       ...commonTopics({
-        nameReply: "Margaret Jones. Yes, the warfarin is for me.",
-        ageReply: "My date of birth is 22 June 1948.",
-        allergiesReply: "No known medicine allergies.",
-        medicinesReply: "Warfarin is my main regular medicine. I sometimes use pain relievers for headaches.",
+        nameReply: ["Margaret Jones. Yes, the warfarin is for me.", "Margaret Jones — it's my own prescription."],
+        ageReply: ["My date of birth is 22 June 1948.", "22 June 1948."],
+        allergiesReply: [
+          "No known medicine allergies.",
+          "None that I've ever been told about.",
+        ],
+        medicinesReply: [
+          "Warfarin is my main regular medicine. I sometimes use pain relievers for headaches.",
+          "Just the warfarin regularly, and the odd pain reliever when I get a headache.",
+        ],
         medicinesCritical: true,
       }),
       {
@@ -454,9 +564,18 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
           "Follow the current dose plan from your anticoagulation clinic rather than taking a fixed dose from memory.",
           "Take warfarin exactly as directed on your current dosing plan.",
         ],
-        fallbackPatterns: ["\\b(?:dose plan|dosing plan|warfarin booklet|anticoagulation clinic|as directed)\\b"],
-        requiredPatternGroups: [["\\b(?:dose plan|dosing plan|warfarin booklet|anticoagulation clinic|as directed)\\b"]],
-        patientReplies: ["I have my current dosing plan and will follow that."],
+        fallbackPatterns: [
+          "\\b(?:dose plan|dosing plan|warfarin book\\w*|yellow book\\w*|anticoagulation clinic|as directed)\\b",
+          "\\bfollow\\b.*\\b(?:plan|clinic|book)\\w*\\b",
+          "\\b(?:clinic|doctor) (?:directs|tells|says|instructs)\\b",
+        ],
+        requiredPatternGroups: [
+          ["\\b(?:dose plan|dosing plan|warfarin book\\w*|yellow book\\w*|anticoagulation clinic|as directed|clinic)\\b"],
+        ],
+        patientReplies: [
+          "I have my current dosing plan and will follow that.",
+          "Yes, I keep the clinic's dosing sheet on the fridge and stick to it.",
+        ],
       },
       {
         id: "inr_monitoring",
@@ -467,9 +586,15 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
           "Keep your INR blood tests and anticoagulation follow-up appointments.",
           "Regular INR monitoring is essential while you take warfarin.",
         ],
-        fallbackPatterns: ["\\b(?:inr|blood test|anticoagulation)\\b.*\\b(?:monitor|regular|appointment|clinic|check)\\w*\\b"],
+        fallbackPatterns: [
+          "\\b(?:inr|blood test|anticoagulation)\\b.*\\b(?:monitor|regular|appointment|clinic|check|test)\\w*\\b",
+          "\\b(?:monitor|check|attend|keep up)\\w*\\b.*\\b(?:inr|blood test)s?\\b",
+        ],
         requiredPatternGroups: [["\\b(?:inr|blood test|anticoagulation)\\b"]],
-        patientReplies: ["My next INR test is booked. I’ll make sure I attend."],
+        patientReplies: [
+          "My next INR test is booked. I’ll make sure I attend.",
+          "I never miss the blood tests — the clinic reminds me anyway.",
+        ],
       },
       {
         id: "interactions",
@@ -481,14 +606,17 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
           "Check with a pharmacist before starting or stopping medicines because many interact with warfarin.",
         ],
         fallbackPatterns: [
-          "\\b(?:ibuprofen|aspirin|nsaid|anti-inflammatory|anti inflammatory)\\b",
+          "\\b(?:ibuprofen|nurofen|naproxen|aspirin|nsaid|anti-inflammatory|anti inflammatory)\\b",
           "\\bcheck\\b.*\\b(?:pharmacist|doctor)\\b.*\\b(?:new|other|change) medicine",
         ],
         requiredPatternGroups: [
-          ["\\b(?:ibuprofen|aspirin|nsaid|anti-inflammatory|anti inflammatory|new medicine|other medicine)\\b"],
-          ["\\b(?:avoid|do not|don't|check|ask|before)\\b"],
+          ["\\b(?:ibuprofen|nurofen|naproxen|aspirin|nsaid|anti-inflammatory|anti inflammatory|new medicine|other medicine)\\b"],
+          ["\\b(?:avoid|do not|don't|check|ask|before|careful)\\b"],
         ],
-        patientReplies: ["I’ll check before using ibuprofen or starting anything new."],
+        patientReplies: [
+          "I’ll check before using ibuprofen or starting anything new.",
+          "So no ibuprofen without asking first — I'll remember that.",
+        ],
       },
       {
         id: "bleeding_safety",
@@ -498,8 +626,14 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
           "Seek urgent help for severe bleeding, black stools, vomiting blood or a significant head injury.",
           "Contact a clinician for unusual bruising or bleeding and get urgent help if bleeding will not stop.",
         ],
-        fallbackPatterns: ["\\b(?:bleeding|bruising|black stools|vomit(?:ing)? blood|head injury)\\b.*\\b(?:urgent|help|doctor|hospital|emergency|contact)\\b"],
-        patientReplies: ["I’ll seek help if I have serious or unusual bleeding."],
+        fallbackPatterns: [
+          "\\b(?:bleeding|bruising|black stools|vomit(?:ing)? blood|head injury)\\b.*\\b(?:urgent|help|doctor|hospital|emergency|contact)\\b",
+          "\\b(?:urgent|help|hospital|emergency|contact|seek)\\b.*\\b(?:bleeding|bruising|black stools|vomit(?:ing)? blood|head injury)\\b",
+        ],
+        patientReplies: [
+          "I’ll seek help if I have serious or unusual bleeding.",
+          "Right — black stools or bleeding that won't stop means straight to the doctor.",
+        ],
       },
       ...closingTopics("I’ll follow my current dose plan, attend my INR tests and check before taking other medicines."),
     ],
@@ -559,19 +693,31 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
     ],
     topics: [
       ...commonTopics({
-        nameReply: "It's for my son, Liam Henderson.",
-        ageReply: "His date of birth is 12 May 2009.",
-        allergiesReply: "Liam has no known medicine allergies.",
-        medicinesReply: "He isn’t taking any other regular medicines or supplements.",
+        nameReply: ["It's for my son, Liam Henderson.", "This one's for Liam, my son."],
+        ageReply: ["His date of birth is 12 May 2009.", "He was born on 12 May 2009."],
+        allergiesReply: [
+          "Liam has no known medicine allergies.",
+          "No — he's never reacted to a medicine before.",
+        ],
+        medicinesReply: [
+          "He isn’t taking any other regular medicines or supplements.",
+          "Nothing else — this will be the only medicine he's on.",
+        ],
       }),
       {
         id: "purpose",
         label: "Explain the antibiotic’s purpose",
         category: "clinical_counselling",
         examples: ["Amoxicillin is an antibiotic for Liam’s bacterial infection."],
-        fallbackPatterns: ["\\b(?:amoxicillin|antibiotic)\\b.*\\b(?:infection\\w*|bacteria|bacterial|treat\\w*)\\b"],
+        fallbackPatterns: [
+          "\\b(?:amoxicillin|antibiotic)\\b.*\\b(?:infection\\w*|bacteria|bacterial|treat\\w*)\\b",
+          "\\b(?:treat|fight|clear|kill)\\w*\\b.*\\b(?:infection|bacteria)\\w*\\b",
+        ],
         requiredPatternGroups: [["\\b(?:infection\\w*|bacteria|bacterial)\\b"]],
-        patientReplies: ["Okay, it’s for the infection."],
+        patientReplies: [
+          "Okay, it’s for the infection.",
+          "Good — so it should clear the infection up.",
+        ],
       },
       {
         id: "directions",
@@ -579,14 +725,17 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
         category: "clinical_counselling",
         critical: true,
         examples: ["Give Liam 10 mL three times a day for 10 days."],
-        fallbackPatterns: ["\\b(?:10|ten)\\s*ml\\b", "\\bthree times (?:a|per) day\\b|\\btds\\b"],
+        fallbackPatterns: ["\\b(?:10|ten)\\s*ml\\b", "\\bthree times (?:a|per) day\\b|\\bthree times daily\\b|\\btds\\b"],
         requiredPatternGroups: [
           ["\\b(?:10|ten)\\s*ml\\b"],
-          ["\\bthree times (?:a|per) day\\b", "\\btds\\b"],
-          ["\\b(?:for )?10 days\\b"],
+          ["\\bthree times (?:a|per) day\\b", "\\bthree times daily\\b", "\\btds\\b", "\\bevery (?:8|eight) hours\\b"],
+          ["\\b(?:for )?(?:10|ten) days\\b"],
         ],
         forbiddenPatterns: ["\\b(?:5|15|20|five|fifteen|twenty)\\s*ml\\b", "\\b(?:once|twice) daily\\b"],
-        patientReplies: ["Ten millilitres three times a day for ten days. Got it."],
+        patientReplies: [
+          "Ten millilitres three times a day for ten days. Got it.",
+          "Okay — 10 mL, three times daily, for the full ten days.",
+        ],
       },
       {
         id: "liquid_handling",
@@ -596,17 +745,24 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
         examples: [
           "Shake the bottle well and measure each dose with an oral syringe, not a kitchen spoon.",
           "Use the supplied oral measure and shake well before every dose.",
+          "Please don't use a kitchen teaspoon — use the syringe that comes with it.",
         ],
         fallbackPatterns: [
-          "\\bshake\\b.*\\b(?:bottle|well|dose)\\b",
-          "\\b(?:oral syringe|medicine measure|dosing syringe)\\b",
-          "\\b(?:not|avoid)\\b.*\\b(?:kitchen|teaspoon|tablespoon)\\b",
+          "\\bshake\\b.*\\b(?:bottle|well|dose|before)\\b",
+          "\\b(?:oral syringe|medicine measure|dosing syringe|syringe|measuring cup)\\b",
+          "\\b(?:not|avoid|rather than|instead of|don't use|do not use)\\b.*\\b(?:kitchen|teaspoon|tablespoon|spoon)\\b",
         ],
         requiredPatternGroups: [
-          ["\\bshake\\b"],
-          ["\\b(?:oral syringe|medicine measure|dosing syringe)\\b", "\\b(?:not|avoid)\\b.*\\b(?:kitchen|teaspoon|tablespoon)\\b"],
+          [
+            "\\bshake\\b",
+            "\\b(?:oral syringe|medicine measure|dosing syringe|syringe|measuring cup)\\b",
+            "\\b(?:not|avoid|rather than|instead of|don't use|do not use)\\b.*\\b(?:kitchen|teaspoon|tablespoon|spoon)\\b",
+          ],
         ],
-        patientReplies: ["I’ll shake it and use the oral syringe for every dose."],
+        patientReplies: [
+          "I’ll shake it and use the oral syringe for every dose.",
+          "No kitchen spoons then — I'll measure it properly each time.",
+        ],
       },
       {
         id: "storage",
@@ -617,7 +773,10 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
           "Store the mixed medicine in the fridge according to its label.",
         ],
         fallbackPatterns: ["\\b(?:fridge|refrigerat|storage|store)\\w*\\b"],
-        patientReplies: ["I’ll keep it where the bottle label says, in the fridge for this product."],
+        patientReplies: [
+          "I’ll keep it where the bottle label says, in the fridge for this product.",
+          "Straight into the fridge when we get home, then.",
+        ],
       },
       {
         id: "complete_course",
@@ -627,9 +786,17 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
           "Complete the full prescribed course even if Liam starts to feel better.",
           "Keep giving it for the full ten days unless a clinician tells you otherwise.",
         ],
-        fallbackPatterns: ["\\b(?:complete|finish)\\b.*\\bcourse\\b", "\\bfull (?:ten|10) days\\b"],
+        fallbackPatterns: [
+          "\\b(?:complete|finish)\\b.*\\bcourse\\b",
+          "\\b(?:whole|full|entire) course\\b",
+          "\\bfull (?:ten|10) days\\b",
+          "\\b(?:do not|don't) stop (?:early|giving)\\b",
+        ],
         forbiddenPatterns: ["\\b(?:can|should) stop\\b.*\\bfeel(?:s|ing)? better\\b"],
-        patientReplies: ["I’ll complete the full course even if Liam improves."],
+        patientReplies: [
+          "I’ll complete the full course even if Liam improves.",
+          "Understood — we keep going for the whole ten days no matter how he seems.",
+        ],
       },
       {
         id: "common_effects",
@@ -664,7 +831,10 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
           ["\\b(?:rash|hives|swelling|breathing|allergic reaction|blistering)\\b"],
           ["\\b(?:help|urgent|doctor|hospital|emergency|medical attention|medical care|ambulance|000)\\b"],
         ],
-        patientReplies: ["I’ll get help if Liam develops signs of a serious reaction."],
+        patientReplies: [
+          "I’ll get help if Liam develops signs of a serious reaction.",
+          "Okay — any swelling or breathing trouble and we go straight for help.",
+        ],
       },
       ...closingTopics("I’ll give Liam 10 mL three times daily for 10 days, shaking and measuring it carefully."),
     ],
@@ -710,10 +880,16 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
     }),
     topics: [
       ...commonTopics({
-        nameReply: "David Park. The sleeping tablets are for me.",
-        ageReply: "My date of birth is 8 November 1971.",
-        allergiesReply: "I don’t have any known medicine allergies.",
-        medicinesReply: "I sometimes use other things to help me sleep, but nothing prescribed regularly.",
+        nameReply: ["David Park. The sleeping tablets are for me.", "David Park — yes, they're mine."],
+        ageReply: ["My date of birth is 8 November 1971.", "8 November 1971."],
+        allergiesReply: [
+          "I don’t have any known medicine allergies.",
+          "No allergies that I know about.",
+        ],
+        medicinesReply: [
+          "I sometimes use other things to help me sleep, but nothing prescribed regularly.",
+          "Nothing regular on prescription. I do try different things for sleep now and then.",
+        ],
         medicinesCritical: true,
       }),
       {
@@ -729,7 +905,14 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
           "\\b(?:alcohol|drink|drinking)\\b",
           "\\b(?:sleeping tablet|sedative|opioid|benzodiazepine)\\b.*\\b(?:other|use|take)\\b",
         ],
-        patientReplies: ["I have a few alcoholic drinks most nights, especially when I can’t sleep."],
+        // Question-shaped context only — advice about alcohol belongs to explain_risk.
+        requiredPatternGroups: [
+          ["\\b(?:how much|how many|how often|do you|would you|are you|have you|can i ask|tell me about|what about)\\b"],
+        ],
+        patientReplies: [
+          "I have a few alcoholic drinks most nights, especially when I can’t sleep.",
+          "Honestly, I drink most evenings — it helps me wind down when sleep is bad.",
+        ],
       },
       {
         id: "explain_hold",
@@ -749,7 +932,10 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
           ["\\b(?:contact|call|clarify|speak)\\w*\\b"],
           ["\\b(?:doctor|prescriber)\\b"],
         ],
-        patientReplies: ["I’m disappointed, but I understand that you need to check with my doctor first."],
+        patientReplies: [
+          "I’m disappointed, but I understand that you need to check with my doctor first.",
+          "That's frustrating, but okay — if it has to be checked, it has to be checked.",
+        ],
       },
       {
         id: "explain_risk",
@@ -759,12 +945,18 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
           "Temazepam and alcohol can add to sedation and breathing risk, so I need to make sure the plan is safe.",
           "Combining sleeping tablets with alcohol can cause excessive drowsiness and other harm.",
         ],
-        fallbackPatterns: ["\\b(?:alcohol|drink)\\b.*\\b(?:temazepam|sleeping tablet|sedation|drows|breathing|risk|unsafe)\\b"],
-        requiredPatternGroups: [
-          ["\\b(?:alcohol|drink)\\b"],
-          ["\\b(?:sedation|drows|breathing|risk|unsafe|harm)\\w*\\b"],
+        fallbackPatterns: [
+          "\\b(?:alcohol|drink)\\b.*\\b(?:temazepam|sleeping tablet|sedation|drows|breathing|risk|unsafe|dangerous)\\w*\\b",
+          "\\b(?:temazepam|sleeping tablet|sedation|drows|risk)\\w*\\b.*\\b(?:alcohol|drink)\\w*\\b",
         ],
-        patientReplies: ["I didn’t realise the combination could increase the risk that much."],
+        requiredPatternGroups: [
+          ["\\b(?:alcohol|drink)\\w*\\b"],
+          ["\\b(?:sedation|drows|breathing|risk|unsafe|harm|dangerous)\\w*\\b"],
+        ],
+        patientReplies: [
+          "I didn’t realise the combination could increase the risk that much.",
+          "I hadn't thought of the drinks and the tablets adding up like that.",
+        ],
       },
       {
         id: "next_steps_empathy",
@@ -779,7 +971,10 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
           "\\b(?:call|contact|update|let you know|next step|follow up)\\b.*\\b(?:doctor|prescriber|you)\\b",
         ],
         requiredPatternGroups: [["\\b(?:call|contact|update|let you know|next step|follow up)\\w*\\b"]],
-        patientReplies: ["Thank you for explaining what will happen next."],
+        patientReplies: [
+          "Thank you for explaining what will happen next.",
+          "Okay. As long as someone lets me know today, that's fine.",
+        ],
       },
       ...closingTopics("You’ll hold the prescription, speak with my doctor and update me before anything is supplied."),
     ],
@@ -825,10 +1020,16 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
     }),
     topics: [
       ...commonTopics({
-        nameReply: "Carol Simmons. Yes, the metformin is for me.",
-        ageReply: "My date of birth is 23 April 1959.",
-        allergiesReply: "I had an anaphylactic reaction to a sulfonamide antibiotic. I was told to avoid sulfonamides.",
-        medicinesReply: "I take cimetidine for reflux as well as my diabetes medicines.",
+        nameReply: ["Carol Simmons. Yes, the metformin is for me.", "Carol Simmons — it's my prescription."],
+        ageReply: ["My date of birth is 23 April 1959.", "23 April 1959."],
+        allergiesReply: [
+          "I had an anaphylactic reaction to a sulfonamide antibiotic. I was told to avoid sulfonamides.",
+          "Yes — a sulfonamide antibiotic once gave me an anaphylactic reaction, so I must avoid those.",
+        ],
+        medicinesReply: [
+          "I take cimetidine for reflux as well as my diabetes medicines.",
+          "Along with my diabetes tablets I take cimetidine for my reflux.",
+        ],
         medicinesCritical: true,
       }),
       {
@@ -845,7 +1046,14 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
           "\\b(?:dehydrat|vomit|diarrhoea|very unwell|acute illness)\\w*\\b",
           "\\b(?:blood test|test results|monitoring)\\b.*\\b(?:kidney|renal)\\b",
         ],
-        patientReplies: ["My doctor said my kidney function was a little reduced at my last blood test."],
+        // Question-shaped context only — explaining the renal concern belongs to explain_concern.
+        requiredPatternGroups: [
+          ["\\b(?:have you|do you|did you|are you|how (?:is|are)|when (?:was|did)|what (?:was|were)|recent|can i (?:ask|check)|tell me)\\b"],
+        ],
+        patientReplies: [
+          "My doctor said my kidney function was a little reduced at my last blood test.",
+          "The last blood test showed my kidneys were down a little — the doctor is keeping an eye on it.",
+        ],
       },
       {
         id: "explain_hold",
@@ -865,7 +1073,10 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
           ["\\b(?:contact|call|clarify|speak|review)\\w*\\b"],
           ["\\b(?:doctor|prescriber)\\b"],
         ],
-        patientReplies: ["Okay. I understand you need to check before supplying it."],
+        patientReplies: [
+          "Okay. I understand you need to check before supplying it.",
+          "All right. Better to be safe — I'll wait while you sort it out.",
+        ],
       },
       {
         id: "explain_concern",
@@ -877,13 +1088,17 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
         ],
         fallbackPatterns: [
           "\\bcimetidine\\b.*\\b(?:metformin|interact|increase|combination|review)\\w*\\b",
+          "\\b(?:metformin|interact)\\w*\\b.*\\bcimetidine\\b",
           "\\b(?:kidney|renal|egfr)\\b.*\\b(?:metformin|accumulat|risk|review|monitor)\\w*\\b",
         ],
         requiredPatternGroups: [
           ["\\bcimetidine\\b"],
           ["\\b(?:kidney|renal|egfr)\\b"],
         ],
-        patientReplies: ["I see. I’m glad you checked the combination and my kidney result."],
+        patientReplies: [
+          "I see. I’m glad you checked the combination and my kidney result.",
+          "Goodness — no one had mentioned the reflux tablet could matter. Thank you for picking it up.",
+        ],
       },
       {
         id: "next_steps",
@@ -897,7 +1112,10 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
           "\\b(?:update|call|contact|follow up|let you know|next step)\\w*\\b",
           "\\b(?:do not|don't) (?:stop|change)\\b.*\\b(?:medicine|tablet|metformin|cimetidine)\\b.*\\b(?:doctor|advice|told)\\b",
         ],
-        patientReplies: ["I won’t change anything myself; I’ll wait for the reviewed plan."],
+        patientReplies: [
+          "I won’t change anything myself; I’ll wait for the reviewed plan.",
+          "Okay — I'll keep everything as it is until I hear back from you or the doctor.",
+        ],
       },
       ...closingTopics("You’ll hold this supply, contact my doctor and update me without me changing the medicines on my own."),
     ],
@@ -943,10 +1161,16 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
     }),
     topics: [
       ...commonTopics({
-        nameReply: "Fiona Chang. The doxycycline is for me.",
-        ageReply: "My date of birth is 15 March 1998.",
-        allergiesReply: "I don’t have any known medicine allergies.",
-        medicinesReply: "I use an antacid fairly often and take a multivitamin.",
+        nameReply: ["Fiona Chang. The doxycycline is for me.", "Fiona Chang — yes, it's mine."],
+        ageReply: ["My date of birth is 15 March 1998.", "15 March 1998."],
+        allergiesReply: [
+          "I don’t have any known medicine allergies.",
+          "No allergies that I know of.",
+        ],
+        medicinesReply: [
+          "I use an antacid fairly often and take a multivitamin.",
+          "Just a daily multivitamin, and I take an antacid most days for indigestion.",
+        ],
         medicinesCritical: true,
       }),
       {
@@ -959,7 +1183,15 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
           "Can I check whether you are pregnant, planning pregnancy or breastfeeding?",
         ],
         fallbackPatterns: ["\\b(?:pregnan|breastfeed|breast feeding|trying for a baby|planning pregnancy)\\w*\\b"],
-        patientReplies: ["No, I’m not pregnant or breastfeeding."],
+        // Must be asked as a question — a statement that doxycycline is unsuitable in
+        // pregnancy is counselling, not a completed status check.
+        requiredPatternGroups: [
+          ["\\b(?:are you|any chance|could you be|do you|is there|might you|planning|before (?:i|we)|can i (?:ask|check))\\b"],
+        ],
+        patientReplies: [
+          "No, I’m not pregnant or breastfeeding.",
+          "No — not pregnant, not breastfeeding, and not planning to be.",
+        ],
       },
       {
         id: "directions",
@@ -967,13 +1199,20 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
         category: "clinical_counselling",
         critical: true,
         examples: ["Take one tablet twice a day as prescribed."],
-        fallbackPatterns: ["\\b(?:take|use)\\b.*\\b(?:doxycycline|tablet)\\b", "\\b(?:twice (?:a|per) day|bd)\\b"],
+        fallbackPatterns: [
+          "\\b(?:take|use)\\b.*\\b(?:doxycycline|tablet)\\b",
+          "\\b(?:twice (?:a|per) day|twice daily|bd)\\b",
+          "\\bevery 12 hours\\b",
+        ],
         requiredPatternGroups: [
           ["\\b(?:one|1)\\b"],
-          ["\\b(?:twice (?:a|per) day|bd)\\b"],
+          ["\\b(?:twice (?:a|per) day|twice daily|bd)\\b", "\\bevery 12 hours\\b", "\\bmorning and (?:night|evening)\\b"],
         ],
         forbiddenPatterns: ["\\b(?:two|2) tablets?\\b", "\\b(?:once|three times) daily\\b"],
-        patientReplies: ["One tablet twice a day. Okay."],
+        patientReplies: [
+          "One tablet twice a day. Okay.",
+          "Right — one in the morning, one at night.",
+        ],
       },
       {
         id: "water_upright",
@@ -986,14 +1225,17 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
         ],
         fallbackPatterns: [
           "\\bfull glass of water\\b",
-          "\\b(?:stay|remain|keep) upright\\b.*\\b30 (?:minutes?|mins?)\\b",
-          "\\b(?:do not|don't|avoid) lie down\\b.*\\b30 (?:minutes?|mins?)\\b",
+          "\\b(?:stay|remain|keep|sit) upright\\b",
+          "\\b(?:do not|don't|avoid) (?:lie|lying) (?:down|flat)\\b",
         ],
         requiredPatternGroups: [
           ["\\b(?:full )?glass of water\\b"],
-          ["\\bupright\\b.*\\b30 (?:minutes?|mins?)\\b", "\\b(?:do not|don't|avoid) lie down\\b.*\\b30 (?:minutes?|mins?)\\b"],
+          ["\\bupright\\b", "\\b(?:do not|don't|avoid) (?:lie|lying) (?:down|flat)\\b"],
         ],
-        patientReplies: ["I’ll use a full glass of water and stay upright for half an hour."],
+        patientReplies: [
+          "I’ll use a full glass of water and stay upright for half an hour.",
+          "Okay — plenty of water and no lying down straight after.",
+        ],
       },
       {
         id: "separation",
@@ -1013,7 +1255,10 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
           ["\\b(?:antacid|iron|calcium|dairy|multivitamin)\\b"],
           ["\\b(?:two|2) hours?\\b", "\\bseparat\\w*\\b"],
         ],
-        patientReplies: ["I’ll leave at least two hours between doxycycline and my antacid or multivitamin."],
+        patientReplies: [
+          "I’ll leave at least two hours between doxycycline and my antacid or multivitamin.",
+          "Okay — antacid and vitamins at least two hours apart from the antibiotic.",
+        ],
       },
       {
         id: "sun_precautions",
@@ -1025,7 +1270,10 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
         ],
         fallbackPatterns: ["\\b(?:sun|sunlight|sunscreen|photosensit|protective clothing)\\w*\\b"],
         requiredPatternGroups: [["\\b(?:sun|sunlight|sunscreen|photosensit|protective clothing)\\w*\\b"]],
-        patientReplies: ["I’ll use sunscreen and cover up while I’m taking it."],
+        patientReplies: [
+          "I’ll use sunscreen and cover up while I’m taking it.",
+          "Good to know — I'm outdoors a lot, so I'll be extra careful with sunscreen.",
+        ],
       },
       ...closingTopics("I’ll take one tablet twice daily with water, stay upright, separate my antacid and protect myself from the sun."),
     ],
@@ -1055,16 +1303,31 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
     patientQuestion: "What would mean I need urgent help?",
     unknownReplies: variedUnknownReplies("Could you explain how that affects my OxyContin?"),
     responseIntents: commonResponseIntents({
-      previousUseReplies: ["I have used this exact 20 milligram OxyContin twice daily for about six months."],
-      conditionsReplies: ["I have metastatic prostate cancer and chronic pain."],
-      symptomsReplies: ["My pain is currently controlled. I am awake, breathing normally and not unusually drowsy."],
+      previousUseReplies: [
+        "I have used this exact 20 milligram OxyContin twice daily for about six months.",
+        "Yes — same strength, twice a day, for around six months now.",
+      ],
+      conditionsReplies: [
+        "I have metastatic prostate cancer and chronic pain.",
+        "Prostate cancer that has spread, and the pain that comes with it.",
+      ],
+      symptomsReplies: [
+        "My pain is currently controlled. I am awake, breathing normally and not unusually drowsy.",
+        "The pain is under control at the moment, and I'm not feeling overly sleepy.",
+      ],
     }),
     topics: [
       ...commonTopics({
-        nameReply: "Peter Morales. The OxyContin is for me.",
-        ageReply: "My date of birth is 19 August 1963.",
-        allergiesReply: "I have no known medicine allergies.",
-        medicinesReply: "I use short-acting oxycodone for breakthrough pain and a prescribed laxative.",
+        nameReply: ["Peter Morales. The OxyContin is for me.", "Peter Morales — it's my own script."],
+        ageReply: ["My date of birth is 19 August 1963.", "19 August 1963."],
+        allergiesReply: [
+          "I have no known medicine allergies.",
+          "None — I've never reacted to anything.",
+        ],
+        medicinesReply: [
+          "I use short-acting oxycodone for breakthrough pain and a prescribed laxative.",
+          "Besides this, just the quick-acting oxycodone when the pain breaks through, and a laxative the doctor gave me.",
+        ],
         medicinesCritical: true,
       }),
       {
@@ -1072,27 +1335,61 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
         label: "Confirm current opioid exposure and response",
         category: "information_gathering",
         critical: true,
-        examples: ["How long have you taken this dose, and has it caused excessive sleepiness or breathing problems?"],
-        fallbackPatterns: ["\\b(?:how long|regular|current)\\b.*\\b(?:oxycontin|oxycodone|opioid|dose)\\b", "\\b(?:drows|sleep|breath)\\w*\\b.*\\b(?:opioid|oxycodone|oxycontin)\\b"],
-        patientReplies: ["I have taken 20 milligrams every 12 hours for six months without breathing problems or excessive sleepiness."],
+        examples: [
+          "How long have you taken this dose, and has it caused excessive sleepiness or breathing problems?",
+          "What is your opioid tolerance like on your current dose?",
+        ],
+        fallbackPatterns: [
+          "\\b(?:how long|regular|current)\\b.*\\b(?:oxycontin|oxycodone|opioid|dose)\\b",
+          "\\b(?:drows|sleep|breath)\\w*\\b.*\\b(?:opioid|oxycodone|oxycontin)\\b",
+          "\\b(?:opioid|oxycodone|oxycontin)\\b.*\\btoleran\\w*\\b",
+          "\\btoleran\\w*\\b.*\\b(?:opioid|oxycodone|oxycontin)\\b",
+        ],
+        patientReplies: [
+          "I have taken 20 milligrams every 12 hours for six months without breathing problems or excessive sleepiness.",
+          "Six months on this dose, and it has never made me overly drowsy or short of breath.",
+        ],
       },
       {
         id: "directions_mr",
         label: "Explain exact dose and modified-release administration",
         category: "clinical_counselling",
         critical: true,
-        examples: ["Take one 20 milligram tablet every 12 hours and swallow it whole; do not crush or chew it."],
-        fallbackPatterns: ["\\b(?:one|1)\\b.*\\b(?:20 ?mg|20 milligram)\\b.*\\b(?:12 hours|twice)\\b", "\\bswallow\\b.*\\bwhole\\b.*\\b(?:not|never|do not|don't)\\b.*\\b(?:crush|chew)\\b"],
-        requiredPatternGroups: [["\\b(?:every 12 hours|twice (?:a|per) day|bd)\\b"], ["\\bswallow\\b.*\\bwhole\\b"], ["\\b(?:do not|don't|never)\\b.*\\b(?:crush|chew)\\b"]],
-        patientReplies: ["One tablet every 12 hours, swallowed whole. I won’t crush or chew it."],
+        examples: [
+          "Take one 20 milligram tablet every 12 hours and swallow it whole; do not crush or chew it.",
+          "Swallow the tablet whole twice a day — never crush or chew it.",
+        ],
+        fallbackPatterns: [
+          "\\b(?:one|1)\\b.*\\b(?:20 ?mg|20 milligram)\\b.*\\b(?:12 hours|twice)\\b",
+          "\\bswallow\\w*\\b.*\\bwhole\\b",
+          "\\b(?:not|never|do not|don't)\\b.*\\b(?:crush|chew)\\b",
+        ],
+        requiredPatternGroups: [
+          ["\\b(?:every 12 hours|twice (?:a|per) day|twice daily|bd)\\b"],
+          ["\\bswallow\\w*\\b.*\\bwhole\\b", "\\b(?:do not|don't|never)\\b.*\\b(?:crush|chew)\\b"],
+        ],
+        patientReplies: [
+          "One tablet every 12 hours, swallowed whole. I won’t crush or chew it.",
+          "Understood — whole tablet, twice a day, no crushing.",
+        ],
       },
       {
         id: "sedation_safety",
         label: "Counsel on sedation, alcohol and driving",
         category: "safety_netting",
         examples: ["Avoid alcohol, and do not drive if you feel drowsy or impaired."],
-        fallbackPatterns: ["\\b(?:drows|sleep|sedat|impair)\\w*\\b", "\\b(?:avoid|no|do not|don't)\\b.*\\balcohol\\b", "\\b(?:drive|driving|machinery)\\b"],
-        patientReplies: ["I’ll avoid alcohol and won’t drive if I am drowsy or impaired."],
+        fallbackPatterns: [
+          // Require the alcohol/driving context so overdose red-flag counselling that
+          // mentions drowsiness is not marked as this topic.
+          "\\b(?:drows|sleepy|sedat|impair)\\w*\\b.*\\b(?:alcohol|driv|machinery)\\w*\\b",
+          "\\b(?:alcohol|driv|machinery)\\w*\\b.*\\b(?:drows|sleepy|sedat|impair)\\w*\\b",
+          "\\b(?:avoid|no|do not|don't)\\b.*\\balcohol\\b",
+          "\\b(?:drive|driving|machinery)\\b",
+        ],
+        patientReplies: [
+          "I’ll avoid alcohol and won’t drive if I am drowsy or impaired.",
+          "No alcohol, and I'll stay off the road if I feel at all sleepy.",
+        ],
       },
       {
         id: "secure_storage",
@@ -1101,16 +1398,30 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
         critical: true,
         examples: ["Keep it locked away from children and visitors, never share it, and return unwanted tablets to a pharmacy."],
         fallbackPatterns: ["\\b(?:lock|locked|secure|out of reach)\\w*\\b", "\\b(?:never|do not|don't) share\\b", "\\breturn\\b.*\\bpharmacy\\b"],
-        patientReplies: ["I’ll keep it locked away, never share it and return leftovers to the pharmacy."],
+        patientReplies: [
+          "I’ll keep them locked away where the grandchildren can’t get to them.",
+          "Good point — they'll go in the locked cabinet, well out of the kids' reach.",
+        ],
       },
       {
         id: "respiratory_red_flags",
         label: "Provide opioid overdose safety-netting",
         category: "safety_netting",
         critical: true,
-        examples: ["Call 000 for very slow or difficult breathing, blue lips, collapse or if you cannot be woken."],
-        fallbackPatterns: ["\\b(?:000|emergency|ambulance|urgent)\\b.*\\b(?:breath|blue|wake|unresponsive|collapse)\\w*\\b"],
-        patientReplies: ["I’ll call 000 if breathing becomes slow or difficult or if I cannot be woken."],
+        examples: [
+          "Call 000 for very slow or difficult breathing, blue lips, collapse or if you cannot be woken.",
+          "If you get extreme drowsiness or irregular breathing, seek urgent care.",
+        ],
+        fallbackPatterns: [
+          "\\b(?:000|emergency|ambulance|urgent)\\b.*\\b(?:breath|blue|wake|unresponsive|collapse)\\w*\\b",
+          "\\b(?:breath|blue|wake|unresponsive|collapse|overdose|drows)\\w*\\b.*\\b(?:000|triple zero|emergency|ambulance|urgent|hospital)\\b",
+          "\\bseek\\b.*\\b(?:urgent|emergency|immediate)\\w*\\b",
+          "\\bcall\\b.*\\b(?:000|triple zero|an ambulance)\\b",
+        ],
+        patientReplies: [
+          "I’ll call 000 if breathing becomes slow or difficult or if I cannot be woken.",
+          "Understood — slow breathing or someone can't rouse me, that's a triple-zero call.",
+        ],
       },
       ...closingTopics("I’ll take one whole tablet every 12 hours, avoid alcohol and unsafe driving, lock it away and seek emergency help for breathing trouble or unresponsiveness."),
     ],
@@ -1132,16 +1443,31 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
     patientQuestion: "What should I use for pain while you contact the doctor?",
     unknownReplies: variedUnknownReplies("I’m not sure what you need to know about my pain medicines."),
     responseIntents: commonResponseIntents({
-      previousUseReplies: ["I have never used fentanyl, oxycodone, morphine or any other strong opioid."],
-      conditionsReplies: ["I have osteoarthritis and live alone."],
-      symptomsReplies: ["I am sore but alert and breathing normally."],
+      previousUseReplies: [
+        "I have never used fentanyl, oxycodone, morphine or any other strong opioid.",
+        "No, never anything that strong — paracetamol is all I've needed.",
+      ],
+      conditionsReplies: [
+        "I have osteoarthritis and live alone.",
+        "Just the arthritis in my joints. I manage on my own at home.",
+      ],
+      symptomsReplies: [
+        "I am sore but alert and breathing normally.",
+        "The joints ache, but otherwise I feel quite well and wide awake.",
+      ],
     }),
     topics: [
       ...commonTopics({
-        nameReply: "Helen Brooks. The patch is for me.",
-        ageReply: "My date of birth is 4 February 1945.",
-        allergiesReply: "I have no known medicine allergies.",
-        medicinesReply: "I only use paracetamol for pain. I do not take sleeping tablets or strong pain medicines.",
+        nameReply: ["Helen Brooks. The patch is for me.", "Helen Brooks — the patch is mine."],
+        ageReply: ["My date of birth is 4 February 1945.", "4 February 1945. I'm 81."],
+        allergiesReply: [
+          "I have no known medicine allergies.",
+          "No, no allergies that I've ever known about.",
+        ],
+        medicinesReply: [
+          "I only use paracetamol for pain. I do not take sleeping tablets or strong pain medicines.",
+          "Just paracetamol when the arthritis plays up — nothing stronger, and no sleeping tablets.",
+        ],
         medicinesCritical: true,
       }),
       {
@@ -1149,9 +1475,20 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
         label: "Establish opioid exposure and sedative use",
         category: "information_gathering",
         critical: true,
-        examples: ["Have you used fentanyl or another strong opioid regularly before?"],
-        fallbackPatterns: ["\\b(?:fentanyl|opioid|morphine|oxycodone|strong pain)\\b.*\\b(?:before|regular|currently|take|use)\\w*\\b"],
-        patientReplies: ["No. I have never taken a strong opioid regularly; I use paracetamol."],
+        examples: [
+          "Have you used fentanyl or another strong opioid regularly before?",
+          "What is your opioid tolerance?",
+        ],
+        fallbackPatterns: [
+          "\\b(?:fentanyl|opioid|morphine|oxycodone|strong pain)\\b.*\\b(?:before|regular|currently|take|use)\\w*\\b",
+          "\\b(?:opioid|opiate|fentanyl)\\b.*\\btoleran\\w*\\b",
+          "\\btoleran\\w*\\b.*\\b(?:opioid|opiate|fentanyl|patch)\\b",
+          "\\bopioid[- ]naive\\b",
+        ],
+        patientReplies: [
+          "No. I have never taken a strong opioid regularly; I use paracetamol.",
+          "Never — this would be my first time on anything like fentanyl.",
+        ],
       },
       {
         id: "explain_hold",
@@ -1161,7 +1498,10 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
         examples: ["I cannot supply this patch until I urgently clarify it with your prescriber because it is unsafe for someone who is not opioid-tolerant."],
         fallbackPatterns: ["\\b(?:cannot|can't|hold|not)\\b.*\\b(?:supply|dispense|give)\\b", "\\b(?:contact|call|clarify|speak)\\w*\\b.*\\b(?:doctor|prescriber)\\b"],
         requiredPatternGroups: [["\\b(?:cannot|can't|hold|not supply|not dispense)\\b"], ["\\b(?:doctor|prescriber)\\b"]],
-        patientReplies: ["All right. I understand you need to stop and contact the doctor first."],
+        patientReplies: [
+          "All right. I understand you need to stop and contact the doctor first.",
+          "Oh. Well, if it isn't safe I'd rather you did check with the doctor.",
+        ],
       },
       {
         id: "explain_risk",
@@ -1169,8 +1509,15 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
         category: "safety_netting",
         critical: true,
         examples: ["This strength can dangerously slow breathing in a person who is not already tolerant to opioids."],
-        fallbackPatterns: ["\\b(?:slow|stop|depress|danger)\\w*\\b.*\\bbreath\\w*\\b", "\\b(?:not opioid tolerant|opioid naive|not used)\\b"],
-        patientReplies: ["I see—the patch could dangerously slow my breathing because I’m not used to opioids."],
+        fallbackPatterns: [
+          "\\b(?:slow|stop|depress|danger)\\w*\\b.*\\bbreath\\w*\\b",
+          "\\bbreath\\w*\\b.*\\b(?:slow|stop|depress|danger)\\w*\\b",
+          "\\b(?:not opioid tolerant|opioid[- ]naive|not used to opioid)\\w*\\b",
+        ],
+        patientReplies: [
+          "I see—the patch could dangerously slow my breathing because I’m not used to opioids.",
+          "Goodness. I had no idea a patch could affect my breathing like that.",
+        ],
       },
       {
         id: "interim_plan",
@@ -1178,7 +1525,10 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
         category: "communication",
         examples: ["Keep using only the treatment already agreed with your clinician; I will contact the prescriber and update you rather than starting this patch."],
         fallbackPatterns: ["\\b(?:contact|call|update|let you know)\\b", "\\b(?:do not|don't)\\b.*\\b(?:start|apply|use)\\b.*\\bpatch\\b"],
-        patientReplies: ["I won’t apply a patch. I’ll wait for the doctor’s reviewed plan."],
+        patientReplies: [
+          "I won’t apply a patch. I’ll wait for the doctor’s reviewed plan.",
+          "All right — I'll stick with the paracetamol and wait to hear from you.",
+        ],
       },
       ...closingTopics("You will hold the fentanyl patch, contact my doctor and update me. I will not apply it."),
     ],
@@ -1200,16 +1550,31 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
     patientQuestion: "Will you call the clinic using the number on the prescription?",
     unknownReplies: variedUnknownReplies("Could you explain what detail on the prescription is concerning?"),
     responseIntents: commonResponseIntents({
-      previousUseReplies: ["Noah has used dexamfetamine for several months."],
-      conditionsReplies: ["He has ADHD and no known heart condition."],
-      symptomsReplies: ["He is well today with no chest pain, fainting or severe agitation."],
+      previousUseReplies: [
+        "Noah has used dexamfetamine for several months.",
+        "He's been on it a few months now with no problems.",
+      ],
+      conditionsReplies: [
+        "He has ADHD and no known heart condition.",
+        "Only the ADHD — his heart has always been fine.",
+      ],
+      symptomsReplies: [
+        "He is well today with no chest pain, fainting or severe agitation.",
+        "He's his usual self — nothing unusual at all today.",
+      ],
     }),
     topics: [
       ...commonTopics({
-        nameReply: "It is for my son, Noah Williams.",
-        ageReply: "His date of birth is 11 November 2009.",
-        allergiesReply: "Noah has no known medicine allergies.",
-        medicinesReply: "He takes dexamfetamine only; no decongestants, antidepressants or supplements.",
+        nameReply: ["It is for my son, Noah Williams.", "It's Noah's — my son."],
+        ageReply: ["His date of birth is 11 November 2009.", "Noah was born on 11 November 2009."],
+        allergiesReply: [
+          "Noah has no known medicine allergies.",
+          "No — he's never had a reaction to anything.",
+        ],
+        medicinesReply: [
+          "He takes dexamfetamine only; no decongestants, antidepressants or supplements.",
+          "Just the dexamfetamine. Nothing else, not even vitamins.",
+        ],
         medicinesCritical: true,
       }),
       {
@@ -1218,9 +1583,18 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
         category: "clinical_counselling",
         critical: true,
         examples: ["The printed prescriber number does not match the verified directory, so I must hold the Schedule 8 prescription and authenticate it."],
-        fallbackPatterns: ["\\bprescriber (?:number|details)\\b.*\\b(?:not match|mismatch|different|incorrect)\\b", "\\b(?:hold|cannot supply|authenticate|verify)\\w*\\b.*\\b(?:prescription|schedule 8|s8)\\b"],
-        requiredPatternGroups: [["\\b(?:prescriber|doctor)\\b.*\\b(?:number|details)\\b"], ["\\b(?:hold|authenticate|verify|contact)\\w*\\b"]],
-        patientReplies: ["I understand—the prescriber number does not match, so you need to authenticate it first."],
+        fallbackPatterns: [
+          "\\bprescriber (?:number|details)\\b.*\\b(?:not match|doesn'?t match|mismatch|different|incorrect)\\b",
+          "\\b(?:hold|cannot supply|authenticate|verify)\\w*\\b.*\\b(?:prescription|schedule 8|s8)\\b",
+        ],
+        requiredPatternGroups: [
+          ["\\b(?:prescriber|doctor)\\b.*\\b(?:number|details)\\b", "\\b(?:prescription|script)\\b.*\\b(?:suspicious|unusual|concern|not right|doesn'?t look)\\w*\\b"],
+          ["\\b(?:hold|authenticate|verify|check|contact)\\w*\\b"],
+        ],
+        patientReplies: [
+          "I understand—the prescriber number does not match, so you need to authenticate it first.",
+          "Oh — I had no idea. Of course, check whatever you need to.",
+        ],
       },
       {
         id: "independent_contact",
@@ -1228,8 +1602,14 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
         category: "safety_netting",
         critical: true,
         examples: ["I will contact the clinic using our established directory, not a number written on the questionable prescription."],
-        fallbackPatterns: ["\\b(?:directory|verified|established|independent)\\w*\\b.*\\b(?:phone|number|contact|clinic)\\b", "\\b(?:not|won't|will not)\\b.*\\bnumber\\b.*\\bprescription\\b"],
-        patientReplies: ["That makes sense. Please use the clinic details you already have verified."],
+        fallbackPatterns: [
+          "\\b(?:directory|verified|established|independent)\\w*\\b.*\\b(?:phone|number|contact|clinic|details)\\b",
+          "\\b(?:not|won't|will not)\\b.*\\bnumber\\b.*\\b(?:prescription|script)\\b",
+        ],
+        patientReplies: [
+          "That makes sense. Please use the clinic details you already have verified.",
+          "Right — safer to ring the clinic on the number you already know is real.",
+        ],
       },
       {
         id: "follow_up",
@@ -1237,7 +1617,10 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
         category: "communication",
         examples: ["I will document the call and update you once the prescriber confirms or replaces the prescription."],
         fallbackPatterns: ["\\b(?:document|record)\\w*\\b.*\\b(?:call|contact|outcome)\\b", "\\b(?:update|call|let you know)\\b"],
-        patientReplies: ["Please update me after the clinic confirms what happened."],
+        patientReplies: [
+          "Please update me after the clinic confirms what happened.",
+          "Thank you. Ring me as soon as you hear back — Noah needs his medicine.",
+        ],
       },
       ...closingTopics("You will hold the medicine, contact the clinic through the verified directory, document it and update me."),
     ],
@@ -1259,16 +1642,31 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
     patientQuestion: "Should I take today’s tablet while you check?",
     unknownReplies: variedUnknownReplies("Could you explain what you are checking about my weekly medicine?"),
     responseIntents: commonResponseIntents({
-      previousUseReplies: ["I have taken 10 milligrams every Sunday for rheumatoid arthritis."],
-      conditionsReplies: ["I have rheumatoid arthritis."],
-      symptomsReplies: ["I feel well, with no fever, mouth ulcers, unusual bruising or shortness of breath."],
+      previousUseReplies: [
+        "I have taken 10 milligrams every Sunday for rheumatoid arthritis.",
+        "Yes, for a long while — one dose every Sunday.",
+      ],
+      conditionsReplies: [
+        "I have rheumatoid arthritis.",
+        "Only the rheumatoid arthritis that the methotrexate is for.",
+      ],
+      symptomsReplies: [
+        "I feel well, with no fever, mouth ulcers, unusual bruising or shortness of breath.",
+        "I'm feeling fine at the moment — nothing out of the ordinary.",
+      ],
     }),
     topics: [
       ...commonTopics({
-        nameReply: "Grace Lim. The methotrexate is for me.",
-        ageReply: "My date of birth is 9 September 1967.",
-        allergiesReply: "I have no known medicine allergies.",
-        medicinesReply: "I take folic acid on a different day and sometimes paracetamol. I do not use ibuprofen unless advised.",
+        nameReply: ["Grace Lim. The methotrexate is for me.", "Grace Lim — it's my own prescription."],
+        ageReply: ["My date of birth is 9 September 1967.", "9 September 1967."],
+        allergiesReply: [
+          "I have no known medicine allergies.",
+          "No allergies that I've ever been told about.",
+        ],
+        medicinesReply: [
+          "I take folic acid on a different day and sometimes paracetamol. I do not use ibuprofen unless advised.",
+          "Folic acid once a week on a different day, and paracetamol occasionally. I avoid ibuprofen.",
+        ],
         medicinesCritical: true,
       }),
       {
@@ -1276,19 +1674,44 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
         label: "Confirm the established weekly regimen and folate plan",
         category: "information_gathering",
         critical: true,
-        examples: ["What day do you normally take methotrexate, and when do you take folic acid?"],
-        fallbackPatterns: ["\\b(?:what|which) day\\b.*\\bmethotrexate\\b", "\\bfolic acid\\b.*\\b(?:day|take|when)\\b"],
-        patientReplies: ["I take methotrexate every Sunday and folic acid on Monday."],
+        examples: [
+          "What day do you normally take methotrexate, and when do you take folic acid?",
+          "When do you usually take your methotrexate?",
+        ],
+        fallbackPatterns: [
+          "\\b(?:what|which) day\\b.*\\b(?:methotrexate|take)\\b",
+          "\\bwhen do you (?:usually |normally )?take\\b",
+          "\\bfolic acid\\b.*\\b(?:day|take|when)\\b",
+          "\\bhow (?:do|often) (?:do )?you (?:usually |normally )?take\\b",
+        ],
+        patientReplies: [
+          "I take methotrexate every Sunday and folic acid on Monday.",
+          "Sundays for the methotrexate, then folic acid on the Monday.",
+        ],
       },
       {
         id: "explain_hold",
         label: "Explain the critical daily-dose error and hold",
         category: "clinical_counselling",
         critical: true,
-        examples: ["Daily low-dose methotrexate can be fatal. I will not supply this until the prescriber confirms corrected weekly directions."],
-        fallbackPatterns: ["\\bdaily\\b.*\\bmethotrexate\\b.*\\b(?:danger|toxic|fatal|wrong|error)\\w*\\b", "\\b(?:hold|cannot|can't|not)\\b.*\\b(?:supply|dispense)\\b.*\\b(?:doctor|prescriber|confirm|clarify)\\b"],
-        requiredPatternGroups: [["\\bdaily\\b"], ["\\b(?:danger|toxic|fatal|error|incorrect|wrong)\\w*\\b"], ["\\b(?:hold|contact|confirm|clarify)\\w*\\b"]],
-        patientReplies: ["I won’t follow the daily direction. Please have the doctor correct it before supply."],
+        examples: [
+          "Daily low-dose methotrexate can be fatal. I will not supply this until the prescriber confirms corrected weekly directions.",
+          "This should be once a week, not daily — I need to hold it and confirm with your doctor.",
+        ],
+        fallbackPatterns: [
+          "\\bdaily\\b.*\\bmethotrexate\\b.*\\b(?:danger|toxic|fatal|wrong|error)\\w*\\b",
+          "\\b(?:should be|meant to be|supposed to be)\\b.*\\b(?:week|once a week|weekly)\\w*\\b",
+          "\\b(?:hold|cannot|can't|not)\\b.*\\b(?:supply|dispense)\\b.*\\b(?:doctor|prescriber|confirm|clarify)\\b",
+        ],
+        requiredPatternGroups: [
+          ["\\bdaily\\b", "\\bevery day\\b"],
+          ["\\b(?:danger|toxic|fatal|error|incorrect|wrong|mistake)\\w*\\b", "\\b(?:should be|meant to be|supposed to be)\\b.*\\bweek\\w*\\b"],
+          ["\\b(?:hold|contact|confirm|clarify|check)\\w*\\b"],
+        ],
+        patientReplies: [
+          "I won’t follow the daily direction. Please have the doctor correct it before supply.",
+          "Thank goodness you noticed. I'll wait until the doctor fixes the directions.",
+        ],
       },
       {
         id: "red_flags",
@@ -1296,7 +1719,10 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
         category: "safety_netting",
         examples: ["Seek urgent advice for fever, mouth ulcers, unusual bruising or bleeding, severe rash or shortness of breath."],
         fallbackPatterns: ["\\b(?:fever|mouth ulcers?|bruis|bleed|shortness of breath|severe rash)\\w*\\b"],
-        patientReplies: ["I’ll seek urgent advice for fever, mouth ulcers, unusual bruising or breathing trouble."],
+        patientReplies: [
+          "I’ll seek urgent advice for fever, mouth ulcers, unusual bruising or breathing trouble.",
+          "Okay — mouth ulcers, fever or strange bruising means I call for help straight away.",
+        ],
       },
       ...closingTopics("I will not take a daily dose. You will hold the prescription and have the doctor confirm a corrected once-weekly plan."),
     ],
@@ -1318,16 +1744,31 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
     patientQuestion: "Can I keep taking lithium and ibuprofen tonight?",
     unknownReplies: variedUnknownReplies("Could you explain what that has to do with dehydration or lithium?"),
     responseIntents: commonResponseIntents({
-      previousUseReplies: ["I have taken Quilonum SR for several years."],
-      conditionsReplies: ["I have bipolar disorder and no known chronic kidney disease."],
-      symptomsReplies: ["I have vomiting, diarrhoea, poor fluid intake, a worse tremor and feel unsteady."],
+      previousUseReplies: [
+        "I have taken Quilonum SR for several years.",
+        "Years now — it's been steady the whole time.",
+      ],
+      conditionsReplies: [
+        "I have bipolar disorder and no known chronic kidney disease.",
+        "Bipolar disorder — that's what the lithium is for. My kidneys have been fine.",
+      ],
+      symptomsReplies: [
+        "I have vomiting, diarrhoea, poor fluid intake, a worse tremor and feel unsteady.",
+        "I've been vomiting with diarrhoea, barely keeping fluids down, and my tremor is worse than usual.",
+      ],
     }),
     topics: [
       ...commonTopics({
-        nameReply: "Rahul Mehta. The lithium is for me.",
-        ageReply: "My date of birth is 29 January 1982.",
-        allergiesReply: "I have no known medicine allergies.",
-        medicinesReply: "I started ibuprofen for aches during the stomach bug. I also take lithium regularly.",
+        nameReply: ["Rahul Mehta. The lithium is for me.", "Rahul Mehta — the lithium's mine."],
+        ageReply: ["My date of birth is 29 January 1982.", "29 January 1982."],
+        allergiesReply: [
+          "I have no known medicine allergies.",
+          "No allergies that I know of.",
+        ],
+        medicinesReply: [
+          "I started ibuprofen for aches during the stomach bug. I also take lithium regularly.",
+          "Just the lithium normally, though I've been taking ibuprofen this week for the aches.",
+        ],
         medicinesCritical: true,
       }),
       {
@@ -1338,25 +1779,52 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
         examples: ["Have you been vomiting or dehydrated, taken ibuprofen, or developed worsening tremor, unsteadiness or confusion?"],
         fallbackPatterns: ["\\b(?:vomit|diarrh|dehydrat|fluid|drink)\\w*\\b", "\\b(?:ibuprofen|nsaid|naproxen)\\b", "\\b(?:tremor|shak|unsteady|ataxia|confus)\\w*\\b"],
         requiredPatternGroups: [["\\b(?:vomit|diarrh|dehydrat|fluid|drink)\\w*\\b"], ["\\b(?:ibuprofen|nsaid|naproxen)\\b"]],
-        patientReplies: ["Yes—vomiting and diarrhoea, hardly drinking, ibuprofen, a worse tremor and some unsteadiness."],
+        patientReplies: [
+          "Yes—vomiting and diarrhoea, hardly drinking, ibuprofen, a worse tremor and some unsteadiness.",
+          "It's been rough — vomiting, not drinking much, ibuprofen for the aches, and now my hands are shakier.",
+        ],
       },
       {
         id: "urgent_plan",
         label: "Hold routine supply and arrange urgent clinical assessment",
         category: "safety_netting",
         critical: true,
-        examples: ["These symptoms could be lithium toxicity. Do not self-manage this as a routine refill; you need urgent medical assessment now."],
-        fallbackPatterns: ["\\blithium toxicity\\b", "\\b(?:urgent|immediate|today|now)\\b.*\\b(?:assessment|medical|doctor|emergency)\\b"],
-        requiredPatternGroups: [["\\blithium\\b.*\\btoxic\\w*\\b"], ["\\b(?:urgent|immediate|today|now)\\b"]],
-        patientReplies: ["I understand this could be lithium toxicity and I need urgent assessment now."],
+        examples: [
+          "These symptoms could be lithium toxicity. Do not self-manage this as a routine refill; you need urgent medical assessment now.",
+          "With these symptoms you need to go to the doctor immediately.",
+          "If you have tremors or vomiting, seek urgent medical care today.",
+        ],
+        fallbackPatterns: [
+          "\\blithium toxicity\\b",
+          "\\b(?:urgent|immediate|today|now)\\b.*\\b(?:assessment|medical|doctor|emergency)\\b",
+          "\\b(?:go to|see|visit|contact)\\b.*\\b(?:doctor|gp|hospital|emergency)\\b",
+          "\\b(?:doctor|gp|hospital|emergency)\\b.*\\b(?:immediately|urgently|right away|straight away|today|now)\\b",
+          "\\bseek\\b.*\\b(?:urgent|immediate|medical|emergency)\\b",
+        ],
+        requiredPatternGroups: [
+          ["\\b(?:urgent|immediate|today|now|right away|straight away|need to)\\w*\\b"],
+          ["\\b(?:doctor|gp|assessment|medical|emergency|hospital|care|help)\\b"],
+        ],
+        patientReplies: [
+          "Okay. I’ll get seen urgently today rather than just taking the tablets as usual.",
+          "That sounds serious. I'll go and get checked today, then.",
+        ],
       },
       {
         id: "interaction_explanation",
         label: "Explain dehydration and NSAID interaction risk",
         category: "clinical_counselling",
         examples: ["Dehydration and ibuprofen can raise lithium levels and increase toxicity risk."],
-        fallbackPatterns: ["\\b(?:dehydrat|vomit|diarrh)\\w*\\b.*\\blithium\\b", "\\b(?:ibuprofen|nsaid)\\b.*\\blithium\\b.*\\b(?:increase|raise|toxic|level)\\w*\\b"],
-        patientReplies: ["I see—both dehydration and ibuprofen may have raised my lithium level."],
+        fallbackPatterns: [
+          "\\b(?:dehydrat|vomit|diarrh)\\w*\\b.*\\blithium\\b",
+          "\\blithium\\b.*\\b(?:dehydrat|vomit|diarrh|fluid)\\w*\\b",
+          "\\b(?:ibuprofen|nsaid)\\b.*\\blithium\\b.*\\b(?:increase|raise|toxic|level)\\w*\\b",
+          "\\blithium\\b.*\\b(?:ibuprofen|nsaid)\\b",
+        ],
+        patientReplies: [
+          "I see—both dehydration and ibuprofen may have raised my lithium level.",
+          "I didn't realise being unwell and the ibuprofen could push my lithium up like that.",
+        ],
       },
       ...closingTopics("I will seek urgent assessment now because the illness, ibuprofen and symptoms could mean lithium toxicity."),
     ],
@@ -1378,16 +1846,31 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
     patientQuestion: "I use naproxen for arthritis. Can I keep taking it with Eliquis?",
     unknownReplies: variedUnknownReplies("Could you explain what information you need about my blood thinner?"),
     responseIntents: commonResponseIntents({
-      previousUseReplies: ["I have been taking Eliquis 2.5 milligrams twice daily for atrial fibrillation."],
-      conditionsReplies: ["I have atrial fibrillation and reduced kidney function."],
-      symptomsReplies: ["I have some easy bruising but no major bleeding, black stools, severe headache or weakness."],
+      previousUseReplies: [
+        "I have been taking Eliquis 2.5 milligrams twice daily for atrial fibrillation.",
+        "Yes, for a good while — the small 2.5 tablet, morning and night.",
+      ],
+      conditionsReplies: [
+        "I have atrial fibrillation and reduced kidney function.",
+        "My heart rhythm problem — atrial fibrillation — and the doctor says my kidneys aren't what they were.",
+      ],
+      symptomsReplies: [
+        "I have some easy bruising but no major bleeding, black stools, severe headache or weakness.",
+        "I bruise easily these days, but there's been no real bleeding or anything alarming.",
+      ],
     }),
     topics: [
       ...commonTopics({
-        nameReply: "Evelyn Scott. The Eliquis is for me.",
-        ageReply: "My date of birth is 2 December 1942. I am 83.",
-        allergiesReply: "I have no known medicine allergies.",
-        medicinesReply: "I use naproxen most days for arthritis and take my other heart medicines.",
+        nameReply: ["Evelyn Scott. The Eliquis is for me.", "Evelyn Scott — the Eliquis is mine."],
+        ageReply: ["My date of birth is 2 December 1942. I am 83.", "2 December 1942 — I'm 83 now."],
+        allergiesReply: [
+          "I have no known medicine allergies.",
+          "No, dear — no allergies that I've ever known.",
+        ],
+        medicinesReply: [
+          "I use naproxen most days for arthritis and take my other heart medicines.",
+          "My heart tablets, and naproxen most days for the arthritis.",
+        ],
         medicinesCritical: true,
       }),
       {
@@ -1395,10 +1878,23 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
         label: "Check indication, prior dose, weight and renal function",
         category: "information_gathering",
         critical: true,
-        examples: ["Is this for atrial fibrillation, what dose did you use before, and do you know your weight and kidney results?"],
-        fallbackPatterns: ["\\b(?:atrial fibrillation|af)\\b", "\\b(?:weight|kidney|renal|creatinine|egfr)\\b", "\\b(?:old|previous|before|usual) dose\\b"],
-        requiredPatternGroups: [["\\b(?:indication|atrial fibrillation|af|what.*for)\\b"], ["\\b(?:weight|kidney|renal|creatinine|egfr|age)\\b"]],
-        patientReplies: ["It is for atrial fibrillation. I weigh 54 kilograms, my creatinine was 168, and my previous dose was 2.5 milligrams twice daily."],
+        examples: [
+          "Is this for atrial fibrillation, what dose did you use before, and do you know your weight and kidney results?",
+          "Why do you take Eliquis, and do you know your weight and recent kidney results?",
+        ],
+        fallbackPatterns: [
+          "\\b(?:atrial fibrillation|af)\\b",
+          "\\b(?:weight|kidney|renal|creatinine|egfr)\\b",
+          "\\b(?:old|previous|before|usual) dose\\b",
+        ],
+        requiredPatternGroups: [
+          ["\\b(?:indication|atrial fibrillation|af|what.*for|why (?:do|are) you tak)\\w*\\b"],
+          ["\\b(?:weight|kidney|renal|creatinine|egfr|age)\\b"],
+        ],
+        patientReplies: [
+          "It is for atrial fibrillation. I weigh 54 kilograms, my creatinine was 168, and my previous dose was 2.5 milligrams twice daily.",
+          "The heart rhythm. I'm only 54 kilos, my kidney number was 168 at the last test, and I've always had the 2.5 twice a day.",
+        ],
       },
       {
         id: "explain_hold",
@@ -1406,9 +1902,15 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
         category: "clinical_counselling",
         critical: true,
         examples: ["Your age, weight and renal result may require the lower atrial-fibrillation dose, so I must hold this 5 milligram prescription and contact the prescriber."],
-        fallbackPatterns: ["\\b(?:age|weight|kidney|renal|creatinine)\\b.*\\b(?:dose|2\\.5|lower|reduce)\\b", "\\b(?:hold|contact|call|clarify|review)\\w*\\b.*\\b(?:doctor|prescriber)\\b"],
-        requiredPatternGroups: [["\\b(?:dose|strength)\\b"], ["\\b(?:contact|call|clarify|review|hold)\\w*\\b"]],
-        patientReplies: ["Please check it. I won’t switch to the stronger tablet until the doctor reviews the dose."],
+        fallbackPatterns: [
+          "\\b(?:age|weight|kidney|renal|creatinine)\\b.*\\b(?:dose|2\\.5|lower|reduce)\\b",
+          "\\b(?:hold|contact|call|clarify|review)\\w*\\b.*\\b(?:doctor|prescriber)\\b",
+        ],
+        requiredPatternGroups: [["\\b(?:dose|strength)\\b"], ["\\b(?:contact|call|clarify|review|hold|check)\\w*\\b"]],
+        patientReplies: [
+          "Please check it. I won’t switch to the stronger tablet until the doctor reviews the dose.",
+          "I did wonder about the bigger tablet. I'll stay on my old ones until you hear from the doctor.",
+        ],
       },
       {
         id: "bleeding_interaction",
@@ -1416,8 +1918,15 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
         category: "safety_netting",
         critical: true,
         examples: ["Naproxen can increase bleeding with apixaban. Seek urgent help for uncontrolled bleeding, black stools, blood in urine, collapse or sudden severe headache."],
-        fallbackPatterns: ["\\bnaproxen\\b.*\\b(?:bleed|risk|apixaban|eliquis|avoid|review)\\w*\\b", "\\b(?:black stools?|blood in urine|uncontrolled bleeding|severe headache|collapse)\\b"],
-        patientReplies: ["I’ll have the naproxen reviewed and seek urgent help for major bleeding, black stools or a sudden severe headache."],
+        fallbackPatterns: [
+          "\\bnaproxen\\b.*\\b(?:bleed|risk|apixaban|eliquis|avoid|review)\\w*\\b",
+          "\\b(?:bleed|bleeding)\\w*\\b.*\\bnaproxen\\b",
+          "\\b(?:black stools?|blood in urine|uncontrolled bleeding|severe headache|collapse)\\b",
+        ],
+        patientReplies: [
+          "I’ll have the naproxen reviewed and seek urgent help for major bleeding, black stools or a sudden severe headache.",
+          "I see — the arthritis tablets and the blood thinner together. I'll watch for any bleeding and get help fast.",
+        ],
       },
       ...closingTopics("You will hold the 5 milligram Eliquis, check the atrial-fibrillation dose and naproxen with my doctor, then update me."),
     ],

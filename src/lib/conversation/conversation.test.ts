@@ -34,6 +34,21 @@ describe("conversation configuration", () => {
     }
   });
 
+  it("offers varied patient replies for every scored topic in every case", () => {
+    // teach_back and invite_questions build their replies dynamically in reply.ts.
+    const dynamicTopics = new Set(["teach_back", "invite_questions"]);
+    for (const practiceCase of STATIC_CASES) {
+      const conversation = getConversationCase(practiceCase.id);
+      for (const topic of conversation.topics) {
+        if (dynamicTopics.has(topic.id)) continue;
+        expect(
+          topic.patientReplies.length,
+          `${practiceCase.id} topic ${topic.id} needs at least two reply variants`
+        ).toBeGreaterThanOrEqual(2);
+      }
+    }
+  });
+
   it("splits longer student utterances for multi-intent semantic matching", () => {
     expect(splitUtterance("Hello. Take one tablet twice daily; also use sunscreen.")).toEqual(
       expect.arrayContaining(["Hello", "Take one tablet twice daily", "use sunscreen"])
@@ -151,6 +166,129 @@ describe("conversation configuration", () => {
     ).map((match) => match.topicId)).toContain("teach_back");
   });
 });
+describe("reported test-run conversation regressions", () => {
+  it("recognises 'are you using any medications' as the other-medicines check", () => {
+    const conversation = getConversationCase("case-7");
+    const ids = classifyWithRules(conversation, "Are you using any medications").map(
+      (match) => match.topicId
+    );
+    expect(ids).toContain("current_medicines");
+  });
+
+  it("treats a medicine explanation as information-giving, not a symptom question", () => {
+    const conversation = getConversationCase("case-7");
+    const text =
+      "Oxycontin is an extended release tablet containing oxycodone for pain treatment.";
+    expect(matchResponseIntent(conversation, text)?.id).toBe("medicine_explanation");
+    expect(matchResponseIntent(conversation, text)?.id).not.toBe("current_symptoms");
+    expect(matchResponseIntent(conversation, "Do you have any pain right now?")?.id)
+      .toBe("current_symptoms");
+  });
+
+  it("credits overdose red-flag counselling without giving the alcohol answer away", () => {
+    const conversation = getConversationCase("case-7");
+    const ids = classifyWithRules(
+      conversation,
+      "If you get an allergic reaction, extreme drowsiness, and irregular breathing, seek urgent care"
+    ).map((match) => match.topicId);
+    expect(ids).toContain("respiratory_red_flags");
+    expect(ids).not.toContain("sedation_safety");
+  });
+
+  it("recognises the opioid tolerance question, including the common misspelling", () => {
+    const case7 = getConversationCase("case-7");
+    const case8 = getConversationCase("case-8");
+    expect(classifyWithRules(case7, "What is your opoid tolerance").map((m) => m.topicId))
+      .toContain("opioid_tolerance");
+    expect(classifyWithRules(case8, "What is your opoid tolerance").map((m) => m.topicId))
+      .toContain("opioid_history");
+  });
+
+  it("credits urgent-referral wording for the lithium case without the literal phrase", () => {
+    const conversation = getConversationCase("case-11");
+    const doctorNow = classifyWithRules(
+      conversation,
+      "If your hands are shakier and you feel unsteady, you need to go to the doctor immediately."
+    ).map((m) => m.topicId);
+    const tremors = classifyWithRules(conversation, "If you have tremors seek urgent care.").map(
+      (m) => m.topicId
+    );
+    const vomiting = classifyWithRules(
+      conversation,
+      "If you experience vomiting seek urgent care"
+    ).map((m) => m.topicId);
+    expect(doctorNow).toContain("urgent_plan");
+    expect(tremors).toContain("urgent_plan");
+    expect(vomiting).toContain("urgent_plan");
+  });
+
+  it("links lithium and dehydration in either word order", () => {
+    const conversation = getConversationCase("case-11");
+    const ids = classifyWithRules(
+      conversation,
+      "Lithium can dehydrate you so make sure to drink a lot of water."
+    ).map((m) => m.topicId);
+    expect(ids).toContain("interaction_explanation");
+  });
+
+  it("acknowledges dosing statements and yes/no answers instead of acting confused", () => {
+    const conversation = getConversationCase("case-11");
+    expect(matchResponseIntent(conversation, "Take one capsule two times a day.")?.id)
+      .toBe("dosing_instruction");
+    expect(matchResponseIntent(conversation, "no you cannot.")?.id).toBe("negative_answer");
+    expect(
+      matchResponseIntent(conversation, "no, you can not take it without doctor's advice")?.id
+    ).toBe("negative_answer");
+  });
+
+  it("distinguishes history-taking questions from counselling statements", () => {
+    const temazepam = getConversationCase("case-4");
+    const asked = classifyWithRules(temazepam, "How much alcohol would you usually drink in a week?");
+    const counselled = classifyWithRules(
+      temazepam,
+      "Temazepam and alcohol together can dangerously increase sedation."
+    );
+    expect(asked.map((m) => m.topicId)).toContain("sedative_alcohol_history");
+    expect(counselled.map((m) => m.topicId)).not.toContain("sedative_alcohol_history");
+    expect(counselled.map((m) => m.topicId)).toContain("explain_risk");
+
+    const doxycycline = getConversationCase("case-6");
+    const pregnancyAsked = classifyWithRules(doxycycline, "Is there any chance you are pregnant?");
+    const pregnancyCounselled = classifyWithRules(
+      doxycycline,
+      "Doxycycline should not be used in pregnancy."
+    );
+    expect(pregnancyAsked.map((m) => m.topicId)).toContain("pregnancy_check");
+    expect(pregnancyCounselled.map((m) => m.topicId)).not.toContain("pregnancy_check");
+  });
+
+  it("only repeats back instructions the student actually gave during teach-back", () => {
+    const conversation = getConversationCase("case-7");
+    const nothingCounselled = buildPatientReply(
+      conversation,
+      ["teach_back"],
+      new Set(["confirm_identity", "confirm_age"]),
+      5,
+      true,
+      null
+    );
+    expect(nothingCounselled.text.toLowerCase()).toContain("go through the instructions");
+    expect(nothingCounselled.text).not.toContain("12 hours");
+
+    const storageOnly = buildPatientReply(
+      conversation,
+      ["teach_back"],
+      new Set(["secure_storage"]),
+      6,
+      true,
+      null
+    );
+    expect(storageOnly.text.toLowerCase()).toContain("locked away");
+    expect(storageOnly.text).not.toContain("12 hours");
+    expect(storageOnly.text.toLowerCase()).not.toContain("alcohol");
+  });
+});
+
 describe("deterministic clinical gates", () => {
   it("recognises multiple valid counselling points in one message", () => {
     const conversation = getConversationCase("case-1");
