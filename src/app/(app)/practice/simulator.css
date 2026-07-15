@@ -2297,6 +2297,11 @@
 .fred-root .fred-voice-status.speaking::before {
   background: #087a24;
 }
+.fred-root .fred-voice-status.loading::before,
+.fred-root .fred-voice-status.generating::before {
+  background: #075e9e;
+  animation: fred-voice-pulse 1.3s ease-in-out infinite;
+}
 .fred-root .fred-voice-status.starting::before {
   background: #b16b00;
 }

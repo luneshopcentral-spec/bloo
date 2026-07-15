@@ -19,6 +19,7 @@ import { scoreCounselling } from "@/lib/conversation/score";
 import { buildPatientReply } from "@/lib/conversation/reply";
 import { useSemanticMatcher } from "@/hooks/useSemanticMatcher";
 import { useVoiceConversation } from "@/hooks/useVoiceConversation";
+import { formatModelProgress } from "@/lib/voice/kokoro-config";
 import type { PracticeMode } from "@/lib/practice/modes";
 
 interface CounsellingStageProps {
@@ -78,6 +79,9 @@ export function CounsellingStage({
   );
   const isListening = voice.activity === "starting" || voice.activity === "listening";
   const isPatientSpeaking = voice.activity === "speaking";
+  const isPatientAudioBusy = voice.activity === "loading"
+    || voice.activity === "generating"
+    || voice.activity === "speaking";
 
   function selectTextMode() {
     if (interactionMode === "text") return;
@@ -113,7 +117,11 @@ export function CounsellingStage({
   }
 
   const voiceStatus = voice.errorMessage
-    ?? (voice.activity === "starting"
+    ?? (voice.activity === "loading"
+      ? `Loading Kokoro-82M locally — current model file${formatModelProgress(voice.kokoroProgress)}. The first use is the longest.`
+      : voice.activity === "generating"
+        ? `Kokoro-82M is generating ${conversation.patientRole}'s reply on this laptop.`
+        : voice.activity === "starting"
       ? "Waiting for microphone permission or the browser speech service."
       : voice.activity === "listening"
       ? "Listening now. Speak naturally, then select Stop listening."
@@ -280,16 +288,19 @@ export function CounsellingStage({
                 <div className="fred-voice-controls-heading">
                   <strong id="voice-controls-title">Voice controls</strong>
                   <span>
-                    Patient voice: {voice.patientVoiceName
-                      ? `${voice.patientVoiceName} (${voice.patientVoiceLanguage})`
-                      : "Australian English system voice"}
+                    Patient voice: {voice.patientVoiceEngine === "kokoro"
+                      ? `Kokoro-82M · ${voice.patientVoiceName} (${voice.patientVoiceLanguage})`
+                      : `System fallback · ${voice.patientVoiceName ?? "default voice"}`}
                   </span>
                 </div>
-                {voice.patientVoiceName && !voice.patientVoiceIsAustralian && (
+                {voice.patientVoiceEngine === "system" && voice.patientVoiceName && !voice.patientVoiceIsAustralian && (
                   <p className="fred-voice-quality-warning">
-                    No Australian voice is installed, so the best available English voice is being used. Add an
-                    Australian English voice in this laptop&apos;s system speech settings for the most natural patient audio.
+                    Kokoro is unavailable in this session and no Australian system voice is installed. The best
+                    available English system voice will be used while the written transcript remains available.
                   </p>
+                )}
+                {voice.patientVoiceNotice && (
+                  <p className="fred-voice-quality-warning">{voice.patientVoiceNotice}</p>
                 )}
                 <div className="fred-voice-buttons">
                   <button
@@ -300,7 +311,7 @@ export function CounsellingStage({
                       complete
                       || pending
                       || !matcherAvailable
-                      || isPatientSpeaking
+                      || isPatientAudioBusy
                       || voice.recognitionSupported === false
                     }
                   >
@@ -309,7 +320,12 @@ export function CounsellingStage({
                   <button
                     type="button"
                     onClick={replayPatient}
-                    disabled={complete || !latestPatientMessage || voice.synthesisSupported === false}
+                    disabled={
+                      complete
+                      || !latestPatientMessage
+                      || isPatientAudioBusy
+                      || voice.synthesisSupported === false
+                    }
                   >
                     Replay patient
                   </button>
@@ -330,8 +346,10 @@ export function CounsellingStage({
                   {voiceStatus}
                 </p>
                 <p className="fred-voice-disclosure">
-                  No app API key or per-conversation charge is used. Depending on the browser, speech recognition
-                  may be processed by the browser or operating system voice service. Text mode is always available.
+                  Kokoro patient audio is generated locally with no API key or per-conversation charge. Its first-use
+                  model file is about 326 MB for WebGPU or 92 MB for the q8 WASM fallback, plus smaller browser runtime
+                  files; the browser can cache them. Student speech recognition may use the browser or operating system
+                  voice service. Text mode is always available.
                 </p>
               </section>
             )}
