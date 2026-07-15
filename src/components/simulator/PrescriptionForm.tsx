@@ -90,7 +90,14 @@ export function PrescriptionForm({ caseData }: PrescriptionFormProps) {
           <div className="pbs-auth-fields pbs-yellow">
             <div className="pbs-fcell">
               <div className="pbs-tiny">Authority No.</div>
-              <div className="pbs-faded">—</div>
+              <div className={caseData.authority ? "pbs-bold" : "pbs-faded"}>
+                {caseData.authority?.number ?? "—"}
+              </div>
+              {caseData.authority && (
+                <div className="pbs-tiny">
+                  {caseData.authority.type === "streamlined" ? "Streamlined code" : "PBS approval"}
+                </div>
+              )}
             </div>
             <div className="pbs-fcell">
               <div className="pbs-tiny">Entitlement No.</div>

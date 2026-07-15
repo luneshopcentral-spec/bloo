@@ -189,16 +189,17 @@ export function validateDispense({
   // Matches first word of caseData.drug against selectedDrug.generic_name
   // using 4-char prefix to tolerate amoxicillin/amoxycillin spelling variants.
   const selectedPrescriberName = selectedPrescriber ? formatPrescriberName(selectedPrescriber) : "";
+  const expectedPrescriberNo = caseData.expectedPrescriberNo ?? caseData.prescriberNo;
   const prescriberPassed =
     selectedPrescriber !== null &&
     normComparable(selectedPrescriberName) === normComparable(caseData.doctor) &&
-    selectedPrescriber.prescriber_number.replace(/\D/g, "") === caseData.prescriberNo.replace(/\D/g, "");
+    selectedPrescriber.prescriber_number.replace(/\D/g, "") === expectedPrescriberNo.replace(/\D/g, "");
   checks.push({
     category: "prescriber",
     label: "Prescriber selected",
     passed: prescriberPassed,
     isCritical: true,
-    expected: `${caseData.doctor} · ${caseData.prescriberNo}`,
+    expected: `${caseData.doctor} · ${expectedPrescriberNo}`,
     actual: selectedPrescriber
       ? `${selectedPrescriberName} · ${selectedPrescriber.prescriber_number}`
       : "No directory prescriber selected",
@@ -208,6 +209,24 @@ export function validateDispense({
         ? "Wrong prescriber. Check both the name and number against the prescription."
         : "Select the prescriber from the directory before dispensing.",
   });
+
+  if (caseData.authority?.required) {
+    const authorityPassed =
+      normComparable(formState.authorityNumber) === normComparable(caseData.authority.number);
+    checks.push({
+      category: "authority",
+      label: caseData.authority.type === "streamlined"
+        ? "Streamlined authority code"
+        : "PBS authority approval number",
+      passed: authorityPassed,
+      isCritical: true,
+      expected: caseData.authority.number,
+      actual: formState.authorityNumber || "(empty)",
+      detail: authorityPassed
+        ? "Authority details were transcribed correctly from the prescription."
+        : `Expected ${caseData.authority.number}; entered ${formState.authorityNumber || "nothing"}. An authority item cannot proceed as a PBS supply without the applicable code or approval number.`,
+    });
+  }
 
   const caseFirstWord = caseData.drug.split(" ")[0];
   const drugPassed =

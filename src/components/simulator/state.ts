@@ -6,6 +6,7 @@ export interface FormState {
   hospitalProvNo: string;
   doctor: string;
   prescriberNo: string;
+  authorityNumber: string;
   drug: string;
   directions: string;
   repeats: string;
@@ -20,6 +21,7 @@ export const EMPTY_FORM_STATE: FormState = {
   hospitalProvNo: "",
   doctor: "",
   prescriberNo: "",
+  authorityNumber: "",
   drug: "",
   directions: "",
   repeats: "",
@@ -46,7 +48,8 @@ export function formReducer(state: FormState, action: FormAction): FormState {
         scriptType: c.scriptType,
         hospitalProvNo: "",
         doctor: c.doctor,
-        prescriberNo: c.prescriberNo,
+        prescriberNo: c.expectedPrescriberNo ?? c.prescriberNo,
+        authorityNumber: c.authority?.number ?? "",
         drug: c.drug,
         directions: c.directions,
         repeats: c.repeats,

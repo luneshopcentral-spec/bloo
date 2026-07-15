@@ -57,6 +57,19 @@ describe("conversation configuration", () => {
     );
   });
 
+  it("keeps case 5 counselling facts consistent with Carol's stored clinical record", () => {
+    const conversation = getConversationCase("case-5");
+    const allergyTopic = conversation.topics.find((topic) => topic.id === "allergies");
+    const conditionsReply = conversation.responseIntents
+      .find((intent) => intent.id === "medical_conditions")
+      ?.patientReplies.join(" ") ?? "";
+
+    expect(allergyTopic?.patientReplies.join(" ").toLowerCase()).toContain("sulfonamide");
+    expect(allergyTopic?.patientReplies.join(" ").toLowerCase()).toContain("anaphylactic");
+    expect(conditionsReply.toLowerCase()).toContain("high blood pressure");
+    expect(conditionsReply.toLowerCase()).toContain("kidney");
+  });
+
   it("responds to common clinical questions even when they are not scoring topics", () => {
     const conversation = getConversationCase("case-1");
     expect(matchResponseIntent(conversation, "Have you taken this medication before?")?.id)

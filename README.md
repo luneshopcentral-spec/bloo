@@ -49,7 +49,10 @@ Open `.env.local` and fill in the values from your Supabase project:
 
 Open your Supabase project → **SQL Editor** → **New query**.
 
-Paste the contents of `supabase/migrations/0001_initial_schema.sql` and click **Run**.
+Run every file in `supabase/migrations/` in numeric order and click **Run** after each file.
+For an existing project already on migration 0007, run only
+`supabase/migrations/0008_complex_cases.sql` for the six new patients,
+prescribers, medicine products and patient histories.
 
 This creates:
 - `profiles` table (auto-populated on sign-up via trigger)
@@ -58,7 +61,7 @@ This creates:
 - Row Level Security policies on all tables
 - A trigger that creates a profile row whenever a new user signs up
 
-The migration is idempotent — safe to run multiple times.
+The migrations are idempotent — safe to run multiple times.
 
 #### Alternative: Supabase CLI
 

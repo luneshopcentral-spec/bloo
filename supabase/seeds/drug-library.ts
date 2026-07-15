@@ -374,6 +374,86 @@ const SERTRALINE: SeedDrug[] = [
       manufacturer_code: "GN", manufacturer_full: "Generic Health Pty Ltd", is_generic: true, cmi_available: true }),
 ];
 
+// ── GROUPS 12–17: COMPLEX CASE MEDICINES ────────────────────────────────────
+
+const OXYCODONE_MR: SeedDrug[] = [
+  d({ seed_id: "oxycontin-mr-tab-20", generic_name: "OXYCODONE", brand_name: "OXYCONTIN",
+      full_display_name: "OXYCONTIN MR TAB 20MG",
+      form: "MR TAB", strength: "20MG", pack_size: "28", qty_default: 28, repeats_default: 0,
+      supply_type: "AUTHORITY", schedule: "S8", pbs_code: null, ws_cost: 18.20, retail_price: 7.70,
+      manufacturer_code: "MU", manufacturer_full: "Mundipharma Pty Ltd", is_generic: false, cmi_available: true }),
+  d({ seed_id: "oxycodone-generic-mr-tab-20", generic_name: "OXYCODONE", brand_name: null,
+      full_display_name: "OXYCODONE MR TAB 20MG",
+      form: "MR TAB", strength: "20MG", pack_size: "28", qty_default: 28, repeats_default: 0,
+      supply_type: "AUTHORITY", schedule: "S8", pbs_code: null, ws_cost: 14.80, retail_price: 7.70,
+      manufacturer_code: "GN", manufacturer_full: "Generic Health Pty Ltd", is_generic: true, cmi_available: true }),
+];
+
+const FENTANYL_PATCH: SeedDrug[] = [
+  d({ seed_id: "durogesic-patch-25", generic_name: "FENTANYL", brand_name: "DUROGESIC",
+      full_display_name: "DUROGESIC PATCH 25MCG/H",
+      form: "PATCH", strength: "25MCG/H", pack_size: "5", qty_default: 5, repeats_default: 0,
+      supply_type: "AUTHORITY", schedule: "S8", pbs_code: null, ws_cost: 22.00, retail_price: 7.70,
+      manufacturer_code: "JC", manufacturer_full: "Janssen-Cilag Pty Ltd", is_generic: false, cmi_available: true }),
+  d({ seed_id: "fentanyl-sandoz-patch-25", generic_name: "FENTANYL", brand_name: "SANDOZ",
+      full_display_name: "FENTANYL SANDOZ PATCH 25MCG/H",
+      form: "PATCH", strength: "25MCG/H", pack_size: "5", qty_default: 5, repeats_default: 0,
+      supply_type: "AUTHORITY", schedule: "S8", pbs_code: null, ws_cost: 18.40, retail_price: 7.70,
+      manufacturer_code: "SZ", manufacturer_full: "Sandoz Pty Ltd", is_generic: false, cmi_available: true }),
+];
+
+const DEXAMFETAMINE: SeedDrug[] = [
+  d({ seed_id: "aspen-dexamfetamine-tab-5", generic_name: "DEXAMFETAMINE", brand_name: "ASPEN",
+      full_display_name: "ASPEN DEXAMFETAMINE TAB 5MG",
+      form: "TAB", strength: "5MG", pack_size: "100", qty_default: 100, repeats_default: 0,
+      supply_type: "AUTHORITY", schedule: "S8", pbs_code: null, ws_cost: 13.20, retail_price: 7.70,
+      manufacturer_code: "AP", manufacturer_full: "Aspen Pharmacare Australia Pty Ltd", is_generic: false, cmi_available: true }),
+  d({ seed_id: "dexamfetamine-genpar-tab-5", generic_name: "DEXAMFETAMINE", brand_name: "GENPAR",
+      full_display_name: "DEXAMFETAMINE GENPAR TAB 5MG",
+      form: "TAB", strength: "5MG", pack_size: "100", qty_default: 100, repeats_default: 0,
+      supply_type: "AUTHORITY", schedule: "S8", pbs_code: null, ws_cost: 11.40, retail_price: 7.70,
+      manufacturer_code: "AR", manufacturer_full: "Arrotex Pharmaceuticals Pty Ltd", is_generic: false, cmi_available: true }),
+];
+
+const METHOTREXATE: SeedDrug[] = [
+  d({ seed_id: "methotrexate-cipla-tab-10", generic_name: "METHOTREXATE", brand_name: "CIPLA",
+      full_display_name: "METHOTREXATE CIPLA TAB 10MG",
+      form: "TAB", strength: "10MG", pack_size: "15", qty_default: 12, repeats_default: 2,
+      supply_type: "NHS", schedule: "S4", pbs_code: null, ws_cost: 8.30, retail_price: 7.70,
+      manufacturer_code: "CP", manufacturer_full: "Cipla Australia Pty Ltd", is_generic: false, cmi_available: true }),
+  d({ seed_id: "methotrexate-generic-tab-10", generic_name: "METHOTREXATE", brand_name: null,
+      full_display_name: "METHOTREXATE TAB 10MG",
+      form: "TAB", strength: "10MG", pack_size: "15", qty_default: 12, repeats_default: 2,
+      supply_type: "NHS", schedule: "S4", pbs_code: null, ws_cost: 7.10, retail_price: 7.70,
+      manufacturer_code: "GN", manufacturer_full: "Generic Health Pty Ltd", is_generic: true, cmi_available: true }),
+];
+
+const LITHIUM: SeedDrug[] = [
+  d({ seed_id: "quilonum-sr-tab-450", generic_name: "LITHIUM CARBONATE", brand_name: "QUILONUM SR",
+      full_display_name: "QUILONUM SR TAB 450MG",
+      form: "SR TAB", strength: "450MG", pack_size: "100", qty_default: 100, repeats_default: 2,
+      supply_type: "NHS", schedule: "S4", pbs_code: null, ws_cost: 10.90, retail_price: 7.70,
+      manufacturer_code: "GK", manufacturer_full: "GlaxoSmithKline Australia Pty Ltd", is_generic: false, cmi_available: true }),
+  d({ seed_id: "lithicarb-tab-250", generic_name: "LITHIUM CARBONATE", brand_name: "LITHICARB",
+      full_display_name: "LITHICARB TAB 250MG",
+      form: "TAB", strength: "250MG", pack_size: "100", qty_default: 100, repeats_default: 2,
+      supply_type: "NHS", schedule: "S4", pbs_code: null, ws_cost: 9.20, retail_price: 7.70,
+      manufacturer_code: "AR", manufacturer_full: "Arrotex Pharmaceuticals Pty Ltd", is_generic: false, cmi_available: true }),
+];
+
+const APIXABAN: SeedDrug[] = [
+  d({ seed_id: "eliquis-tab-5", generic_name: "APIXABAN", brand_name: "ELIQUIS",
+      full_display_name: "ELIQUIS TAB 5MG",
+      form: "TAB", strength: "5MG", pack_size: "60", qty_default: 60, repeats_default: 5,
+      supply_type: "NHS", schedule: "S4", pbs_code: null, ws_cost: 35.40, retail_price: 7.70,
+      manufacturer_code: "BM", manufacturer_full: "Bristol-Myers Squibb Australia Pty Ltd", is_generic: false, cmi_available: true }),
+  d({ seed_id: "apo-apixaban-tab-5", generic_name: "APIXABAN", brand_name: "APO",
+      full_display_name: "APO-APIXABAN TAB 5MG",
+      form: "TAB", strength: "5MG", pack_size: "60", qty_default: 60, repeats_default: 5,
+      supply_type: "NHS", schedule: "S4", pbs_code: null, ws_cost: 28.20, retail_price: 7.70,
+      manufacturer_code: "AR", manufacturer_full: "Arrotex Pharmaceuticals Pty Ltd", is_generic: false, cmi_available: true }),
+];
+
 export const DRUG_LIBRARY: SeedDrug[] = [
   ...ERYTHROMYCIN,   // 6
   ...WARFARIN,       // 5
@@ -386,5 +466,11 @@ export const DRUG_LIBRARY: SeedDrug[] = [
   ...CEPHALEXIN,     // 4
   ...ATORVASTATIN,   // 4
   ...SERTRALINE,     // 3
-  // Total: 58
+  ...OXYCODONE_MR,
+  ...FENTANYL_PATCH,
+  ...DEXAMFETAMINE,
+  ...METHOTREXATE,
+  ...LITHIUM,
+  ...APIXABAN,
+  // Total: 70
 ];
