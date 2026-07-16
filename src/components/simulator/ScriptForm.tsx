@@ -56,8 +56,11 @@ export function ScriptForm({
   const expandedDirections = expandAbbrevs(itemForm.directions);
   const drugDebounceRef  = useRef<ReturnType<typeof setTimeout>>(undefined);
   // An authority number is transcribed once per prescription, so offer the field
-  // whenever any item on the script is a controlled drug.
-  const controlledDrugSelected = selectedDrugs.some((drug) => /\bS8\b/i.test(drug?.schedule ?? ""));
+  // whenever any selected item is an authority listing (S8 controlled drugs and
+  // S4 PBS authority items such as sitagliptin both qualify).
+  const controlledDrugSelected = selectedDrugs.some((drug) =>
+    /\bS8\b/i.test(drug?.schedule ?? "") || /AUTHORITY/i.test(drug?.supply_type ?? "")
+  );
 
   function handleDrugInput(e: React.ChangeEvent<HTMLInputElement>) {
     const val = e.target.value;
@@ -98,8 +101,8 @@ export function ScriptForm({
         </div>
       )}
 
-      {/* Row 1: Date / Type / Hospital */}
-      <div className="grid grid-cols-3 gap-1.5 mb-1 px-1">
+      {/* Row 1: Date / Type */}
+      <div className="grid grid-cols-2 gap-1.5 mb-1 px-1">
         <div>
           <label className="fred-field-label" htmlFor="script-date">Script Date</label>
           <input id="script-date" className="fred-field-input" placeholder="DD/MM/YY"
@@ -115,11 +118,6 @@ export function ScriptForm({
             <option>S — Safety Net</option>
             <option>C — Concession</option>
           </select>
-        </div>
-        <div>
-          <label className="fred-field-label" htmlFor="hospital-provider-number">Hospital Prov. No.</label>
-          <input id="hospital-provider-number" className="fred-field-input" value={formState.hospitalProvNo}
-            onChange={onChange(dispatch, "hospitalProvNo")} disabled={disabled} />
         </div>
       </div>
 
@@ -178,13 +176,6 @@ export function ScriptForm({
         {drugInfoLine && (
           <div className="fred-drug-info-line">{drugInfoLine}</div>
         )}
-
-        <div className="fred-drug-info-row">
-          <span>On Hand: <span>—</span></span>
-          <span>Committed: <span>0.00</span></span>
-          <span>Avail Stock: <span>—</span></span>
-          <span style={{ color: "#006600", fontWeight: "bold" }}>$0.00</span>
-        </div>
       </div>
 
       {controlledDrugSelected && (

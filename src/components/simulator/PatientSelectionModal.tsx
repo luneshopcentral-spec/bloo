@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { mergeWithLocal, searchLocalPatients } from "@/lib/directory/local-fallback";
 import type { Patient } from "@/lib/types/patient";
 
 interface Props {
@@ -54,11 +55,8 @@ export function PatientSelectionModal({
       .order("firstname")
       .limit(25);
     setLoading(false);
-    if (error) {
-      setFetchError(error.message);
-      return;
-    }
-    setPatients((data as Patient[]) ?? []);
+    // Bundled patients back the search so case patients are always findable.
+    setPatients(mergeWithLocal((error ? [] : (data as Patient[])) ?? [], searchLocalPatients(q), 25));
     setSelectedIndex(0);
   }
 

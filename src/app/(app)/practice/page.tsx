@@ -11,12 +11,13 @@ import type { DispenseResult } from "@/lib/scoring/types";
 import type { AttemptResult, CounsellingResult } from "@/lib/conversation/types";
 import { combineAttemptResults } from "@/lib/conversation/score";
 import { getConversationCase } from "@/lib/conversation/cases";
-import type { DispenseDecision, MessageRow } from "@/lib/types/case";
+import type { DispenseDecision } from "@/lib/types/case";
 import type { Patient, PatientScript } from "@/lib/types/patient";
 import type { DrugRow } from "@/lib/types/drug";
 import type { Prescriber } from "@/lib/types/prescriber";
 import { formatPrescriberName } from "@/lib/types/prescriber";
 import { createClient } from "@/lib/supabase/client";
+import { findLocalDrugBySeedId, findLocalPrescriberByNumber } from "@/lib/directory/local-fallback";
 import { getCaseEditorialRecord } from "@/lib/governance/editorial";
 import type { PracticeMode } from "@/lib/practice/modes";
 import { persistCompletedAttempt } from "@/lib/attempts/persist";
@@ -28,10 +29,8 @@ import { ScriptForm }          from "@/components/simulator/ScriptForm";
 import { DrugDetailsBox }      from "@/components/simulator/DrugDetailsBox";
 import { WarningsBox }         from "@/components/simulator/WarningsBox";
 import { LabelPreview }        from "@/components/simulator/LabelPreview";
-import { ApiBox }              from "@/components/simulator/ApiBox";
 import { ActionButtons }       from "@/components/simulator/ActionButtons";
 import { ClinicalDecisionPanel } from "@/components/simulator/ClinicalDecisionPanel";
-import { MessagesPanel }       from "@/components/simulator/MessagesPanel";
 import { StatusBar }           from "@/components/simulator/StatusBar";
 import { HistoryPanel }        from "@/components/simulator/HistoryPanel";
 import { ResultOverlay }       from "@/components/simulator/ResultOverlay";
@@ -58,7 +57,6 @@ export default function PracticePage() {
   const [selectedWarnings, setSelectedWarnings]    = useState<Set<string>[]>([new Set()]);
   const [currentItem, setCurrentItem]              = useState(0);
   const [statusMessage, setStatusMessage]          = useState(DEFAULT_STATUS);
-  const [messages, setMessages]                    = useState<MessageRow[]>([]);
 
   const [sessionScore, setSessionScore]   = useState({ correct: 0, total: 0 });
   const [pendingDispenseResult, setPendingDispenseResult] = useState<DispenseResult | null>(null);
@@ -126,9 +124,6 @@ export default function PracticePage() {
     setSelectedPrescriber(null);
     setPrescriberModalOpen(false);
     setPrescriberModalQuery("");
-
-    // Do not reveal the case's hidden clinical issue before the student decides.
-    setMessages([]);
   }, [currentCaseIndex]);
 
   // ── Load patient scripts when a patient is selected ───────────────
@@ -176,7 +171,6 @@ export default function PracticePage() {
     setPendingDispenseResult(null);
     setLastResult(null);
     setStatusMessage("Form cleared. Enter the next script.");
-    setMessages([]);
   }
 
   async function handleShowAnswers() {
@@ -198,11 +192,15 @@ export default function PracticePage() {
       .select("*")
       .eq("prescriber_number", current.expectedPrescriberNo ?? current.prescriberNo)
       .single();
-    if (drugData) {
-      const bySeedId = new Map((drugData as DrugRow[]).map((drug) => [drug.seed_id, drug]));
-      setSelectedDrugs(current.items.map((item) => bySeedId.get(item.correctDrugSeedId) ?? null));
-    }
-    if (prescriberData) setSelectedPrescriber(prescriberData as Prescriber);
+    // Fall back to the bundled directory for anything the database is missing.
+    const bySeedId = new Map(((drugData as DrugRow[]) ?? []).map((drug) => [drug.seed_id, drug]));
+    setSelectedDrugs(current.items.map((item) =>
+      bySeedId.get(item.correctDrugSeedId) ?? findLocalDrugBySeedId(item.correctDrugSeedId)
+    ));
+    setSelectedPrescriber(
+      (prescriberData as Prescriber | null) ??
+      findLocalPrescriberByNumber(current.expectedPrescriberNo ?? current.prescriberNo)
+    );
   }
 
   function handleDispense() {
@@ -408,7 +406,7 @@ export default function PracticePage() {
                 />
               </div>
 
-              <div className="grid grid-cols-[160px_1fr_100px] gap-1 mb-1">
+              <div className="grid grid-cols-[160px_1fr] gap-1 mb-1">
                 <WarningsBox
                   warnings={ALL_WARNINGS}
                   selectedWarnings={currentWarnings}
@@ -423,7 +421,6 @@ export default function PracticePage() {
                   itemIndex={currentItem}
                   itemCount={current.items.length}
                 />
-                <ApiBox />
               </div>
 
               <div className="fred-action-dock">
@@ -445,7 +442,6 @@ export default function PracticePage() {
                 />
               </div>
 
-              <MessagesPanel messages={messages} />
               <StatusBar message={statusMessage} />
             </div>
           </div>
