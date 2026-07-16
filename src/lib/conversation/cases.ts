@@ -5,6 +5,19 @@ import type {
   UnsafeAdviceRule,
 } from "./types";
 
+// Several cases require the student to withhold supply and go back to the
+// prescriber. Students phrase that many ways ("I can't hand this over",
+// "I'll hang on to this", "let me ring the doctor"), so the wording is shared
+// here rather than re-listed — and re-listed inconsistently — per case.
+const HOLD_SUPPLY_PATTERN =
+  "\\b(?:hold(?:ing)?|holding on|hang on|cannot|can't|can not|won't|will not|unable to|not)\\b.*\\b(?:supply|dispense|give|hand (?:it|this) over|hand over|sell|provide)\\b"
+  + "|\\b(?:hold|keep)\\b.*\\b(?:script|prescription|supply)\\b"
+  + "|\\bhold (?:on to |onto )?(?:this|it|these|them|your script|your prescription|the script|the prescription)\\b"
+  + "|\\bbefore (?:i|we) (?:can )?(?:dispense|supply|give|hand)\\b";
+
+const CONTACT_PRESCRIBER_PATTERN =
+  "\\b(?:contact|call|calling|ring|ringing|phone|clarify|clarifying|speak|speaking|spoke|spoken|check|checking|confirm|confirming|verify|verifying|query|querying|review|reviewing|talk|talking)\\w*\\b";
+
 type ReplySpec = string | string[];
 
 function asReplies(spec: ReplySpec): string[] {
@@ -351,7 +364,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
     caseId: "case-1",
     patientRole: "John Smith",
     openingMessage: "Hi, I’m John. Is my antibiotic ready?",
-    handoverGoal: "Counsel John about the erythromycin supply and check that he can use it safely.",
+    handoverGoal: "Hand over this supply and counsel to your professional standard.",
     concernAfterTurns: 3,
     concernTopicId: "complete_course",
     concernPrompt: "I usually feel better after a few days. Can I stop it then?",
@@ -449,10 +462,12 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
           "Keep taking it for the prescribed course unless your doctor tells you otherwise.",
         ],
         fallbackPatterns: [
-          "\\b(?:complete|finish)\\b.*\\b(?:course|antibiotic|medicine)\\b",
-          "\\b(?:whole|full|entire) course\\b",
-          "\\bkeep taking\\b.*\\b(?:feel better|even if|until)\\b",
-          "\\b(?:do not|don't) stop (?:early|taking)\\b",
+          "\\b(?:complete|finish)\\w*\\b.*\\b(?:course|antibiotic|medicine|them|all)\\b",
+          "\\b(?:whole|full|entire|complete) course\\b",
+          "\\b(?:keep|carry on|continue) taking\\b",
+          "\\b(?:do not|don't|never) stop\\b",
+          "\\btake (?:all|every one) of them\\b",
+          "\\buntil (?:they(?:'re| are) )?(?:all )?(?:gone|done|finished)\\b",
         ],
         forbiddenPatterns: ["\\b(?:can|should) stop\\b.*\\bfeel better\\b"],
         patientReplies: [
@@ -469,8 +484,11 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
           "You can take it with food if it upsets your stomach.",
         ],
         fallbackPatterns: [
-          "\\b(?:nausea|nauseous|sick|upset stomach)\\b",
-          "\\b(?:food|milk)\\b.*\\b(?:nausea|stomach|sick|take)\\b",
+          "\\b(?:nausea|nauseous|queasy|sick)\\w*\\b",
+          "\\b(?:upset|unsettl|irritat)\\w*\\b.*\\b(?:stomach|tummy|gut)\\b",
+          "\\b(?:stomach|tummy|gut)\\b.*\\b(?:upset|unsettl|irritat)\\w*\\b",
+          "\\b(?:food|milk|meal|something to eat)\\b.*\\b(?:nausea|stomach|tummy|sick|take|have)\\b",
+          "\\b(?:take|have) (?:it|them|these)\\b.*\\b(?:with|after)\\b.*\\b(?:food|milk|meal)\\b",
         ],
         patientReplies: [
           "I’ll try it with food if my stomach feels unsettled.",
@@ -486,13 +504,13 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
           "Get urgent medical assistance for signs of a serious allergic reaction.",
         ],
         fallbackPatterns: [
-          "\\b(?:rash|swelling|breathing|allergic reaction)\\b.*\\b(?:help|urgent|doctor|hospital|emergency|000|ambulance)\\b",
-          "\\b(?:help|urgent|emergency|hospital|000|ambulance)\\b.*\\b(?:rash|swelling|breathing|allergic)\\w*\\b",
-          "\\b(?:difficulty|trouble) breathing\\b",
+          "\\b(?:rash|swell|breath|allergic|hives|throat|lips|tongue)\\w*\\b.*\\b(?:help|urgent|doctor|hospital|emergency|000|triple zero|ambulance)\\b",
+          "\\b(?:help|urgent|emergency|hospital|000|triple zero|ambulance)\\b.*\\b(?:rash|swell|breath|allergic|hives|throat)\\w*\\b",
+          "\\b(?:difficulty|trouble|struggl\\w*) (?:to )?breath\\w*\\b",
         ],
         requiredPatternGroups: [
-          ["\\b(?:swelling|breathing|allergic reaction|rash)\\b"],
-          ["\\b(?:help|urgent|doctor|hospital|emergency|000|ambulance)\\b"],
+          ["\\b(?:swell|breath|allergic|rash|hives|throat|lips|tongue)\\w*\\b"],
+          ["\\b(?:help|urgent|doctor|hospital|emergency|000|triple zero|ambulance)\\b"],
         ],
         patientReplies: [
           "I’ll seek help straight away if I have a serious reaction.",
@@ -521,7 +539,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
     caseId: "case-2",
     patientRole: "Margaret Jones",
     openingMessage: "Hello. I’m here to collect my warfarin.",
-    handoverGoal: "Confirm Margaret’s dose plan and reinforce monitoring, interaction and bleeding precautions.",
+    handoverGoal: "Hand over this supply and counsel to your professional standard.",
     concernAfterTurns: 3,
     concernTopicId: "interactions",
     concernPrompt: "I sometimes take ibuprofen for headaches. Is that still okay?",
@@ -587,10 +605,11 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
           "Regular INR monitoring is essential while you take warfarin.",
         ],
         fallbackPatterns: [
-          "\\b(?:inr|blood test|anticoagulation)\\b.*\\b(?:monitor|regular|appointment|clinic|check|test)\\w*\\b",
-          "\\b(?:monitor|check|attend|keep up)\\w*\\b.*\\b(?:inr|blood test)s?\\b",
+          "\\b(?:inr|blood test|blood tested|anticoagulation)\\w*\\b.*\\b(?:monitor|regular|appointment|clinic|check|test)\\w*\\b",
+          "\\b(?:monitor|check|attend|keep|carry on|keep up)\\w*\\b.*\\b(?:inr|blood test)\\w*\\b",
+          "\\b(?:blood|inr)\\b.*\\btest\\w*\\b",
         ],
-        requiredPatternGroups: [["\\b(?:inr|blood test|anticoagulation)\\b"]],
+        requiredPatternGroups: [["\\b(?:inr|anticoagulation)\\w*\\b", "\\bblood\\b.*\\btest\\w*\\b"]],
         patientReplies: [
           "My next INR test is booked. I’ll make sure I attend.",
           "I never miss the blood tests — the clinic reminds me anyway.",
@@ -611,7 +630,10 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
         ],
         requiredPatternGroups: [
           ["\\b(?:ibuprofen|nurofen|naproxen|aspirin|nsaid|anti-inflammatory|anti inflammatory|new medicine|other medicine)\\b"],
-          ["\\b(?:avoid|do not|don't|check|ask|before|careful)\\b"],
+          [
+            "\\b(?:avoid|do not|don't|check|ask|before|careful|unless)\\b",
+            "\\b(?:steer clear|stay away|keep away|stay off)\\b",
+          ],
         ],
         patientReplies: [
           "I’ll check before using ibuprofen or starting anything new.",
@@ -657,7 +679,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
     caseId: "case-3",
     patientRole: "Liam Henderson’s parent",
     openingMessage: "Hi, I’m Liam’s mum. I’m collecting his antibiotic mixture.",
-    handoverGoal: "Counsel Liam’s parent on accurate measurement, administration, storage and course completion.",
+    handoverGoal: "Hand over this supply and counsel to your professional standard.",
     concernAfterTurns: 3,
     concernTopicId: "liquid_handling",
     concernPrompt: "Should I use a kitchen teaspoon to measure it?",
@@ -807,11 +829,21 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
           "Liam may get mild stomach upset. If it is severe, persistent or you are concerned, seek advice.",
         ],
         fallbackPatterns: [
-          "\\b(?:nausea|feel sick|upset stomach|diarrh(?:ea|oea))\\b",
-          "\\b(?:side effect|side effects)\\b",
+          "\\b(?:nausea|nauseous|queasy|vomit|diarrh|runny|loose)\\w*\\b",
+          "\\bfeel\\w* sick\\b",
+          "\\b(?:upset|unsettl|sore)\\w*\\b.*\\b(?:stomach|tummy|gut|belly)\\b",
+          "\\b(?:stomach|tummy|gut|belly)\\b.*\\b(?:upset|unsettl|sore)\\w*\\b",
+          "\\bside[- ]effects?\\b",
+          "\\bthe runs\\b",
         ],
         requiredPatternGroups: [
-          ["\\b(?:nausea|feel sick|upset stomach|diarrh(?:ea|oea)|side effect|side effects)\\b"],
+          [
+            "\\b(?:nausea|nauseous|queasy|vomit|diarrh|runny|loose)\\w*\\b",
+            "\\bfeel\\w* sick\\b",
+            "\\b(?:stomach|tummy|gut|belly)\\b",
+            "\\bside[- ]effects?\\b",
+            "\\bthe runs\\b",
+          ],
         ],
         patientReplies: [
           "Okay, I’ll watch for stomach upset and ask for help if it is severe or worrying.",
@@ -826,10 +858,10 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
           "Seek urgent help if Liam develops facial swelling or difficulty breathing.",
           "Get medical help for a serious rash or allergic reaction.",
         ],
-        fallbackPatterns: ["\\b(?:rash|hives|swelling|breathing|allergic reaction|blistering)\\b"],
+        fallbackPatterns: ["\\b(?:rash|hives|swell|breath|allergic|blister|throat|lips|tongue)\\w*\\b"],
         requiredPatternGroups: [
-          ["\\b(?:rash|hives|swelling|breathing|allergic reaction|blistering)\\b"],
-          ["\\b(?:help|urgent|doctor|hospital|emergency|medical attention|medical care|ambulance|000)\\b"],
+          ["\\b(?:rash|hives|swell|breath|allergic|blister|throat|lips|tongue)\\w*\\b"],
+          ["\\b(?:help|urgent|doctor|hospital|emergency|medical attention|medical care|ambulance|000|triple zero)\\b"],
         ],
         patientReplies: [
           "I’ll get help if Liam develops signs of a serious reaction.",
@@ -858,7 +890,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
     caseId: "case-4",
     patientRole: "David Park",
     openingMessage: "Hi. Is my sleeping-tablet prescription ready?",
-    handoverGoal: "Explain the safety hold respectfully, gather relevant sedative and alcohol history, and give clear next steps.",
+    handoverGoal: "Hand over this supply and counsel to your professional standard.",
     concernAfterTurns: 2,
     concernTopicId: "explain_hold",
     concernPrompt: "Why can’t I just take it home today?",
@@ -924,13 +956,13 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
           "I need to hold the prescription and contact your doctor before dispensing it.",
         ],
         fallbackPatterns: [
-          "\\b(?:hold|cannot supply|can't supply|not supply|before (?:I|we) (?:dispense|supply))\\b",
-          "\\b(?:contact|call|clarify|speak)\\w*\\b.*\\b(?:doctor|prescriber)\\b",
+          HOLD_SUPPLY_PATTERN,
+          `${CONTACT_PRESCRIBER_PATTERN}.*\\b(?:doctor|prescriber|gp)\\b`,
         ],
         requiredPatternGroups: [
-          ["\\b(?:hold|cannot supply|can't supply|not supply|before (?:I|we) (?:dispense|supply))\\b"],
-          ["\\b(?:contact|call|clarify|speak)\\w*\\b"],
-          ["\\b(?:doctor|prescriber)\\b"],
+          [HOLD_SUPPLY_PATTERN],
+          [CONTACT_PRESCRIBER_PATTERN],
+          ["\\b(?:doctor|prescriber|gp)\\b"],
         ],
         patientReplies: [
           "I’m disappointed, but I understand that you need to check with my doctor first.",
@@ -946,8 +978,8 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
           "Combining sleeping tablets with alcohol can cause excessive drowsiness and other harm.",
         ],
         fallbackPatterns: [
-          "\\b(?:alcohol|drink)\\b.*\\b(?:temazepam|sleeping tablet|sedation|drows|breathing|risk|unsafe|dangerous)\\w*\\b",
-          "\\b(?:temazepam|sleeping tablet|sedation|drows|risk)\\w*\\b.*\\b(?:alcohol|drink)\\w*\\b",
+          "\\b(?:alcohol|drink|booze|beer|wine)\\w*\\b.*\\b(?:temazepam|sleeping tablet|sedation|sedat|drows|sleepy|breath|risk|unsafe|dangerous|harm|slow)\\w*\\b",
+          "\\b(?:temazepam|sleeping tablet|sedation|sedat|drows|sleepy|risk|slow)\\w*\\b.*\\b(?:alcohol|drink|booze|beer|wine)\\w*\\b",
         ],
         requiredPatternGroups: [
           ["\\b(?:alcohol|drink)\\w*\\b"],
@@ -967,10 +999,12 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
           "Thank you for discussing this with me; we will update you after speaking with your doctor.",
         ],
         fallbackPatterns: [
-          "\\b(?:understand|sorry|frustrating|thank you)\\b",
-          "\\b(?:call|contact|update|let you know|next step|follow up)\\b.*\\b(?:doctor|prescriber|you)\\b",
+          "\\b(?:call|calling|contact|ring|phone|update|let you know|get back to you|next step|follow up)\\w*\\b",
+          "\\b(?:understand|sorry|frustrating|thank you)\\b.*\\b(?:call|contact|ring|update|let you know)\\w*\\b",
         ],
-        requiredPatternGroups: [["\\b(?:call|contact|update|let you know|next step|follow up)\\w*\\b"]],
+        requiredPatternGroups: [
+          ["\\b(?:call|calling|contact|ring|phone|update|let you know|get back to you|next step|follow up)\\w*\\b"],
+        ],
         patientReplies: [
           "Thank you for explaining what will happen next.",
           "Okay. As long as someone lets me know today, that's fine.",
@@ -998,7 +1032,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
     caseId: "case-5",
     patientRole: "Carol Simmons",
     openingMessage: "Hello. I’m collecting my metformin prescription.",
-    handoverGoal: "Identify the cimetidine and renal-function concerns, explain the hold and provide clear next steps.",
+    handoverGoal: "Hand over this supply and counsel to your professional standard.",
     concernAfterTurns: 2,
     concernTopicId: "explain_hold",
     concernPrompt: "Is there a problem with the prescription?",
@@ -1042,9 +1076,9 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
           "Have you recently been dehydrated, vomiting or very unwell?",
         ],
         fallbackPatterns: [
-          "\\b(?:kidney|renal|egfr)\\b",
+          "\\b(?:kidney|renal|egfr)\\w*\\b",
           "\\b(?:dehydrat|vomit|diarrhoea|very unwell|acute illness)\\w*\\b",
-          "\\b(?:blood test|test results|monitoring)\\b.*\\b(?:kidney|renal)\\b",
+          "\\b(?:blood test|test results|monitoring)\\w*\\b.*\\b(?:kidney|renal)\\w*\\b",
         ],
         // Question-shaped context only — explaining the renal concern belongs to explain_concern.
         requiredPatternGroups: [
@@ -1065,13 +1099,13 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
           "I can’t safely complete the supply until the doctor reviews these concerns.",
         ],
         fallbackPatterns: [
-          "\\b(?:hold|cannot supply|can't supply|not supply|before (?:I|we) (?:dispense|supply))\\b",
-          "\\b(?:contact|call|clarify|speak|review)\\w*\\b.*\\b(?:doctor|prescriber)\\b",
+          HOLD_SUPPLY_PATTERN,
+          `${CONTACT_PRESCRIBER_PATTERN}.*\\b(?:doctor|prescriber|gp)\\b`,
         ],
         requiredPatternGroups: [
-          ["\\b(?:hold|cannot supply|can't supply|not supply|before (?:I|we) (?:dispense|supply))\\b"],
-          ["\\b(?:contact|call|clarify|speak|review)\\w*\\b"],
-          ["\\b(?:doctor|prescriber)\\b"],
+          [HOLD_SUPPLY_PATTERN],
+          [CONTACT_PRESCRIBER_PATTERN],
+          ["\\b(?:doctor|prescriber|gp)\\b"],
         ],
         patientReplies: [
           "Okay. I understand you need to check before supplying it.",
@@ -1139,7 +1173,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
     caseId: "case-6",
     patientRole: "Fiona Chang",
     openingMessage: "Hi. I’m Fiona, and I’m here for the doxycycline prescription.",
-    handoverGoal: "Check pregnancy and interacting products, then counsel on safe doxycycline administration.",
+    handoverGoal: "Hand over this supply and counsel to your professional standard.",
     concernAfterTurns: 3,
     concernTopicId: "separation",
     concernPrompt: "I use an antacid most days. Can I take them together?",
@@ -1296,7 +1330,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
     caseId: "case-7",
     patientRole: "Peter Morales",
     openingMessage: "Hello. I’m here for my regular OxyContin prescription.",
-    handoverGoal: "Confirm opioid tolerance and give complete modified-release opioid safety counselling.",
+    handoverGoal: "Hand over this supply and counsel to your professional standard.",
     concernAfterTurns: 3,
     concernTopicId: "secure_storage",
     concernPrompt: "My grandchildren visit on weekends. Where should I keep these tablets?",
@@ -1379,12 +1413,17 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
         category: "safety_netting",
         examples: ["Avoid alcohol, and do not drive if you feel drowsy or impaired."],
         fallbackPatterns: [
-          // Require the alcohol/driving context so overdose red-flag counselling that
-          // mentions drowsiness is not marked as this topic.
-          "\\b(?:drows|sleepy|sedat|impair)\\w*\\b.*\\b(?:alcohol|driv|machinery)\\w*\\b",
-          "\\b(?:alcohol|driv|machinery)\\w*\\b.*\\b(?:drows|sleepy|sedat|impair)\\w*\\b",
-          "\\b(?:avoid|no|do not|don't)\\b.*\\balcohol\\b",
-          "\\b(?:drive|driving|machinery)\\b",
+          "\\b(?:drows|sleepy|sedat|impair)\\w*\\b.*\\b(?:alcohol|drink|booze|beer|driv|road|machinery)\\w*\\b",
+          "\\b(?:alcohol|drink|booze|beer|driv|road|machinery)\\w*\\b.*\\b(?:drows|sleepy|sedat|impair|dopey)\\w*\\b",
+          "\\b(?:avoid|no|not|don't|skip|off|steer clear of|stay off)\\b.*\\b(?:alcohol|drink|booze|beer)\\w*\\b",
+          "\\b(?:drive|driving|machinery|the road)\\b",
+        ],
+        // The alcohol/driving context is what separates this from overdose red
+        // flags, which also mention drowsiness. Gate both the rules and the
+        // semantic path on it so a high embedding score cannot hand the student
+        // this answer off a red-flags sentence.
+        requiredPatternGroups: [
+          ["\\b(?:alcohol|drink|booze|beer|wine|driv|road|machinery|operat)\\w*\\b"],
         ],
         patientReplies: [
           "I’ll avoid alcohol and won’t drive if I am drowsy or impaired.",
@@ -1436,7 +1475,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
     caseId: "case-8",
     patientRole: "Helen Brooks",
     openingMessage: "Hello. The doctor has prescribed a pain patch for me.",
-    handoverGoal: "Identify opioid-naive status, explain the unsafe fentanyl order and arrange prescriber review.",
+    handoverGoal: "Hand over this supply and counsel to your professional standard.",
     concernAfterTurns: 2,
     concernTopicId: "explain_hold",
     concernPrompt: "Why can’t I take the patch home now?",
@@ -1496,8 +1535,11 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
         category: "clinical_counselling",
         critical: true,
         examples: ["I cannot supply this patch until I urgently clarify it with your prescriber because it is unsafe for someone who is not opioid-tolerant."],
-        fallbackPatterns: ["\\b(?:cannot|can't|hold|not)\\b.*\\b(?:supply|dispense|give)\\b", "\\b(?:contact|call|clarify|speak)\\w*\\b.*\\b(?:doctor|prescriber)\\b"],
-        requiredPatternGroups: [["\\b(?:cannot|can't|hold|not supply|not dispense)\\b"], ["\\b(?:doctor|prescriber)\\b"]],
+        fallbackPatterns: [
+          HOLD_SUPPLY_PATTERN,
+          `${CONTACT_PRESCRIBER_PATTERN}.*\\b(?:doctor|prescriber|gp)\\b`,
+        ],
+        requiredPatternGroups: [[HOLD_SUPPLY_PATTERN], ["\\b(?:doctor|prescriber|gp)\\b"]],
         patientReplies: [
           "All right. I understand you need to stop and contact the doctor first.",
           "Oh. Well, if it isn't safe I'd rather you did check with the doctor.",
@@ -1543,7 +1585,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
     caseId: "case-9",
     patientRole: "Noah Williams’s parent",
     openingMessage: "Hi. I’m collecting Noah’s usual dexamfetamine.",
-    handoverGoal: "Explain the prescription-authentication hold and provide a clear follow-up plan.",
+    handoverGoal: "Hand over this supply and counsel to your professional standard.",
     concernAfterTurns: 2,
     concernTopicId: "explain_hold",
     concernPrompt: "It looks like his usual medicine. Why is there a delay?",
@@ -1603,8 +1645,10 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
         critical: true,
         examples: ["I will contact the clinic using our established directory, not a number written on the questionable prescription."],
         fallbackPatterns: [
-          "\\b(?:directory|verified|established|independent)\\w*\\b.*\\b(?:phone|number|contact|clinic|details)\\b",
-          "\\b(?:not|won't|will not)\\b.*\\bnumber\\b.*\\b(?:prescription|script)\\b",
+          "\\b(?:directory|verified|verify|established|independent|on file|on record|our records|already have)\\w*\\b.*\\b(?:phone|number|contact|clinic|details|file|record)\\w*\\b",
+          "\\b(?:phone|number|contact|clinic|details)\\b.*\\b(?:directory|verified|established|independent|on file|on record|our records|already have)\\w*\\b",
+          "\\b(?:not|won't|will not|rather than|instead of)\\b.*\\bnumber\\b.*\\b(?:prescription|script)\\b",
+          "\\bnumber\\b.*\\b(?:not|rather than|instead of)\\b.*\\b(?:prescription|script|the one on)\\b",
         ],
         patientReplies: [
           "That makes sense. Please use the clinic details you already have verified.",
@@ -1635,7 +1679,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
     caseId: "case-10",
     patientRole: "Grace Lim",
     openingMessage: "Hello. I’m collecting my methotrexate.",
-    handoverGoal: "Identify the daily-dose error, hold supply and explain the safe next step.",
+    handoverGoal: "Hand over this supply and counsel to your professional standard.",
     concernAfterTurns: 2,
     concernTopicId: "explain_hold",
     concernPrompt: "The label says daily, but I thought I took it once a week. Which is right?",
@@ -1737,7 +1781,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
     caseId: "case-11",
     patientRole: "Rahul Mehta",
     openingMessage: "Hi. I need my lithium, but I’ve had a stomach bug for two days.",
-    handoverGoal: "Recognise possible lithium toxicity risk and arrange urgent clinical assessment.",
+    handoverGoal: "Hand over this supply and counsel to your professional standard.",
     concernAfterTurns: 2,
     concernTopicId: "urgent_plan",
     concernPrompt: "My hands are shakier and I feel unsteady. Is that just the stomach bug?",
@@ -1839,7 +1883,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
     caseId: "case-12",
     patientRole: "Evelyn Scott",
     openingMessage: "Hello. I’m collecting my Eliquis. The tablet looks stronger this time.",
-    handoverGoal: "Identify the indication-specific dose and NSAID bleeding-risk concerns and hold for review.",
+    handoverGoal: "Hand over this supply and counsel to your professional standard.",
     concernAfterTurns: 2,
     concernTopicId: "explain_hold",
     concernPrompt: "My old box was 2.5 milligrams. Why does this prescription say 5 milligrams?",
@@ -1903,10 +1947,14 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
         critical: true,
         examples: ["Your age, weight and renal result may require the lower atrial-fibrillation dose, so I must hold this 5 milligram prescription and contact the prescriber."],
         fallbackPatterns: [
-          "\\b(?:age|weight|kidney|renal|creatinine)\\b.*\\b(?:dose|2\\.5|lower|reduce)\\b",
-          "\\b(?:hold|contact|call|clarify|review)\\w*\\b.*\\b(?:doctor|prescriber)\\b",
+          "\\b(?:age|weight|kidney|renal|creatinine)\\w*\\b.*\\b(?:dose|2\\.5|lower|reduce)\\w*\\b",
+          `${CONTACT_PRESCRIBER_PATTERN}.*\\b(?:doctor|prescriber|gp)\\b`,
+          HOLD_SUPPLY_PATTERN,
         ],
-        requiredPatternGroups: [["\\b(?:dose|strength)\\b"], ["\\b(?:contact|call|clarify|review|hold|check)\\w*\\b"]],
+        requiredPatternGroups: [
+          ["\\b(?:dose|strength|milligram|mg)\\b"],
+          [CONTACT_PRESCRIBER_PATTERN, HOLD_SUPPLY_PATTERN],
+        ],
         patientReplies: [
           "Please check it. I won’t switch to the stronger tablet until the doctor reviews the dose.",
           "I did wonder about the bigger tablet. I'll stay on my old ones until you hear from the doctor.",
@@ -1936,6 +1984,204 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
       patterns: ["\\b(?:start|take|use)\\b.*\\b(?:5 ?mg|5 milligram)\\b.*\\b(?:today|now|tonight|as written)\\b"],
       detail: "The student advised starting the unresolved higher apixaban dose.",
     }),
+  },
+  "case-13": {
+    caseId: "case-13",
+    patientRole: "Christopher Carruthers",
+    openingMessage: "Hi. I’m picking up my two diabetes tablets.",
+    handoverGoal: "Hand over this supply and counsel to your professional standard.",
+    concernAfterTurns: 3,
+    concernTopicId: "metformin_xr_admin",
+    concernPrompt: "These new ones are a lot bigger than my old tablets. Can I halve them to get them down?",
+    patientQuestion: "Do I need to worry about my sugar dropping too low on these?",
+    unknownReplies: variedUnknownReplies("Could you explain how that applies to my diabetes tablets?"),
+    responseIntents: commonResponseIntents({
+      previousUseReplies: [
+        "I have been on metformin for a couple of years. The sitagliptin is the new addition.",
+        "The metformin is not new to me, but I have never taken the sitagliptin before.",
+      ],
+      conditionsReplies: [
+        "Just the type 2 diabetes. My kidneys were fine at my last check.",
+        "Type 2 diabetes — that is all the doctor manages me for.",
+      ],
+      symptomsReplies: [
+        "I feel well. No shakiness, sweating or dizzy spells.",
+        "Nothing unusual — no hypos or stomach trouble at the moment.",
+      ],
+    }),
+    topics: [
+      ...commonTopics({
+        nameReply: ["Christopher Carruthers. Both are for me.", "Christopher Carruthers — they're both mine."],
+        ageReply: ["My date of birth is 8 January 1978.", "8 January 1978."],
+        allergiesReply: [
+          "No allergies to any medicines.",
+          "None that I know of.",
+        ],
+        medicinesReply: [
+          "Only these two for the diabetes. No vitamins or anything over the counter.",
+          "Just the metformin and the new sitagliptin — nothing else.",
+        ],
+        medicinesCritical: true,
+      }),
+      {
+        id: "two_item_orientation",
+        label: "Explain that two different medicines are being supplied",
+        category: "communication",
+        critical: true,
+        examples: [
+          "There are two medicines here: the metformin extended-release tablets and the sitagliptin. They do different things and are taken differently.",
+          "You have two items today — let me take you through each one separately.",
+        ],
+        fallbackPatterns: [
+          "\\b(?:two|both|2) (?:medicine|tablet|item|different|of these)\\w*\\b",
+          "\\b(?:each|separate|different)\\w*\\b.*\\b(?:medicine|tablet|item|one)\\w*\\b",
+          "\\bmetformin\\b.*\\bsitagliptin\\b",
+          "\\bsitagliptin\\b.*\\bmetformin\\b",
+        ],
+        requiredPatternGroups: [
+          [
+            "\\b(?:two|both|2)\\b",
+            "\\b(?:each|separate|separately|different)\\w*\\b",
+            "\\bmetformin\\b.*\\bsitagliptin\\b",
+            "\\bsitagliptin\\b.*\\bmetformin\\b",
+          ],
+        ],
+        patientReplies: [
+          "Right, so they are two different tablets doing two different jobs.",
+          "Good — I did wonder whether they were the same thing in two boxes.",
+        ],
+      },
+      {
+        id: "metformin_xr_admin",
+        label: "Explain the metformin XR dose and swallow-whole requirement",
+        category: "clinical_counselling",
+        critical: true,
+        examples: [
+          "Take four of the metformin extended-release tablets daily and swallow them whole — do not crush, chew or halve them.",
+          "The metformin is extended release, so swallow it whole with food.",
+        ],
+        fallbackPatterns: [
+          "\\bswallow\\w*\\b.*\\bwhole\\b",
+          "\\b(?:do not|don't|never)\\b.*\\b(?:crush|chew|halve|split|break)\\b",
+          "\\b(?:extended|slow|modified)[- ]release\\b",
+        ],
+        requiredPatternGroups: [
+          [
+            "\\bswallow\\w*\\b.*\\bwhole\\b",
+            "\\b(?:do not|don't|never)\\b.*\\b(?:crush|chew|halve|split|break)\\b",
+          ],
+        ],
+        forbiddenPatterns: ["\\b(?:you can|fine to|okay to)\\b.*\\b(?:crush|chew|halve|split)\\b"],
+        patientReplies: [
+          "Understood — swallow them whole, no breaking them up.",
+          "Okay, so the big ones go down whole even though they're a mouthful.",
+        ],
+      },
+      {
+        id: "metformin_gi_advice",
+        label: "Explain taking metformin with food for stomach upset",
+        category: "clinical_counselling",
+        examples: [
+          "Take the metformin with food to reduce stomach upset.",
+          "It can cause some tummy upset, so have it with a meal.",
+        ],
+        fallbackPatterns: [
+          "\\b(?:with|after) (?:food|a meal|meals|dinner)\\b",
+          "\\b(?:upset|unsettl)\\w*\\b.*\\b(?:stomach|tummy|gut)\\b",
+          "\\b(?:stomach|tummy|gut)\\b.*\\b(?:upset|unsettl)\\w*\\b",
+          "\\bdiarrh\\w*\\b",
+        ],
+        patientReplies: [
+          "I'll take them with meals then.",
+          "Good to know — I'll have them with dinner to settle my stomach.",
+        ],
+      },
+      {
+        id: "sitagliptin_dose",
+        label: "Explain the sitagliptin dose",
+        category: "clinical_counselling",
+        critical: true,
+        examples: [
+          "Take one sitagliptin tablet once a day. You can take it with or without food.",
+          "The sitagliptin is one tablet daily.",
+        ],
+        fallbackPatterns: [
+          "\\b(?:one|1)\\b.*\\bsitagliptin\\b",
+          "\\bsitagliptin\\b.*\\b(?:one|1)\\b.*\\b(?:daily|a day|once)\\b",
+          "\\bjanuvia\\b.*\\b(?:one|1|daily|once)\\b",
+        ],
+        requiredPatternGroups: [
+          ["\\b(?:sitagliptin|januvia)\\b"],
+          ["\\b(?:one|1)\\b"],
+          ["\\b(?:daily|a day|once|each day|every day)\\b"],
+        ],
+        forbiddenPatterns: ["\\b(?:two|2|three|3) (?:sitagliptin|januvia|tablets? of)\\b"],
+        patientReplies: [
+          "One a day for the sitagliptin. Simple enough.",
+          "Got it — just the one sitagliptin daily.",
+        ],
+      },
+      {
+        id: "hypo_advice",
+        label: "Explain hypoglycaemia risk and what to do",
+        category: "safety_netting",
+        critical: true,
+        examples: [
+          "On their own these rarely cause low blood sugar, but if you feel shaky, sweaty or confused, take some quick sugar and check your levels.",
+          "Watch for hypos — shakiness, sweating or confusion — and treat with fast-acting sugar.",
+        ],
+        fallbackPatterns: [
+          "\\b(?:hypo|hypoglyc)\\w*\\b",
+          "\\b(?:low|drop\\w*|falls?)\\b.*\\b(?:blood sugar|sugar|glucose|bsl)\\b",
+          "\\b(?:blood sugar|sugar|glucose|bsl)\\b.*\\b(?:low|drop\\w*|falls?)\\b",
+          "\\b(?:shaky|shakin|sweat|trembl)\\w*\\b",
+        ],
+        patientReplies: [
+          "So shaky or sweaty means I get some sugar into me quickly.",
+          "I'll keep something sweet handy just in case.",
+        ],
+      },
+      {
+        id: "diabetes_red_flags",
+        label: "Provide safety-netting for serious adverse effects",
+        category: "safety_netting",
+        examples: [
+          "Get urgent medical help for severe stomach pain that goes through to your back, or any swelling of the face, lips or throat.",
+          "Severe persistent abdominal pain needs urgent assessment — stop the tablets and seek help.",
+        ],
+        fallbackPatterns: [
+          "\\b(?:severe|persistent|bad)\\w*\\b.*\\b(?:abdominal|stomach|tummy)\\b.*\\bpain\\b",
+          "\\b(?:pancrea|swell|throat|lips|face)\\w*\\b.*\\b(?:urgent|help|doctor|hospital|emergency|000)\\b",
+          "\\b(?:urgent|emergency|hospital|000|doctor)\\b.*\\b(?:pain|swell|breath)\\w*\\b",
+        ],
+        requiredPatternGroups: [
+          ["\\b(?:pain|swell|pancrea|breath|rash)\\w*\\b"],
+          ["\\b(?:urgent|help|doctor|hospital|emergency|000|stop)\\w*\\b"],
+        ],
+        patientReplies: [
+          "I'll get seen straight away if I get bad stomach pain or any swelling.",
+          "Understood — severe pain or swelling means urgent help.",
+        ],
+      },
+      ...closingTopics("I'll take four metformin daily with food, swallowed whole, and one sitagliptin a day. If I go shaky or sweaty I'll have some sugar, and bad stomach pain means urgent help."),
+    ],
+    unsafeAdviceRules: withCommonUnsafe(
+      {
+        id: "crush_metformin_xr",
+        label: "Unsafe modified-release manipulation",
+        patterns: [
+          "\\b(?:you can|fine to|okay to|ok to|feel free to)\\b.*\\b(?:crush|chew|halve|split|break)\\b",
+          "\\b(?:crush|halve|split|break)\\b.*\\b(?:if|when)\\b.*\\b(?:too big|hard to swallow|struggle)\\b",
+        ],
+        detail: "The student advised crushing, halving or chewing an extended-release metformin tablet, which releases the whole dose at once.",
+      },
+      {
+        id: "double_up_diabetes",
+        label: "Unsafe duplicate-therapy advice",
+        patterns: ["\\b(?:take|use)\\b.*\\bjanumet\\b.*\\b(?:as well|too|with these|on top)\\b"],
+        detail: "The student advised adding a sitagliptin-metformin combination product on top of the separate ingredients, duplicating both medicines.",
+      }
+    ),
   },
 };
 

@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { expandAbbrevs } from "@/lib/scoring/abbreviations";
-import type { FormState, FormAction } from "@/components/simulator/state";
+import type { FormState, FormAction, ItemField, ScriptField } from "@/components/simulator/state";
+import { EMPTY_ITEM_FORM_STATE } from "@/components/simulator/state";
 import type { DrugRow } from "@/lib/types/drug";
 import type { Prescriber } from "@/lib/types/prescriber";
 import type { PracticeCase } from "@/lib/types/case";
@@ -10,16 +11,29 @@ interface ScriptFormProps {
   dispatch: React.Dispatch<FormAction>;
   initialsError: boolean;
   disabled?: boolean;
-  selectedDrug: DrugRow | null;
+  /** Products chosen so far, one slot per prescribed item. */
+  selectedDrugs: (DrugRow | null)[];
   onOpenDrugModal: (query: string) => void;
   selectedPrescriber: Prescriber | null;
   onOpenPrescriberModal: (query: string) => void;
   authorityRequirement?: PracticeCase["authority"];
+  itemCount: number;
+  currentItem: number;
+  onItemChange: (index: number) => void;
 }
 
-function onChange(dispatch: React.Dispatch<FormAction>, name: keyof FormState) {
+function onChange(dispatch: React.Dispatch<FormAction>, name: ScriptField) {
   return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     dispatch({ type: "SET_FIELD", field: name, value: e.target.value });
+}
+
+function onItemChangeField(
+  dispatch: React.Dispatch<FormAction>,
+  index: number,
+  field: ItemField
+) {
+  return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
+    dispatch({ type: "SET_ITEM_FIELD", index, field, value: e.target.value });
 }
 
 export function ScriptForm({
@@ -27,20 +41,27 @@ export function ScriptForm({
   dispatch,
   initialsError,
   disabled = false,
-  selectedDrug,
+  selectedDrugs,
   onOpenDrugModal,
   selectedPrescriber,
   onOpenPrescriberModal,
   authorityRequirement,
+  itemCount,
+  currentItem,
+  onItemChange,
 }: ScriptFormProps) {
   const initialsDisplay  = formState.pharmacistInitials.trim() || "__";
-  const expandedDirections = expandAbbrevs(formState.directions);
+  const itemForm = formState.items[currentItem] ?? EMPTY_ITEM_FORM_STATE;
+  const selectedDrug = selectedDrugs[currentItem] ?? null;
+  const expandedDirections = expandAbbrevs(itemForm.directions);
   const drugDebounceRef  = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const controlledDrugSelected = /\bS8\b/i.test(selectedDrug?.schedule ?? "");
+  // An authority number is transcribed once per prescription, so offer the field
+  // whenever any item on the script is a controlled drug.
+  const controlledDrugSelected = selectedDrugs.some((drug) => /\bS8\b/i.test(drug?.schedule ?? ""));
 
   function handleDrugInput(e: React.ChangeEvent<HTMLInputElement>) {
     const val = e.target.value;
-    dispatch({ type: "SET_FIELD", field: "drug", value: val });
+    dispatch({ type: "SET_ITEM_FIELD", index: currentItem, field: "drug", value: val });
     clearTimeout(drugDebounceRef.current);
     if (val.trim().length >= 2) {
       drugDebounceRef.current = setTimeout(() => onOpenDrugModal(val.trim()), 200);
@@ -54,6 +75,28 @@ export function ScriptForm({
   return (
     <div className={`fred-script-left${disabled ? " fred-script-disabled" : ""}`}>
       <div className="fred-script-title">New Script</div>
+
+      {itemCount > 1 && (
+        <div className="fred-item-tabs" role="tablist" aria-label="Prescribed items">
+          {Array.from({ length: itemCount }, (_, index) => {
+            const done = Boolean(selectedDrugs[index]);
+            return (
+              <button
+                key={index}
+                type="button"
+                role="tab"
+                aria-selected={index === currentItem}
+                className={index === currentItem ? "active" : ""}
+                onClick={() => onItemChange(index)}
+                disabled={disabled}
+              >
+                Item {index + 1} of {itemCount}
+                <span className="fred-item-tab-state">{done ? "✓" : "—"}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Row 1: Date / Type / Hospital */}
       <div className="grid grid-cols-3 gap-1.5 mb-1 px-1">
@@ -126,7 +169,7 @@ export function ScriptForm({
             id="drug-search"
             className="fred-field-input"
             placeholder="Type brand or generic name to search directory…"
-            value={formState.drug}
+            value={itemForm.drug}
             onChange={handleDrugInput}
             disabled={disabled}
           />
@@ -183,8 +226,8 @@ export function ScriptForm({
         <div className="flex flex-col gap-0.5">
           <label className="fred-field-label" htmlFor="directions">Directions</label>
           <textarea id="directions" className="fred-dir-textarea" placeholder="e.g. Take ONE capsule tds pc"
-            value={formState.directions} onChange={onChange(dispatch, "directions")} disabled={disabled} />
-          {formState.directions && (
+            value={itemForm.directions} onChange={onItemChangeField(dispatch, currentItem, "directions")} disabled={disabled} />
+          {itemForm.directions && (
             <div style={{ fontSize: "10px", color: "#555", fontStyle: "italic", marginTop: "1px" }}>
               {expandedDirections}
             </div>
@@ -193,18 +236,18 @@ export function ScriptForm({
         <div className="flex flex-col gap-0.5">
           <label className="fred-field-label" htmlFor="repeats">Repeats</label>
           <input id="repeats" className="fred-dir-col-input" placeholder="0" inputMode="numeric"
-            value={formState.repeats} onChange={onChange(dispatch, "repeats")} disabled={disabled} />
+            value={itemForm.repeats} onChange={onItemChangeField(dispatch, currentItem, "repeats")} disabled={disabled} />
           <div style={{ fontSize: "9px", color: "#888" }}>Max —</div>
         </div>
         <div className="flex flex-col gap-0.5">
           <label className="fred-field-label" htmlFor="quantity">Quantity</label>
           <input id="quantity" className="fred-dir-col-input" placeholder="0" inputMode="decimal"
-            value={formState.qty} onChange={onChange(dispatch, "qty")} disabled={disabled} />
+            value={itemForm.qty} onChange={onItemChangeField(dispatch, currentItem, "qty")} disabled={disabled} />
         </div>
         <div className="flex flex-col gap-0.5">
           <label className="fred-field-label" htmlFor="price">Price</label>
           <input id="price" className="fred-dir-col-input" placeholder="0.00" inputMode="decimal"
-            value={formState.price} onChange={onChange(dispatch, "price")} disabled={disabled} />
+            value={itemForm.price} onChange={onItemChangeField(dispatch, currentItem, "price")} disabled={disabled} />
         </div>
       </div>
 

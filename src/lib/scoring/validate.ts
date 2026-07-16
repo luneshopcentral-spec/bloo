@@ -6,14 +6,16 @@ import type { Prescriber } from "@/lib/types/prescriber";
 import { formatPrescriberName } from "@/lib/types/prescriber";
 import { expandAbbrevs } from "./abbreviations";
 import type { CheckResult, DispenseResult } from "./types";
-import { POINTS_TO_PASS } from "./types";
+import { dispensePassThreshold } from "./types";
 
 export interface ValidateInput {
   formState: FormState;
-  selectedWarnings: Set<string>;
+  /** Warning labels the student ticked, one set per prescribed item. */
+  selectedWarnings: Set<string>[];
   caseData: PracticeCase;
   selectedPatient?: Patient | null;
-  selectedDrug?: DrugRow | null;
+  /** The product the student picked, one per prescribed item. */
+  selectedDrugs?: (DrugRow | null)[];
   selectedPrescriber?: Prescriber | null;
   decision?: DispenseDecision | null;
   assisted?: boolean;
@@ -84,7 +86,7 @@ export function validateDispense({
   selectedWarnings,
   caseData,
   selectedPatient = null,
-  selectedDrug = null,
+  selectedDrugs = [],
   selectedPrescriber = null,
   decision = null,
   assisted = false,
@@ -228,117 +230,129 @@ export function validateDispense({
     });
   }
 
-  // The prescription may be written by generic or brand name (e.g. "DUROGESIC"
-  // with generic_name FENTANYL), so accept a first-word match against either.
-  const caseFirstWord = caseData.drug.split(" ")[0];
-  const drugPassed =
-    selectedDrug !== null &&
-    [selectedDrug.generic_name, selectedDrug.brand_name ?? "", selectedDrug.full_display_name]
-      .some((name) => name && normFirst4(name) === normFirst4(caseFirstWord));
+  // ── a–f. Per-item checks ─────────────────────────────────────────
+  // A prescription may order several medicines. Each is checked in full and
+  // labelled by item so the student can see which one failed.
+  const multipleItems = caseData.items.length > 1;
+  caseData.items.forEach((item, index) => {
+    const prefix = multipleItems ? `Item ${index + 1}: ` : "";
+    const suffix = multipleItems ? ` (item ${index + 1}: ${item.drug})` : "";
+    const selectedDrug = selectedDrugs[index] ?? null;
+    const itemForm = formState.items[index] ?? { drug: "", directions: "", repeats: "", qty: "", price: "" };
+    const itemWarnings = selectedWarnings[index] ?? new Set<string>();
 
-  checks.push({
-    category: "drug",
-    label: "Drug entered",
-    passed: drugPassed,
-    isCritical: true,
-    expected: caseData.drug,
-    actual: selectedDrug?.full_display_name ?? "(no drug selected)",
-    detail: selectedDrug === null
-      ? "No drug selected — type in the drug field to search the directory"
-      : drugPassed
-      ? `Correct drug: ${selectedDrug.generic_name}`
-      : `Wrong drug. Expected: ${caseData.drug}. You selected: ${selectedDrug.full_display_name}`,
-  });
+    // The prescription may be written by generic or brand name (e.g. "DUROGESIC"
+    // with generic_name FENTANYL), so accept a first-word match against either.
+    const caseFirstWord = item.drug.split(" ")[0];
+    const drugPassed =
+      selectedDrug !== null &&
+      [selectedDrug.generic_name, selectedDrug.brand_name ?? "", selectedDrug.full_display_name]
+        .some((name) => name && normFirst4(name) === normFirst4(caseFirstWord));
 
-  // ── b. Drug variant (specific brand/generic selection) ────────────
-  const variantPassed =
-    selectedDrug !== null &&
-    selectedDrug.seed_id === caseData.correctDrugSeedId;
+    checks.push({
+      category: "drug",
+      label: `${prefix}Drug entered`,
+      passed: drugPassed,
+      isCritical: true,
+      expected: item.drug,
+      actual: selectedDrug?.full_display_name ?? "(no drug selected)",
+      detail: selectedDrug === null
+        ? `No drug selected${suffix} — type in the drug field to search the directory`
+        : drugPassed
+        ? `Correct drug: ${selectedDrug.generic_name}`
+        : `Wrong drug. Expected: ${item.drug}. You selected: ${selectedDrug.full_display_name}`,
+    });
 
-  const variantDetail = (() => {
-    if (selectedDrug === null)
-      return "No drug variant selected — pick a specific product from the directory";
-    if (!drugPassed)
-      return "Wrong drug selected — see the drug check above";
-    if (variantPassed)
-      return `Correct product selected: ${selectedDrug.full_display_name}`;
-    return `Wrong product. You selected: ${selectedDrug.full_display_name}. Check the prescription for the required brand.`;
-  })();
+    // ── Drug variant (specific brand/generic selection) ────────────
+    const variantPassed =
+      selectedDrug !== null &&
+      selectedDrug.seed_id === item.correctDrugSeedId;
 
-  checks.push({
-    category: "drug_variant",
-    label: "Brand / generic product",
-    passed: variantPassed,
-    isCritical: true,
-    detail: variantDetail,
-  });
+    const variantDetail = (() => {
+      if (selectedDrug === null)
+        return `No drug variant selected${suffix} — pick a specific product from the directory`;
+      if (!drugPassed)
+        return "Wrong drug selected — see the drug check above";
+      if (variantPassed)
+        return `Correct product selected: ${selectedDrug.full_display_name}`;
+      return `Wrong product. You selected: ${selectedDrug.full_display_name}. Check the prescription for the required brand.`;
+    })();
 
-  // ── c. Directions ────────────────────────────────────────────────
-  const dirPassed = directionsMatch(caseData.directions, formState.directions);
-  checks.push({
-    category: "directions",
-    label: "Directions",
-    passed: dirPassed,
-    isCritical: true,
-    expected: caseData.directions,
-    actual: formState.directions || "(empty)",
-    detail: dirPassed
-      ? "Directions correct (abbreviations accepted)"
-      : `Expected: ${caseData.directions}. You entered: ${formState.directions || "(empty)"}`,
-  });
+    checks.push({
+      category: "drug_variant",
+      label: `${prefix}Brand / generic product`,
+      passed: variantPassed,
+      isCritical: true,
+      detail: variantDetail,
+    });
 
-  // ── d. Quantity ──────────────────────────────────────────────────
-  const qtyExpected = parseQuantity(String(caseData.qty));
-  const qtyStudent  = parseQuantity(formState.qty);
-  const qtyPassed =
-    qtyExpected !== null &&
-    qtyStudent !== null &&
-    qtyStudent.amount === qtyExpected.amount &&
-    (!qtyStudent.unit || !qtyExpected.unit || qtyStudent.unit === qtyExpected.unit);
-  checks.push({
-    category: "quantity",
-    label: "Quantity",
-    passed: qtyPassed,
-    isCritical: true,
-    expected: String(caseData.qty),
-    actual: formState.qty || "(empty)",
-    detail: qtyPassed
-      ? "Quantity correct"
-      : `Expected: ${caseData.qty}. You entered: ${formState.qty || "(empty)"}`,
-  });
+    // ── Directions ────────────────────────────────────────────────
+    const dirPassed = directionsMatch(item.directions, itemForm.directions);
+    checks.push({
+      category: "directions",
+      label: `${prefix}Directions`,
+      passed: dirPassed,
+      isCritical: true,
+      expected: item.directions,
+      actual: itemForm.directions || "(empty)",
+      detail: dirPassed
+        ? "Directions correct (abbreviations accepted)"
+        : `Expected: ${item.directions}. You entered: ${itemForm.directions || "(empty)"}`,
+    });
 
-  // ── e. Repeats ───────────────────────────────────────────────────
-  const rptPassed = formState.repeats.trim() === caseData.repeats;
-  checks.push({
-    category: "repeats",
-    label: "Repeats",
-    passed: rptPassed,
-    isCritical: true,
-    expected: caseData.repeats,
-    actual: formState.repeats || "(empty)",
-    detail: rptPassed
-      ? "Repeats correct"
-      : `Expected: ${caseData.repeats}. You entered: ${formState.repeats || "(empty)"}`,
-  });
+    // ── Quantity ──────────────────────────────────────────────────
+    const qtyExpected = parseQuantity(String(item.qty));
+    const qtyStudent  = parseQuantity(itemForm.qty);
+    const qtyPassed =
+      qtyExpected !== null &&
+      qtyStudent !== null &&
+      qtyStudent.amount === qtyExpected.amount &&
+      (!qtyStudent.unit || !qtyExpected.unit || qtyStudent.unit === qtyExpected.unit);
+    checks.push({
+      category: "quantity",
+      label: `${prefix}Quantity`,
+      passed: qtyPassed,
+      isCritical: true,
+      expected: String(item.qty),
+      actual: itemForm.qty || "(empty)",
+      detail: qtyPassed
+        ? "Quantity correct"
+        : `Expected: ${item.qty}. You entered: ${itemForm.qty || "(empty)"}`,
+    });
 
-  // ── f. Warning labels ────────────────────────────────────────────
-  const correctSet = new Set(caseData.correctWarnings);
-  const missing    = caseData.correctWarnings.filter((w) => !selectedWarnings.has(w));
-  const extra      = Array.from(selectedWarnings).filter((w) => !correctSet.has(w));
-  const warnsPassed = missing.length === 0 && extra.length === 0;
-  const warnsDetail = warnsPassed
-    ? "All correct labels selected"
-    : [
-        missing.length ? `Missing: ${missing.join("; ")}` : "",
-        extra.length   ? `Extra: ${extra.join("; ")}`     : "",
-      ]
-        .filter(Boolean)
-        .join("\n");
-  checks.push({
-    category: "warnings",
-    label: "Warning labels",
-    passed: warnsPassed,
-    detail: warnsDetail,
+    // ── Repeats ───────────────────────────────────────────────────
+    const rptPassed = itemForm.repeats.trim() === item.repeats;
+    checks.push({
+      category: "repeats",
+      label: `${prefix}Repeats`,
+      passed: rptPassed,
+      isCritical: true,
+      expected: item.repeats,
+      actual: itemForm.repeats || "(empty)",
+      detail: rptPassed
+        ? "Repeats correct"
+        : `Expected: ${item.repeats}. You entered: ${itemForm.repeats || "(empty)"}`,
+    });
+
+    // ── Warning labels ────────────────────────────────────────────
+    const correctSet = new Set(item.correctWarnings);
+    const missing    = item.correctWarnings.filter((w) => !itemWarnings.has(w));
+    const extra      = Array.from(itemWarnings).filter((w) => !correctSet.has(w));
+    const warnsPassed = missing.length === 0 && extra.length === 0;
+    const warnsDetail = warnsPassed
+      ? "All correct labels selected"
+      : [
+          missing.length ? `Missing: ${missing.join("; ")}` : "",
+          extra.length   ? `Extra: ${extra.join("; ")}`     : "",
+        ]
+          .filter(Boolean)
+          .join("\n");
+    checks.push({
+      category: "warnings",
+      label: `${prefix}Warning labels`,
+      passed: warnsPassed,
+      detail: warnsDetail,
+    });
   });
 
   // ── g. Clinical decision ─────────────────────────────────────────
@@ -370,14 +384,15 @@ export function validateDispense({
   const criticalFailures = checks
     .filter((check) => check.isCritical && !check.passed)
     .map((check) => check.category);
-  const passed = pointsEarned >= POINTS_TO_PASS && criticalFailures.length === 0;
+  const passThreshold = dispensePassThreshold(caseData.items.length);
+  const passed = pointsEarned >= passThreshold && criticalFailures.length === 0;
 
   return {
     checks,
     pointsEarned,
     pointsTotal,
     passed,
-    passThreshold: POINTS_TO_PASS,
+    passThreshold,
     criticalFailures,
     assisted,
     countsTowardProgress: !assisted,

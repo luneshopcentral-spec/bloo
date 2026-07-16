@@ -11,15 +11,18 @@ import { normalizeWarningLabel, resolveWarningLabelInput } from "@/lib/warnings/
 describe("medicines learning reference", () => {
   it("has a searchable profile for every current simulator medicine", () => {
     for (const practiceCase of STATIC_CASES) {
-      const profile = findBestMedicineLearningProfile(practiceCase.drug);
-      expect(profile, practiceCase.title).not.toBeNull();
-      expect(profile?.sections.length).toBeGreaterThanOrEqual(4);
-      expect(profile?.sources.length).toBeGreaterThanOrEqual(2);
-      expect(profile?.clinicalGuide.warningLabels.length).toBeGreaterThan(0);
-      expect(profile?.clinicalGuide.dosing.length).toBeGreaterThan(0);
-      expect(profile?.clinicalGuide.commonSideEffects.length).toBeGreaterThan(0);
-      expect(profile?.clinicalGuide.urgentCare.length).toBeGreaterThan(0);
-      expect(profile?.clinicalGuide.interactions.length).toBeGreaterThan(0);
+      for (const item of practiceCase.items) {
+        const profile = findBestMedicineLearningProfile(item.drug);
+        const label = `${practiceCase.title}: ${item.drug}`;
+        expect(profile, label).not.toBeNull();
+        expect(profile?.sections.length, label).toBeGreaterThanOrEqual(4);
+        expect(profile?.sources.length, label).toBeGreaterThanOrEqual(2);
+        expect(profile?.clinicalGuide.warningLabels.length, label).toBeGreaterThan(0);
+        expect(profile?.clinicalGuide.dosing.length, label).toBeGreaterThan(0);
+        expect(profile?.clinicalGuide.commonSideEffects.length, label).toBeGreaterThan(0);
+        expect(profile?.clinicalGuide.urgentCare.length, label).toBeGreaterThan(0);
+        expect(profile?.clinicalGuide.interactions.length, label).toBeGreaterThan(0);
+      }
     }
   });
 
@@ -40,16 +43,18 @@ describe("medicines learning reference", () => {
 
   it("publishes the applicable warning-label answers for every simulator case", () => {
     for (const practiceCase of STATIC_CASES) {
-      const profile = findBestMedicineLearningProfile(practiceCase.drug);
-      expect(profile).not.toBeNull();
-      const answerText = normalizeWarningLabel(
-        profile?.clinicalGuide.warningLabels.map((label) => label.label).join(" ") ?? ""
-      );
-
-      for (const correctWarning of practiceCase.correctWarnings) {
-        expect(answerText, `${practiceCase.id} is missing ${correctWarning}`).toContain(
-          normalizeWarningLabel(correctWarning)
+      for (const item of practiceCase.items) {
+        const profile = findBestMedicineLearningProfile(item.drug);
+        expect(profile, `${practiceCase.id}: ${item.drug}`).not.toBeNull();
+        const answerText = normalizeWarningLabel(
+          profile?.clinicalGuide.warningLabels.map((label) => label.label).join(" ") ?? ""
         );
+
+        for (const correctWarning of item.correctWarnings) {
+          expect(answerText, `${practiceCase.id} (${item.drug}) is missing ${correctWarning}`).toContain(
+            normalizeWarningLabel(correctWarning)
+          );
+        }
       }
     }
   });

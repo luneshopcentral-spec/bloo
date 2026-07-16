@@ -494,7 +494,11 @@ const BASE_MEDICINE_LEARNING_PROFILES: MedicineLearningProfileBase[] = [
   {
     id: "metformin",
     genericName: "Metformin",
-    aliases: ["metformin an", "biguanide", "diabetes medicine"],
+    aliases: [
+      "metformin an", "biguanide", "diabetes medicine",
+      "metex", "metex xr", "diabex", "diabex xr", "metformin xr",
+      "extended release", "modified release",
+    ],
     medicineClass: "Biguanide glucose-lowering medicine",
     summary:
       "Confirm formulation, renal function, gastrointestinal tolerance, acute illness and interacting medicines. Immediate-release and modified-release products are not interchangeable instructions.",
@@ -830,6 +834,16 @@ const COMPLEX_MEDICINE_PROFILES: MedicineLearningProfileBase[] = [
     schedule: "S4",
     sourceUrl: "https://www.tga.gov.au/resources/artg/193474",
   }),
+  complexProfile({
+    id: "sitagliptin",
+    genericName: "Sitagliptin",
+    aliases: ["januvia", "janumet", "dpp-4 inhibitor", "gliptin", "diabetes medicine"],
+    medicineClass: "DPP-4 inhibitor glucose-lowering medicine",
+    summary: "Sitagliptin is a PBS authority item usually added to metformin. Check the indication against the streamlined restriction, confirm renal function for dose selection, and counsel on hypoglycaemia risk when combined with other glucose-lowering medicines.",
+    caseProduct: "Januvia tablet 100 mg",
+    schedule: "S4 / PBS authority (streamlined)",
+    sourceUrl: "https://www.tga.gov.au/resources/artg/142351",
+  }),
 ];
 
 const CLINICAL_GUIDES: Record<string, MedicineClinicalGuide> = {
@@ -910,8 +924,9 @@ const CLINICAL_GUIDES: Record<string, MedicineClinicalGuide> = {
   },
   metformin: {
     warningLabels: [
-      { code: "18 / L18", label: "Take with food or milk", appliesWhen: "Immediate-release oral metformin.", rationale: "Reduces gastrointestinal intolerance." },
+      { code: "18 / L18", label: "Take with food or milk", appliesWhen: "Oral metformin, immediate- and modified-release.", rationale: "Reduces gastrointestinal intolerance." },
       { code: "K / BT", label: "Regular blood tests required", appliesWhen: "All ongoing therapy.", rationale: "Renal function, glycaemic control and sometimes vitamin B12 require monitoring." },
+      { code: "P / WHO", label: "Swallow whole — do not crush or chew", appliesWhen: "Modified- and extended-release products only (for example Metex XR, Diabex XR).", rationale: "Crushing an extended-release matrix releases the dose at once. Do not apply this label to immediate-release metformin." },
     ],
     dosing: [
       { population: "Adults", indication: "Type 2 diabetes — immediate release", productInformationDose: "Common PI start: 500 mg once or twice daily with meals, titrated gradually; product maximum may be up to 3 g/day in divided doses.", notes: "Use the exact product, tolerability and renal function." },
@@ -1047,6 +1062,23 @@ const CLINICAL_GUIDES: Record<string, MedicineClinicalGuide> = {
       { medicineOrClass: "Dehydration or sudden low-salt intake", risk: "Lithium retention and toxicity", action: "Use sick-day escalation plan and seek prompt advice." },
     ],
   },
+  sitagliptin: {
+    warningLabels: [
+      { code: "D / UAF", label: "May cause nausea", appliesWhen: "Oral sitagliptin products.", rationale: "Gastrointestinal upset is reported, particularly early in therapy." },
+    ],
+    dosing: [
+      { population: "Adults", indication: "Type 2 diabetes", productInformationDose: "100 mg once daily.", notes: "Taken with or without food. Confirm against the current PI." },
+      { population: "Adults with renal impairment", indication: "Type 2 diabetes", productInformationDose: "Reduced doses (commonly 50 mg or 25 mg once daily) apply as renal function falls.", notes: "Dose depends on the measured eGFR/creatinine clearance band in the current PI — check before supply." },
+      { population: "Children", indication: "Any", productInformationDose: "Not established for routine paediatric use in the Australian PI.", notes: "Do not extrapolate the adult dose." },
+    ],
+    commonSideEffects: ["Headache", "Nausea", "Upper respiratory tract infection", "Nasopharyngitis"],
+    urgentCare: ["Severe, persistent abdominal pain that may radiate to the back (possible pancreatitis)", "Blistering or peeling rash, or swelling of the face, lips or throat", "Severe or persistent joint pain", "Symptoms of hypoglycaemia that do not resolve with treatment"],
+    interactions: [
+      { medicineOrClass: "Sulfonylureas and insulin", risk: "Hypoglycaemia risk increases", action: "Expect a prescriber to consider lowering the sulfonylurea or insulin dose; counsel on hypoglycaemia recognition and treatment." },
+      { medicineOrClass: "Other DPP-4 inhibitors or fixed-dose combinations containing sitagliptin", risk: "Therapeutic duplication", action: "Check the patient is not already supplied a gliptin, including combination products such as Janumet." },
+      { medicineOrClass: "Digoxin", risk: "Small increase in digoxin exposure reported", action: "Check the current PI; monitoring may be appropriate for patients already at risk." },
+    ],
+  },
   apixaban: {
     warningLabels: [
       { code: "N / STP", label: "Do not stop suddenly", appliesWhen: "All anticoagulation indications unless a clinician directs interruption.", rationale: "Premature discontinuation increases thrombosis/stroke risk." },
@@ -1094,10 +1126,14 @@ export function searchMedicineLearningProfiles(query: string): MedicineLearningP
   return MEDICINE_LEARNING_PROFILES
     .map((profile) => {
       const generic = normalizeMedicineQuery(profile.genericName);
-      const haystack = normalizeMedicineQuery(
-        [profile.genericName, profile.medicineClass, ...profile.aliases].join(" ")
+      // Match whole words, not substrings: a product name like "JANUVIA TAB
+      // 100MG" must not score against "mood s(tab)iliser".
+      const haystackWords = new Set(
+        normalizeMedicineQuery(
+          [profile.genericName, profile.medicineClass, ...profile.aliases].join(" ")
+        ).split(/\s+/).filter(Boolean)
       );
-      const matchingTokens = tokens.filter((token) => haystack.includes(token)).length;
+      const matchingTokens = tokens.filter((token) => haystackWords.has(token)).length;
       const score =
         (generic === normalized ? 100 : 0) +
         (normalized.startsWith(generic) || generic.startsWith(normalized) ? 40 : 0) +

@@ -1,13 +1,14 @@
-import type { PracticeCase } from "@/lib/types/case";
+import type { PrescriptionItem } from "@/lib/types/case";
 import type { DrugRow } from "@/lib/types/drug";
 
 interface DrugDetailsBoxProps {
   selectedDrug: DrugRow | null;
-  caseData: PracticeCase;
+  /** The prescribed item currently being dispensed. */
+  caseItem: PrescriptionItem;
   patientAllergies?: string[];
 }
 
-export function DrugDetailsBox({ selectedDrug, caseData, patientAllergies = [] }: DrugDetailsBoxProps) {
+export function DrugDetailsBox({ selectedDrug, caseItem, patientAllergies = [] }: DrugDetailsBoxProps) {
   const d = selectedDrug;
 
   const pbsLine = d
@@ -22,7 +23,7 @@ export function DrugDetailsBox({ selectedDrug, caseData, patientAllergies = [] }
   const retailLine   = d?.retail_price != null ? `$${d.retail_price.toFixed(2)}` : "—";
 
   // Fallback allergy alert: check typed drug against case drugDetails for PDL warnings
-  const dd = caseData.drugDetails;
+  const dd = caseItem.drugDetails;
 
   return (
     <div className="fred-drug-details">

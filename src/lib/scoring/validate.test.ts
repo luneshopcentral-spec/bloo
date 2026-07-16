@@ -1,8 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { validateDispense, type ValidateInput } from "./validate";
+import { dispensePassThreshold } from "./types";
 import { getDispenseReadinessIssues } from "./readiness";
 import { STATIC_CASES } from "@/lib/cases/static-cases";
-import { EMPTY_FORM_STATE, type FormState } from "@/components/simulator/state";
+import {
+  EMPTY_ITEM_FORM_STATE,
+  emptyFormStateFor,
+  type FormState,
+  type ItemFormState,
+} from "@/components/simulator/state";
 import type { Patient } from "@/lib/types/patient";
 import type { DrugRow } from "@/lib/types/drug";
 import type { PracticeCase } from "@/lib/types/case";
@@ -12,9 +18,28 @@ const case1 = STATIC_CASES[0];
 const case3 = STATIC_CASES[2];
 const case4 = STATIC_CASES[3];
 const case7 = STATIC_CASES[6];
+const multiItemCase = STATIC_CASES.find((c) => c.items.length > 1)!;
 
-function form(overrides: Partial<FormState> = {}): FormState {
-  return { ...EMPTY_FORM_STATE, ...overrides };
+/** Build a form state whose single item carries the given per-item overrides. */
+function form(
+  overrides: Partial<FormState> & Partial<ItemFormState> = {}
+): FormState {
+  const { drug, directions, repeats, qty, price, ...scriptOverrides } = overrides;
+  const base = emptyFormStateFor(1);
+  return {
+    ...base,
+    ...scriptOverrides,
+    items: [
+      {
+        ...EMPTY_ITEM_FORM_STATE,
+        ...(drug !== undefined ? { drug } : {}),
+        ...(directions !== undefined ? { directions } : {}),
+        ...(repeats !== undefined ? { repeats } : {}),
+        ...(qty !== undefined ? { qty } : {}),
+        ...(price !== undefined ? { price } : {}),
+      },
+    ],
+  };
 }
 
 function mockPatient(overrides: Partial<Patient>): Patient {
@@ -115,18 +140,19 @@ function correctInput(
   selectedDrug: DrugRow,
   overrides: Partial<ValidateInput> = {}
 ): ValidateInput {
+  const item = caseData.items[0];
   return {
     formState: form({
       drug: selectedDrug.full_display_name,
-      directions: caseData.directions,
-      repeats: caseData.repeats,
-      qty: String(caseData.qty),
+      directions: item.directions,
+      repeats: item.repeats,
+      qty: String(item.qty),
       pharmacistInitials: "AB",
     }),
-    selectedWarnings: new Set(caseData.correctWarnings),
+    selectedWarnings: [new Set(item.correctWarnings)],
     caseData,
     selectedPatient,
-    selectedDrug,
+    selectedDrugs: [selectedDrug],
     selectedPrescriber: prescriberFor(caseData),
     decision: caseData.expectedDecision,
     ...overrides,
@@ -138,7 +164,7 @@ describe("validateDispense", () => {
     expect(getDispenseReadinessIssues({
       formState: form({ pharmacistInitials: "AB" }),
       selectedPatient: null,
-      selectedDrug: null,
+      selectedDrugs: [null],
       selectedPrescriber: null,
       decision: null,
       caseData: case1,
@@ -155,7 +181,7 @@ describe("validateDispense", () => {
     expect(getDispenseReadinessIssues({
       formState: form({ directions: "1 cap tds", qty: "25", repeats: "0" }),
       selectedPatient: case1Patient,
-      selectedDrug: case1Drug,
+      selectedDrugs: [case1Drug],
       selectedPrescriber: prescriberFor(case1),
       decision: "dispense",
       caseData: case1,
@@ -174,9 +200,9 @@ describe("validateDispense", () => {
 
   it("requires and marks the authority number for controlled authority cases", () => {
     const controlledDrug = mockDrug({
-      seed_id: case7.correctDrugSeedId,
+      seed_id: case7.items[0].correctDrugSeedId,
       generic_name: "OXYCODONE",
-      full_display_name: case7.drug,
+      full_display_name: case7.items[0].drug,
       schedule: "S8",
     });
     const controlledPatient = mockPatient({
@@ -189,7 +215,7 @@ describe("validateDispense", () => {
     expect(getDispenseReadinessIssues({
       formState: base.formState,
       selectedPatient: controlledPatient,
-      selectedDrug: controlledDrug,
+      selectedDrugs: [controlledDrug],
       selectedPrescriber: prescriberFor(case7),
       decision: case7.expectedDecision,
       caseData: case7,
@@ -211,7 +237,7 @@ describe("validateDispense", () => {
   it("cannot pass without a selected drug and product variant", () => {
     const result = validateDispense(
       correctInput(case1, case1Patient, case1Drug, {
-        selectedDrug: null,
+        selectedDrugs: [null],
       })
     );
 
@@ -247,10 +273,10 @@ describe("validateDispense", () => {
   });
 
   it("allows one non-critical warning-label mistake but reports it", () => {
-    const warnings = new Set(case1.correctWarnings);
+    const warnings = new Set(case1.items[0].correctWarnings);
     warnings.delete("May cause nausea");
     const result = validateDispense(
-      correctInput(case1, case1Patient, case1Drug, { selectedWarnings: warnings })
+      correctInput(case1, case1Patient, case1Drug, { selectedWarnings: [warnings] })
     );
 
     expect(result.pointsEarned).toBe(8);
@@ -327,7 +353,7 @@ describe("validateDispense", () => {
     const result = validateDispense(
       correctInput(case3, case3Patient, case3Drug, {
         formState: form({
-          directions: case3.directions,
+          directions: case3.items[0].directions,
           repeats: "0",
           qty: "300",
         }),
@@ -340,12 +366,12 @@ describe("validateDispense", () => {
   it("rejects quantities containing unrelated text or a conflicting unit", () => {
     const unrelated = validateDispense(
       correctInput(case3, case3Patient, case3Drug, {
-        formState: form({ directions: case3.directions, repeats: "0", qty: "300 bananas" }),
+        formState: form({ directions: case3.items[0].directions, repeats: "0", qty: "300 bananas" }),
       })
     );
     const conflictingUnit = validateDispense(
       correctInput(case3, case3Patient, case3Drug, {
-        formState: form({ directions: case3.directions, repeats: "0", qty: "300mg" }),
+        formState: form({ directions: case3.items[0].directions, repeats: "0", qty: "300mg" }),
       })
     );
 
@@ -391,10 +417,10 @@ describe("validateDispense", () => {
   });
 
   it("reports an extra warning label", () => {
-    const warnings = new Set(case1.correctWarnings);
+    const warnings = new Set(case1.items[0].correctWarnings);
     warnings.add("May cause drowsiness");
     const result = validateDispense(
-      correctInput(case1, case1Patient, case1Drug, { selectedWarnings: warnings })
+      correctInput(case1, case1Patient, case1Drug, { selectedWarnings: [warnings] })
     );
 
     expect(result.checks.find((check) => check.category === "warnings")?.detail).toContain("Extra:");
@@ -412,5 +438,128 @@ describe("validateDispense", () => {
     expect(result.checks.find((check) => check.category === "drug")?.passed).toBe(true);
     expect(result.checks.find((check) => check.category === "drug_variant")?.passed).toBe(false);
     expect(result.passed).toBe(false);
+  });
+});
+
+describe("prescriptions ordering more than one medicine", () => {
+  const multiPatient = mockPatient({
+    seed_id: multiItemCase.patientLookup.existingPatientSeedId,
+    surname: "CARRUTHERS",
+    firstname: "CHRISTOPHER",
+  });
+
+  function drugForItem(index: number): DrugRow {
+    const item = multiItemCase.items[index];
+    return mockDrug({
+      seed_id: item.correctDrugSeedId,
+      generic_name: item.drug.split(" ")[0],
+      full_display_name: item.drug,
+    });
+  }
+
+  function multiInput(overrides: Partial<ValidateInput> = {}): ValidateInput {
+    return {
+      formState: {
+        ...emptyFormStateFor(multiItemCase.items.length),
+        pharmacistInitials: "AB",
+        authorityNumber: multiItemCase.authority?.number ?? "",
+        items: multiItemCase.items.map((item) => ({
+          drug: item.drug,
+          directions: item.directions,
+          repeats: item.repeats,
+          qty: String(item.qty),
+          price: "",
+        })),
+      },
+      selectedWarnings: multiItemCase.items.map((item) => new Set(item.correctWarnings)),
+      caseData: multiItemCase,
+      selectedPatient: multiPatient,
+      selectedDrugs: multiItemCase.items.map((_item, index) => drugForItem(index)),
+      selectedPrescriber: prescriberFor(multiItemCase),
+      decision: multiItemCase.expectedDecision,
+      ...overrides,
+    };
+  }
+
+  it("checks every prescribed item and labels which one each check belongs to", () => {
+    const result = validateDispense(multiInput());
+
+    expect(result.passed).toBe(true);
+    expect(result.criticalFailures).toEqual([]);
+    // Six checks per item, plus patient, prescriber, authority and decision.
+    expect(result.pointsTotal).toBe(multiItemCase.items.length * 6 + 4);
+    expect(result.checks.filter((check) => check.category === "drug")).toHaveLength(2);
+    expect(result.checks.some((check) => check.label.startsWith("Item 1: "))).toBe(true);
+    expect(result.checks.some((check) => check.label.startsWith("Item 2: "))).toBe(true);
+  });
+
+  it("fails the attempt when only the second item is wrong", () => {
+    const result = validateDispense(
+      multiInput({
+        selectedDrugs: [drugForItem(0), null],
+      })
+    );
+
+    expect(result.passed).toBe(false);
+    expect(result.criticalFailures).toEqual(expect.arrayContaining(["drug", "drug_variant"]));
+    // The first item's own checks must still pass — failures are per item.
+    expect(result.checks.find((check) => check.label === "Item 1: Drug entered")?.passed).toBe(true);
+    expect(result.checks.find((check) => check.label === "Item 2: Drug entered")?.passed).toBe(false);
+  });
+
+  it("raises the pass mark for each extra medicine on the script", () => {
+    // A fixed threshold would let a student botch a whole second medicine and
+    // still clear the bar on the strength of the first.
+    expect(dispensePassThreshold(1)).toBe(7);
+    expect(dispensePassThreshold(2)).toBe(13);
+    expect(validateDispense(multiInput()).passThreshold).toBe(13);
+    expect(validateDispense(correctInput(case1, case1Patient, case1Drug)).passThreshold).toBe(7);
+  });
+
+  it("does not let a perfect first item carry an unfilled second item", () => {
+    const base = multiInput();
+    const result = validateDispense({
+      ...base,
+      formState: {
+        ...base.formState,
+        items: [base.formState.items[0], { drug: "", directions: "", repeats: "", qty: "", price: "" }],
+      },
+      selectedDrugs: [drugForItem(0), null],
+      selectedWarnings: [new Set(multiItemCase.items[0].correctWarnings), new Set()],
+    });
+
+    expect(result.pointsEarned).toBeLessThan(result.passThreshold);
+    expect(result.passed).toBe(false);
+  });
+
+  it("names the item that is still incomplete before handover", () => {
+    const issues = getDispenseReadinessIssues({
+      formState: {
+        ...emptyFormStateFor(multiItemCase.items.length),
+        authorityNumber: multiItemCase.authority?.number ?? "",
+        items: [
+          {
+            drug: multiItemCase.items[0].drug,
+            directions: multiItemCase.items[0].directions,
+            repeats: multiItemCase.items[0].repeats,
+            qty: String(multiItemCase.items[0].qty),
+            price: "",
+          },
+          { drug: "", directions: "", repeats: "", qty: "", price: "" },
+        ],
+      },
+      selectedPatient: multiPatient,
+      selectedDrugs: [drugForItem(0), null],
+      selectedPrescriber: prescriberFor(multiItemCase),
+      decision: multiItemCase.expectedDecision,
+      caseData: multiItemCase,
+    });
+
+    expect(issues).toEqual([
+      "specific medicine product for item 2",
+      "directions for item 2",
+      "quantity for item 2",
+      "repeats for item 2",
+    ]);
   });
 });
