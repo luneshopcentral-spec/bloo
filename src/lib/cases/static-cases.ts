@@ -102,7 +102,7 @@ export const STATIC_CASES: PracticeCase[] = [
   {
     id: "case-3",
     caseNumber: 3,
-    title: "Case 3 — Amoxicillin Suspension (New Patient)",
+    title: "Case 3 — Amoxycillin Suspension 250mg/5mL",
     patientLookup: {
       requiresNewPatient: true,
       expectedNewPatient: {
@@ -269,7 +269,7 @@ export const STATIC_CASES: PracticeCase[] = [
   {
     id: "case-6",
     caseNumber: 6,
-    title: "Case 6 — Doxycycline (New Patient, Complex Counselling)",
+    title: "Case 6 — Doxycycline 50mg",
     patientLookup: {
       requiresNewPatient: true,
       expectedNewPatient: {
@@ -333,7 +333,7 @@ export const STATIC_CASES: PracticeCase[] = [
   {
     id: "case-7",
     caseNumber: 7,
-    title: "Case 7 — OxyContin Authority Prescription",
+    title: "Case 7 — OxyContin MR 20mg",
     patientLookup: {
       requiresNewPatient: false,
       existingPatientSeedId: "patient-peter-morales-richmond",
@@ -392,7 +392,7 @@ export const STATIC_CASES: PracticeCase[] = [
   {
     id: "case-8",
     caseNumber: 8,
-    title: "Case 8 — Durogesic Patch in an Opioid-Naive Patient",
+    title: "Case 8 — Durogesic Patch 25mcg/h",
     patientLookup: {
       requiresNewPatient: false,
       existingPatientSeedId: "patient-helen-brooks-kew",
@@ -455,7 +455,7 @@ export const STATIC_CASES: PracticeCase[] = [
   {
     id: "case-9",
     caseNumber: 9,
-    title: "Case 9 — Dexamfetamine Prescriber-Number Mismatch",
+    title: "Case 9 — Dexamfetamine 5mg",
     patientLookup: {
       requiresNewPatient: false,
       existingPatientSeedId: "patient-noah-williams-brunswick",
@@ -515,7 +515,7 @@ export const STATIC_CASES: PracticeCase[] = [
   {
     id: "case-10",
     caseNumber: 10,
-    title: "Case 10 — Methotrexate Daily-Dose Error",
+    title: "Case 10 — Methotrexate 10mg",
     patientLookup: {
       requiresNewPatient: false,
       existingPatientSeedId: "patient-grace-lim-box-hill",
@@ -569,7 +569,7 @@ export const STATIC_CASES: PracticeCase[] = [
   {
     id: "case-11",
     caseNumber: 11,
-    title: "Case 11 — Lithium During Dehydrating Illness",
+    title: "Case 11 — Quilonum SR 450mg",
     patientLookup: {
       requiresNewPatient: false,
       existingPatientSeedId: "patient-rahul-mehta-footscray",
@@ -624,7 +624,7 @@ export const STATIC_CASES: PracticeCase[] = [
   {
     id: "case-12",
     caseNumber: 12,
-    title: "Case 12 — Eliquis Dose-Reduction Check",
+    title: "Case 12 — Eliquis 5mg",
     patientLookup: {
       requiresNewPatient: false,
       existingPatientSeedId: "patient-evelyn-scott-camberwell",
