@@ -1,4 +1,5 @@
 import {
+  env,
   pipeline,
   type FeatureExtractionPipeline,
   type ProgressInfo,
@@ -11,7 +12,20 @@ import type {
 } from "@/lib/conversation/worker-messages";
 import type { SemanticCandidate } from "@/lib/conversation/types";
 
-const MODEL_ID = "onnx-community/all-MiniLM-L6-v2-ONNX";
+// BGE-small-en-v1.5 is a stronger sentence-similarity model than MiniLM, so
+// paraphrased student counselling matches its topic examples more reliably.
+const MODEL_ID = "Xenova/bge-small-en-v1.5";
+
+// The site ships COOP/COEP (require-corp) headers for the local patient voice.
+// Those headers block onnxruntime-web from pulling its WASM runtime off the
+// default CDN in several browsers, which is why the matcher silently fell back
+// to rules. Loading the runtime from our own origin (public/ort, copied at
+// build time) keeps it same-origin and COEP-safe. Model weights still stream
+// from the Hugging Face hub over CORS-enabled fetch, which COEP permits.
+env.allowLocalModels = false;
+if (env.backends?.onnx?.wasm) {
+  env.backends.onnx.wasm.wasmPaths = "/ort/";
+}
 
 interface WorkerScope {
   onmessage: ((event: MessageEvent<SemanticWorkerRequest>) => void) | null;

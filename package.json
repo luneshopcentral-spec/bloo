@@ -3,8 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "prepare-ort": "node scripts/copy-ort-runtime.mjs",
+    "dev": "node scripts/copy-ort-runtime.mjs && next dev",
+    "build": "node scripts/copy-ort-runtime.mjs && next build",
     "start": "next start",
     "lint": "eslint .",
     "test": "vitest",
