@@ -7,7 +7,7 @@ import type { Prescriber } from "@/lib/types/prescriber";
 interface DispenseReadinessInput {
   formState: FormState;
   selectedPatient: Patient | null;
-  selectedDrug: DrugRow | null;
+  selectedDrugs: (DrugRow | null)[];
   selectedPrescriber: Prescriber | null;
   decision: DispenseDecision | null;
   caseData: PracticeCase;
@@ -16,19 +16,30 @@ interface DispenseReadinessInput {
 export function getDispenseReadinessIssues({
   formState,
   selectedPatient,
-  selectedDrug,
+  selectedDrugs,
   selectedPrescriber,
   decision,
   caseData,
 }: DispenseReadinessInput): string[] {
+  const multipleItems = caseData.items.length > 1;
+  const perItem = caseData.items.flatMap((_item, index) => {
+    // Name the item only when there is more than one, so single-item cases read
+    // exactly as they did before.
+    const label = (field: string) => (multipleItems ? `${field} for item ${index + 1}` : field);
+    const itemForm = formState.items[index];
+    return [
+      !selectedDrugs[index] && label("specific medicine product"),
+      !itemForm?.directions.trim() && label("directions"),
+      !itemForm?.qty.trim() && label("quantity"),
+      !itemForm?.repeats.trim() && label("repeats"),
+    ];
+  });
+
   return [
     !selectedPatient && "patient",
     !selectedPrescriber && "prescriber from directory",
-    !selectedDrug && "specific medicine product",
+    ...perItem,
     caseData.authority?.required && !formState.authorityNumber.trim() && "authority number from the prescription",
-    !formState.directions.trim() && "directions",
-    !formState.qty.trim() && "quantity",
-    !formState.repeats.trim() && "repeats",
     !decision && "clinical decision",
   ].filter(Boolean) as string[];
 }

@@ -85,6 +85,12 @@ const CASE_REFERENCES: Record<string, CaseEditorialRecord["references"]> = {
     { title: "TGA ARTG and product information — Eliquis 5 mg", url: "https://www.tga.gov.au/resources/artg/193474", sourceVersion: "checked 2026-07-15" },
     { title: "PBS medicine search — apixaban", url: "https://www.pbs.gov.au/pbs/search?search-type=medicines&term=apixaban", sourceVersion: "checked 2026-07-15" },
   ],
+  "case-13": [
+    { title: "TGA PI/CMI repository — metformin modified release", url: "https://www.ebs.tga.gov.au/ebs/picmi/picmirepository.nsf/PICMI?OpenForm=&q=metformin", sourceVersion: "checked 2026-07-15" },
+    { title: "TGA ARTG and product information — Januvia 100 mg", url: "https://www.tga.gov.au/resources/artg/142351", sourceVersion: "checked 2026-07-15" },
+    { title: "PBS medicine search — sitagliptin", url: "https://www.pbs.gov.au/pbs/search?search-type=medicines&term=sitagliptin", sourceVersion: "checked 2026-07-15" },
+    { title: "PBS streamlined authority codes", url: "https://www.pbs.gov.au/info/healthpro/explanatory-notes/section1/Section_1_2_Explanatory_Notes", sourceVersion: "checked 2026-07-15" },
+  ],
 };
 
 export const CASE_EDITORIAL_RECORDS: CaseEditorialRecord[] = STATIC_CASES.map((caseData) => ({

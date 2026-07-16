@@ -384,6 +384,37 @@
   font-weight: bold;
   margin-bottom: 4px;
 }
+/* Item switcher — only rendered when a prescription orders several medicines. */
+.fred-root .fred-item-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 0 4px;
+  margin-bottom: 4px;
+}
+.fred-root .fred-item-tabs button {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: bold;
+  color: #00008b;
+  background: #d4d0c8;
+  border: 2px outset #f0f0f0;
+  cursor: pointer;
+}
+.fred-root .fred-item-tabs button.active {
+  background: #fffbe6;
+  border-style: inset;
+}
+.fred-root .fred-item-tabs button:disabled {
+  color: #888;
+  cursor: not-allowed;
+}
+.fred-root .fred-item-tab-state {
+  color: #006600;
+}
 .fred-root .fred-field-label {
   font-size: 10px;
   color: #00008b;

@@ -10,27 +10,48 @@ describe("static case library consistency", () => {
     const warningLabels = new Set(ALL_WARNINGS.map((warning) => warning.text));
 
     for (const practiceCase of STATIC_CASES) {
-      expect(drugIds.has(practiceCase.correctDrugSeedId), practiceCase.title).toBe(true);
+      expect(practiceCase.items.length, practiceCase.title).toBeGreaterThan(0);
       if (!practiceCase.patientLookup.requiresNewPatient) {
         expect(
           patientIds.has(practiceCase.patientLookup.existingPatientSeedId ?? ""),
           practiceCase.title
         ).toBe(true);
       }
-      for (const warning of practiceCase.correctWarnings) {
-        expect(warningLabels.has(warning), `${practiceCase.title}: ${warning}`).toBe(true);
+      for (const item of practiceCase.items) {
+        expect(drugIds.has(item.correctDrugSeedId), `${practiceCase.title}: ${item.drug}`).toBe(true);
+        for (const warning of item.correctWarnings) {
+          expect(warningLabels.has(warning), `${practiceCase.title}: ${warning}`).toBe(true);
+        }
       }
     }
   });
 
-  it("uses unique authority numbers and only requires them for S8 products", () => {
+  it("keeps every prescribed item on a script a distinct medicine", () => {
+    for (const practiceCase of STATIC_CASES) {
+      const seedIds = practiceCase.items.map((item) => item.correctDrugSeedId);
+      expect(new Set(seedIds).size, practiceCase.title).toBe(seedIds.length);
+    }
+  });
+
+  it("uses unique authority numbers", () => {
     const authorityCases = STATIC_CASES.filter((practiceCase) => practiceCase.authority?.required);
     const numbers = authorityCases.map((practiceCase) => practiceCase.authority?.number);
     expect(new Set(numbers).size).toBe(numbers.length);
+  });
 
-    for (const practiceCase of authorityCases) {
-      const drug = DRUG_LIBRARY.find((candidate) => candidate.seed_id === practiceCase.correctDrugSeedId);
-      expect(drug?.schedule, practiceCase.title).toBe("S8");
+  it("only requires a written approval number where the script carries an S8 item", () => {
+    // A streamlined code is a PBS restriction and applies to S4 medicines too,
+    // so only the approval-number cases are expected to be controlled drugs.
+    const approvalCases = STATIC_CASES.filter(
+      (practiceCase) => practiceCase.authority?.required && practiceCase.authority.type === "approval"
+    );
+    expect(approvalCases.length).toBeGreaterThan(0);
+
+    for (const practiceCase of approvalCases) {
+      const schedules = practiceCase.items.map(
+        (item) => DRUG_LIBRARY.find((candidate) => candidate.seed_id === item.correctDrugSeedId)?.schedule
+      );
+      expect(schedules, practiceCase.title).toContain("S8");
     }
   });
 

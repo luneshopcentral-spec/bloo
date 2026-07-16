@@ -156,6 +156,29 @@ export const RANDOM_PATIENTS: SeedPatient[] = generateRandomPatients();
 // ── Fixture patients (used by specific cases — keep UNCHANGED) ────────────────
 
 export const SEED_PATIENTS: SeedPatient[] = [
+  // ── CARRUTHERS cluster (2) — Case 13's correct patient + 1 decoy ────
+  {
+    seed_id: "patient-christopher-carruthers-adelaide",
+    surname: "CARRUTHERS", firstname: "CHRISTOPHER", title: "MR", sex: "M",
+    date_of_birth: "1978-01-08",
+    address: "173 OAKENDON STREET", suburb: "ADELAIDE", postcode: "5000",
+    phone: "(08) 8211 4477",
+    medicare_card: "3656-55648-8", medicare_valid_to: "12/2028",
+    concession_type: null, concession_number: null,
+    allergies: [],
+    patient_notes: "Type 2 diabetes — metformin XR and sitagliptin",
+  },
+  {
+    seed_id: "patient-christine-carruthers-adelaide",
+    surname: "CARRUTHERS", firstname: "CHRISTINE", title: "MS", sex: "F",
+    date_of_birth: "1981-06-23",
+    address: "173 OAKENDON STREET", suburb: "ADELAIDE", postcode: "5000",
+    phone: "(08) 8211 4477",
+    medicare_card: "3656-55648-9", medicare_valid_to: "12/2028",
+    concession_type: null, concession_number: null,
+    allergies: ["METFORMIN (severe GI upset)"],
+    patient_notes: null,
+  },
   // ── SMITH cluster (4) — Case 1's correct patient + 3 decoys ─────────
   {
     seed_id: "patient-john-smith-abbotsford",

@@ -4,7 +4,7 @@ import { useState, useReducer, useEffect } from "react";
 import "./simulator.css";
 
 import { STATIC_CASES, ALL_WARNINGS } from "@/lib/cases/static-cases";
-import { formReducer, EMPTY_FORM_STATE } from "@/components/simulator/state";
+import { formReducer, emptyFormStateFor } from "@/components/simulator/state";
 import { validateDispense } from "@/lib/scoring/validate";
 import { getDispenseReadinessIssues } from "@/lib/scoring/readiness";
 import type { DispenseResult } from "@/lib/scoring/types";
@@ -49,8 +49,14 @@ export default function PracticePage() {
   const [stage, setStage]                         = useState<"dispensing" | "counselling">("dispensing");
   const [currentCaseIndex, setCurrentCaseIndex]   = useState(0);
   const [practiceMode, setPracticeMode]           = useState<PracticeMode>("practice");
-  const [formState, dispatch]                      = useReducer(formReducer, EMPTY_FORM_STATE);
-  const [selectedWarnings, setSelectedWarnings]    = useState<Set<string>>(new Set());
+  const [formState, dispatch]                      = useReducer(
+    formReducer,
+    STATIC_CASES[0].items.length,
+    emptyFormStateFor
+  );
+  // One warning set and one selected product per prescribed item.
+  const [selectedWarnings, setSelectedWarnings]    = useState<Set<string>[]>([new Set()]);
+  const [currentItem, setCurrentItem]              = useState(0);
   const [statusMessage, setStatusMessage]          = useState(DEFAULT_STATUS);
   const [messages, setMessages]                    = useState<MessageRow[]>([]);
 
@@ -73,8 +79,8 @@ export default function PracticePage() {
   const [addPatientModalOpen, setAddPatientModalOpen] = useState(false);
   const [addPatientInitialSurname, setAddPatientInitialSurname] = useState("");
 
-  // Drug state
-  const [selectedDrug, setSelectedDrug]     = useState<DrugRow | null>(null);
+  // Drug state — one slot per prescribed item
+  const [selectedDrugs, setSelectedDrugs]   = useState<(DrugRow | null)[]>([null]);
   const [drugModalOpen, setDrugModalOpen]   = useState(false);
   const [drugModalQuery, setDrugModalQuery] = useState("");
 
@@ -91,11 +97,12 @@ export default function PracticePage() {
   useEffect(() => {
     const c = STATIC_CASES[currentCaseIndex];
 
-    dispatch({ type: "RESET" });
+    dispatch({ type: "RESET", itemCount: c.items.length });
     dispatch({ type: "SET_FIELD", field: "scriptDate",   value: c.date });
     dispatch({ type: "SET_FIELD", field: "scriptType",   value: c.scriptType });
 
-    setSelectedWarnings(new Set());
+    setSelectedWarnings(c.items.map(() => new Set()));
+    setCurrentItem(0);
     setInitialsError(false);
     setStatusMessage(DEFAULT_STATUS);
     setDrawerOpen(false);
@@ -112,7 +119,7 @@ export default function PracticePage() {
     setAddPatientModalOpen(false);
     setAddPatientInitialSurname("");
 
-    setSelectedDrug(null);
+    setSelectedDrugs(c.items.map(() => null));
     setDrugModalOpen(false);
     setDrugModalQuery("");
 
@@ -156,9 +163,10 @@ export default function PracticePage() {
 
   function handleClear() {
     setAttemptResetCounter((value) => value + 1);
-    dispatch({ type: "RESET" });
-    setSelectedWarnings(new Set());
-    setSelectedDrug(null);
+    dispatch({ type: "RESET", itemCount: current.items.length });
+    setSelectedWarnings(current.items.map(() => new Set()));
+    setCurrentItem(0);
+    setSelectedDrugs(current.items.map(() => null));
     setSelectedPrescriber(null);
     setClinicalDecision(null);
     setAnswersRevealed(false);
@@ -173,7 +181,7 @@ export default function PracticePage() {
 
   async function handleShowAnswers() {
     dispatch({ type: "FILL_FROM_CASE", case: current });
-    setSelectedWarnings(new Set(current.correctWarnings));
+    setSelectedWarnings(current.items.map((item) => new Set(item.correctWarnings)));
     setClinicalDecision(current.expectedDecision);
     setAnswersRevealed(true);
     setStatusMessage(
@@ -184,14 +192,16 @@ export default function PracticePage() {
     const { data: drugData } = await supabase
       .from("drugs")
       .select("*")
-      .eq("seed_id", current.correctDrugSeedId)
-      .single();
+      .in("seed_id", current.items.map((item) => item.correctDrugSeedId));
     const { data: prescriberData } = await supabase
       .from("prescribers")
       .select("*")
       .eq("prescriber_number", current.expectedPrescriberNo ?? current.prescriberNo)
       .single();
-    if (drugData) setSelectedDrug(drugData as DrugRow);
+    if (drugData) {
+      const bySeedId = new Map((drugData as DrugRow[]).map((drug) => [drug.seed_id, drug]));
+      setSelectedDrugs(current.items.map((item) => bySeedId.get(item.correctDrugSeedId) ?? null));
+    }
     if (prescriberData) setSelectedPrescriber(prescriberData as Prescriber);
   }
 
@@ -206,7 +216,7 @@ export default function PracticePage() {
     const incompleteItems = getDispenseReadinessIssues({
       formState,
       selectedPatient,
-      selectedDrug,
+      selectedDrugs,
       selectedPrescriber,
       decision: clinicalDecision,
       caseData: current,
@@ -224,7 +234,7 @@ export default function PracticePage() {
       selectedWarnings,
       caseData: STATIC_CASES[currentCaseIndex],
       selectedPatient,
-      selectedDrug,
+      selectedDrugs,
       selectedPrescriber,
       decision: clinicalDecision,
       assisted: answersRevealed,
@@ -276,11 +286,14 @@ export default function PracticePage() {
   }
 
   function handleToggleWarning(warningText: string) {
-    setSelectedWarnings((prev) => {
-      const next = new Set(prev);
-      if (next.has(warningText)) next.delete(warningText); else next.add(warningText);
-      return next;
-    });
+    setSelectedWarnings((prev) =>
+      prev.map((set, index) => {
+        if (index !== currentItem) return set;
+        const next = new Set(set);
+        if (next.has(warningText)) next.delete(warningText); else next.add(warningText);
+        return next;
+      })
+    );
   }
 
   function handlePatientSelect(patient: Patient) { setSelectedPatient(patient); }
@@ -302,10 +315,14 @@ export default function PracticePage() {
   }
 
   function handleDrugSelected(drug: DrugRow) {
-    setSelectedDrug(drug);
+    setSelectedDrugs((prev) => prev.map((existing, index) => (index === currentItem ? drug : existing)));
     setDrugModalOpen(false);
-    dispatch({ type: "SET_FIELD", field: "drug", value: drug.full_display_name });
-    setStatusMessage(`Drug selected: ${drug.full_display_name}`);
+    dispatch({ type: "SET_ITEM_FIELD", index: currentItem, field: "drug", value: drug.full_display_name });
+    setStatusMessage(
+      current.items.length > 1
+        ? `Item ${currentItem + 1} product selected: ${drug.full_display_name}`
+        : `Drug selected: ${drug.full_display_name}`
+    );
   }
 
   function handleOpenPrescriberModal(query: string) {
@@ -324,6 +341,8 @@ export default function PracticePage() {
   const patientName      = selectedPatient ? `${selectedPatient.surname}, ${selectedPatient.firstname}` : "";
   const patientAllergies = selectedPatient?.allergies ?? [];
   const scriptFormDisabled = !selectedPatient;
+  const currentDrug      = selectedDrugs[currentItem] ?? null;
+  const currentWarnings  = selectedWarnings[currentItem] ?? new Set<string>();
 
   return (
     <>
@@ -373,15 +392,18 @@ export default function PracticePage() {
                   dispatch={dispatch}
                   initialsError={initialsError}
                   disabled={scriptFormDisabled}
-                  selectedDrug={selectedDrug}
+                  selectedDrugs={selectedDrugs}
                   onOpenDrugModal={handleOpenDrugModal}
                   selectedPrescriber={selectedPrescriber}
                   onOpenPrescriberModal={handleOpenPrescriberModal}
                   authorityRequirement={current.authority}
+                  itemCount={current.items.length}
+                  currentItem={currentItem}
+                  onItemChange={setCurrentItem}
                 />
                 <DrugDetailsBox
-                  selectedDrug={selectedDrug}
-                  caseData={current}
+                  selectedDrug={currentDrug}
+                  caseItem={current.items[currentItem]}
                   patientAllergies={patientAllergies}
                 />
               </div>
@@ -389,15 +411,17 @@ export default function PracticePage() {
               <div className="grid grid-cols-[160px_1fr_100px] gap-1 mb-1">
                 <WarningsBox
                   warnings={ALL_WARNINGS}
-                  selectedWarnings={selectedWarnings}
+                  selectedWarnings={currentWarnings}
                   onToggle={handleToggleWarning}
-                  medicineName={selectedDrug?.generic_name ?? formState.drug}
+                  medicineName={currentDrug?.generic_name ?? formState.items[currentItem]?.drug ?? ""}
                 />
                 <LabelPreview
                   caseData={current}
                   formState={formState}
-                  selectedWarnings={selectedWarnings}
+                  selectedWarnings={currentWarnings}
                   patientName={patientName}
+                  itemIndex={currentItem}
+                  itemCount={current.items.length}
                 />
                 <ApiBox />
               </div>

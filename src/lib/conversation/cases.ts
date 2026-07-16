@@ -1985,6 +1985,204 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
       detail: "The student advised starting the unresolved higher apixaban dose.",
     }),
   },
+  "case-13": {
+    caseId: "case-13",
+    patientRole: "Christopher Carruthers",
+    openingMessage: "Hi. I’m picking up my two diabetes tablets.",
+    handoverGoal: "Hand over this supply and counsel to your professional standard.",
+    concernAfterTurns: 3,
+    concernTopicId: "metformin_xr_admin",
+    concernPrompt: "These new ones are a lot bigger than my old tablets. Can I halve them to get them down?",
+    patientQuestion: "Do I need to worry about my sugar dropping too low on these?",
+    unknownReplies: variedUnknownReplies("Could you explain how that applies to my diabetes tablets?"),
+    responseIntents: commonResponseIntents({
+      previousUseReplies: [
+        "I have been on metformin for a couple of years. The sitagliptin is the new addition.",
+        "The metformin is not new to me, but I have never taken the sitagliptin before.",
+      ],
+      conditionsReplies: [
+        "Just the type 2 diabetes. My kidneys were fine at my last check.",
+        "Type 2 diabetes — that is all the doctor manages me for.",
+      ],
+      symptomsReplies: [
+        "I feel well. No shakiness, sweating or dizzy spells.",
+        "Nothing unusual — no hypos or stomach trouble at the moment.",
+      ],
+    }),
+    topics: [
+      ...commonTopics({
+        nameReply: ["Christopher Carruthers. Both are for me.", "Christopher Carruthers — they're both mine."],
+        ageReply: ["My date of birth is 8 January 1978.", "8 January 1978."],
+        allergiesReply: [
+          "No allergies to any medicines.",
+          "None that I know of.",
+        ],
+        medicinesReply: [
+          "Only these two for the diabetes. No vitamins or anything over the counter.",
+          "Just the metformin and the new sitagliptin — nothing else.",
+        ],
+        medicinesCritical: true,
+      }),
+      {
+        id: "two_item_orientation",
+        label: "Explain that two different medicines are being supplied",
+        category: "communication",
+        critical: true,
+        examples: [
+          "There are two medicines here: the metformin extended-release tablets and the sitagliptin. They do different things and are taken differently.",
+          "You have two items today — let me take you through each one separately.",
+        ],
+        fallbackPatterns: [
+          "\\b(?:two|both|2) (?:medicine|tablet|item|different|of these)\\w*\\b",
+          "\\b(?:each|separate|different)\\w*\\b.*\\b(?:medicine|tablet|item|one)\\w*\\b",
+          "\\bmetformin\\b.*\\bsitagliptin\\b",
+          "\\bsitagliptin\\b.*\\bmetformin\\b",
+        ],
+        requiredPatternGroups: [
+          [
+            "\\b(?:two|both|2)\\b",
+            "\\b(?:each|separate|separately|different)\\w*\\b",
+            "\\bmetformin\\b.*\\bsitagliptin\\b",
+            "\\bsitagliptin\\b.*\\bmetformin\\b",
+          ],
+        ],
+        patientReplies: [
+          "Right, so they are two different tablets doing two different jobs.",
+          "Good — I did wonder whether they were the same thing in two boxes.",
+        ],
+      },
+      {
+        id: "metformin_xr_admin",
+        label: "Explain the metformin XR dose and swallow-whole requirement",
+        category: "clinical_counselling",
+        critical: true,
+        examples: [
+          "Take four of the metformin extended-release tablets daily and swallow them whole — do not crush, chew or halve them.",
+          "The metformin is extended release, so swallow it whole with food.",
+        ],
+        fallbackPatterns: [
+          "\\bswallow\\w*\\b.*\\bwhole\\b",
+          "\\b(?:do not|don't|never)\\b.*\\b(?:crush|chew|halve|split|break)\\b",
+          "\\b(?:extended|slow|modified)[- ]release\\b",
+        ],
+        requiredPatternGroups: [
+          [
+            "\\bswallow\\w*\\b.*\\bwhole\\b",
+            "\\b(?:do not|don't|never)\\b.*\\b(?:crush|chew|halve|split|break)\\b",
+          ],
+        ],
+        forbiddenPatterns: ["\\b(?:you can|fine to|okay to)\\b.*\\b(?:crush|chew|halve|split)\\b"],
+        patientReplies: [
+          "Understood — swallow them whole, no breaking them up.",
+          "Okay, so the big ones go down whole even though they're a mouthful.",
+        ],
+      },
+      {
+        id: "metformin_gi_advice",
+        label: "Explain taking metformin with food for stomach upset",
+        category: "clinical_counselling",
+        examples: [
+          "Take the metformin with food to reduce stomach upset.",
+          "It can cause some tummy upset, so have it with a meal.",
+        ],
+        fallbackPatterns: [
+          "\\b(?:with|after) (?:food|a meal|meals|dinner)\\b",
+          "\\b(?:upset|unsettl)\\w*\\b.*\\b(?:stomach|tummy|gut)\\b",
+          "\\b(?:stomach|tummy|gut)\\b.*\\b(?:upset|unsettl)\\w*\\b",
+          "\\bdiarrh\\w*\\b",
+        ],
+        patientReplies: [
+          "I'll take them with meals then.",
+          "Good to know — I'll have them with dinner to settle my stomach.",
+        ],
+      },
+      {
+        id: "sitagliptin_dose",
+        label: "Explain the sitagliptin dose",
+        category: "clinical_counselling",
+        critical: true,
+        examples: [
+          "Take one sitagliptin tablet once a day. You can take it with or without food.",
+          "The sitagliptin is one tablet daily.",
+        ],
+        fallbackPatterns: [
+          "\\b(?:one|1)\\b.*\\bsitagliptin\\b",
+          "\\bsitagliptin\\b.*\\b(?:one|1)\\b.*\\b(?:daily|a day|once)\\b",
+          "\\bjanuvia\\b.*\\b(?:one|1|daily|once)\\b",
+        ],
+        requiredPatternGroups: [
+          ["\\b(?:sitagliptin|januvia)\\b"],
+          ["\\b(?:one|1)\\b"],
+          ["\\b(?:daily|a day|once|each day|every day)\\b"],
+        ],
+        forbiddenPatterns: ["\\b(?:two|2|three|3) (?:sitagliptin|januvia|tablets? of)\\b"],
+        patientReplies: [
+          "One a day for the sitagliptin. Simple enough.",
+          "Got it — just the one sitagliptin daily.",
+        ],
+      },
+      {
+        id: "hypo_advice",
+        label: "Explain hypoglycaemia risk and what to do",
+        category: "safety_netting",
+        critical: true,
+        examples: [
+          "On their own these rarely cause low blood sugar, but if you feel shaky, sweaty or confused, take some quick sugar and check your levels.",
+          "Watch for hypos — shakiness, sweating or confusion — and treat with fast-acting sugar.",
+        ],
+        fallbackPatterns: [
+          "\\b(?:hypo|hypoglyc)\\w*\\b",
+          "\\b(?:low|drop\\w*|falls?)\\b.*\\b(?:blood sugar|sugar|glucose|bsl)\\b",
+          "\\b(?:blood sugar|sugar|glucose|bsl)\\b.*\\b(?:low|drop\\w*|falls?)\\b",
+          "\\b(?:shaky|shakin|sweat|trembl)\\w*\\b",
+        ],
+        patientReplies: [
+          "So shaky or sweaty means I get some sugar into me quickly.",
+          "I'll keep something sweet handy just in case.",
+        ],
+      },
+      {
+        id: "diabetes_red_flags",
+        label: "Provide safety-netting for serious adverse effects",
+        category: "safety_netting",
+        examples: [
+          "Get urgent medical help for severe stomach pain that goes through to your back, or any swelling of the face, lips or throat.",
+          "Severe persistent abdominal pain needs urgent assessment — stop the tablets and seek help.",
+        ],
+        fallbackPatterns: [
+          "\\b(?:severe|persistent|bad)\\w*\\b.*\\b(?:abdominal|stomach|tummy)\\b.*\\bpain\\b",
+          "\\b(?:pancrea|swell|throat|lips|face)\\w*\\b.*\\b(?:urgent|help|doctor|hospital|emergency|000)\\b",
+          "\\b(?:urgent|emergency|hospital|000|doctor)\\b.*\\b(?:pain|swell|breath)\\w*\\b",
+        ],
+        requiredPatternGroups: [
+          ["\\b(?:pain|swell|pancrea|breath|rash)\\w*\\b"],
+          ["\\b(?:urgent|help|doctor|hospital|emergency|000|stop)\\w*\\b"],
+        ],
+        patientReplies: [
+          "I'll get seen straight away if I get bad stomach pain or any swelling.",
+          "Understood — severe pain or swelling means urgent help.",
+        ],
+      },
+      ...closingTopics("I'll take four metformin daily with food, swallowed whole, and one sitagliptin a day. If I go shaky or sweaty I'll have some sugar, and bad stomach pain means urgent help."),
+    ],
+    unsafeAdviceRules: withCommonUnsafe(
+      {
+        id: "crush_metformin_xr",
+        label: "Unsafe modified-release manipulation",
+        patterns: [
+          "\\b(?:you can|fine to|okay to|ok to|feel free to)\\b.*\\b(?:crush|chew|halve|split|break)\\b",
+          "\\b(?:crush|halve|split|break)\\b.*\\b(?:if|when)\\b.*\\b(?:too big|hard to swallow|struggle)\\b",
+        ],
+        detail: "The student advised crushing, halving or chewing an extended-release metformin tablet, which releases the whole dose at once.",
+      },
+      {
+        id: "double_up_diabetes",
+        label: "Unsafe duplicate-therapy advice",
+        patterns: ["\\b(?:take|use)\\b.*\\bjanumet\\b.*\\b(?:as well|too|with these|on top)\\b"],
+        detail: "The student advised adding a sitagliptin-metformin combination product on top of the separate ingredients, duplicating both medicines.",
+      }
+    ),
+  },
 };
 
 export function getConversationCase(caseId: string): ConversationCase {

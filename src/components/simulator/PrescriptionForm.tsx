@@ -18,12 +18,10 @@ export function PrescriptionForm({ caseData }: PrescriptionFormProps) {
   const yy = dateParts[2] ?? "";
   const validTo = `${dd}/${mm}/${String(Number(yy) + 1).padStart(2, "0")}`;
 
-  // PBS item code from drugDetails
-  const pbsItem = caseData.drugDetails.pbs.replace(/^NHS:\s*/i, "").trim();
   const isPrivate = !caseData.price.startsWith("$");
   const priceDisplay = isPrivate ? "Private" : caseData.price;
-  const qtyDisplay = String(caseData.qty);
   const pp = caseData.patientLookup.prescriptionPatient;
+  const items = caseData.items;
 
   return (
     <div className="pbs-root">
@@ -64,7 +62,9 @@ export function PrescriptionForm({ caseData }: PrescriptionFormProps) {
         </div>
         <div className="pbs-fcell pbs-fcell-narrow">
           <div className="pbs-tiny">Gen</div>
-          <div className="pbs-bold">{caseData.genericSubstitutionAllowed ? "✓" : "—"}</div>
+          <div className="pbs-bold">
+            {items.every((item) => item.genericSubstitutionAllowed) ? "✓" : "—"}
+          </div>
         </div>
         <div className="pbs-fcell pbs-fcell-narrow">
           <div className="pbs-tiny">Con</div>
@@ -112,35 +112,54 @@ export function PrescriptionForm({ caseData }: PrescriptionFormProps) {
           {!isPrivate && (
             <div>
               <div className="pbs-items-code-label">PBS Item</div>
-              <div className="pbs-items-code-val">{pbsItem}</div>
+              {items.map((item) => (
+                <div className="pbs-items-code-val" key={item.correctDrugSeedId}>
+                  {item.drugDetails.pbs.replace(/^NHS:\s*/i, "").trim()}
+                </div>
+              ))}
             </div>
           )}
         </div>
       </div>
 
-      {/* ── SECTION 4: Drug block ────────────────────────────── */}
+      {/* ── SECTION 4: Drug block — one entry per prescribed item ── */}
       <div className="pbs-section pbs-drug-block pbs-yellow">
         <div className="pbs-drug-transcription-label">
           Original prescription transcription (item, strength, quantity,
           directions and deferred supply if applicable)
         </div>
-        <div className="pbs-drug-name-display">{caseData.drug}</div>
-        <div className="pbs-product-instruction">
-          {caseData.prescribedProductType === "generic" ? "Generic product prescribed" : "Brand product prescribed"}
-          {caseData.genericSubstitutionAllowed
-            ? " · Generic substitution permitted"
-            : " · Substitution not authorised"}
-        </div>
-        <div className="pbs-drug-dirs">{caseData.directions}</div>
+        {items.map((item, index) => (
+          <div
+            className={index > 0 ? "pbs-drug-entry pbs-drug-entry-divided" : "pbs-drug-entry"}
+            key={item.correctDrugSeedId}
+          >
+            {items.length > 1 && (
+              <div className="pbs-tiny">Item {index + 1}</div>
+            )}
+            <div className="pbs-drug-name-display">{item.drug}</div>
+            <div className="pbs-product-instruction">
+              {item.prescribedProductType === "generic" ? "Generic product prescribed" : "Brand product prescribed"}
+              {item.genericSubstitutionAllowed
+                ? " · Generic substitution permitted"
+                : " · Substitution not authorised"}
+            </div>
+            <div className="pbs-drug-dirs">{item.directions}</div>
+            <div className="pbs-drug-meta-row">
+              <span>
+                <span className="pbs-tiny">Qty</span>{" "}
+                <span className="pbs-bold">{String(item.qty)}</span>
+              </span>
+              <span className="pbs-meta-sep">|</span>
+              <span>
+                <span className="pbs-tiny">Rpts</span>{" "}
+                <span className="pbs-bold">{item.repeats}</span>
+              </span>
+            </div>
+          </div>
+        ))}
         <div className="pbs-drug-meta-row">
-          <span>
-            <span className="pbs-tiny">Qty</span>{" "}
-            <span className="pbs-bold">{qtyDisplay}</span>
-          </span>
-          <span className="pbs-meta-sep">|</span>
-          <span>
-            <span className="pbs-tiny">Rpts</span>{" "}
-            <span className="pbs-bold">{caseData.repeats}</span>
+          <span className="pbs-bold">
+            {items.length} item{items.length === 1 ? "" : "s"} only
           </span>
           <span className="pbs-meta-sep">|</span>
           <span>Dr {caseData.doctor}</span>
@@ -162,7 +181,9 @@ export function PrescriptionForm({ caseData }: PrescriptionFormProps) {
         </div>
         <div className="pbs-fcell">
           <div className="pbs-tiny">No. of repeats authorised</div>
-          <div className="pbs-bold">{caseData.repeats}</div>
+          <div className="pbs-bold">
+            {items.map((item) => item.repeats).join(" / ")}
+          </div>
         </div>
       </div>
 

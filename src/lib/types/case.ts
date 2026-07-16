@@ -46,6 +46,20 @@ export interface PatientLookupSpec {
   };
 }
 
+/** One prescribed medicine. A prescription may order several on the one form. */
+export interface PrescriptionItem {
+  drug: string;           // what the doctor wrote (used for drug-check first-word matching)
+  prescribedProductType: "brand" | "generic";
+  genericSubstitutionAllowed: boolean;
+  correctDrugSeedId: string; // seed_id of the drug variant the student must select
+  directions: string;
+  repeats: string;
+  qty: string | number;
+  price2: string;
+  correctWarnings: string[];
+  drugDetails: DrugDetails; // retained for fallback display if drug table is unavailable
+}
+
 export interface PracticeCase {
   id: string;
   caseNumber: number;
@@ -57,24 +71,16 @@ export interface PracticeCase {
   expectedPrescriberNo?: string; // directory number when the printed number is deliberately incorrect
   date: string;
   scriptType: string;
-  drug: string;           // what the doctor wrote (used for drug-check first-word matching)
-  prescribedProductType: "brand" | "generic";
-  genericSubstitutionAllowed: boolean;
-  correctDrugSeedId: string; // seed_id of the drug variant the student must select
-  directions: string;
-  repeats: string;
-  qty: string | number;
-  price2: string;
+  /** Every medicine ordered on this prescription, in printed order. */
+  items: PrescriptionItem[];
   authority?: {
     required: true;
     type: "approval" | "streamlined";
     number: string;
     indication: string;
   };
-  correctWarnings: string[];
   errors: string[];
   expectedDecision: DispenseDecision;
-  drugDetails: DrugDetails; // retained for fallback display if drug table is unavailable
   tip: string;
 }
 

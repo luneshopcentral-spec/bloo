@@ -7,23 +7,38 @@ interface LabelPreviewProps {
   formState: FormState;
   selectedWarnings: Set<string>;
   patientName?: string;
+  /** Which prescribed item this label is for. */
+  itemIndex: number;
+  itemCount: number;
 }
 
-export function LabelPreview({ caseData, formState, selectedWarnings, patientName }: LabelPreviewProps) {
-  const drug = formState.drug || "—";
-  const directions = formState.directions
-    ? expandAbbrevs(formState.directions)
+export function LabelPreview({
+  caseData,
+  formState,
+  selectedWarnings,
+  patientName,
+  itemIndex,
+  itemCount,
+}: LabelPreviewProps) {
+  const itemForm = formState.items[itemIndex];
+  const drug = itemForm?.drug || "—";
+  const directions = itemForm?.directions
+    ? expandAbbrevs(itemForm.directions)
     : "—";
   const date = formState.scriptDate || caseData.date;
   const doctor = formState.doctor || caseData.doctor;
-  const qty = formState.qty || "—";
-  const repeats = formState.repeats || "—";
-  const price = formState.price ? `$${formState.price}` : "$—";
+  const qty = itemForm?.qty || "—";
+  const repeats = itemForm?.repeats || "—";
+  const price = itemForm?.price ? `$${itemForm.price}` : "$—";
   const warnList = Array.from(selectedWarnings).join(", ");
 
   return (
     <div>
-      <div className="fred-label-section-title">— Script Label —</div>
+      <div className="fred-label-section-title">
+        {itemCount > 1
+          ? `— Script Label · Item ${itemIndex + 1} of ${itemCount} —`
+          : "— Script Label —"}
+      </div>
       <div className="fred-label-box">
         <div className="fred-label-drug">{drug}</div>
         <div style={{ marginTop: "2px", fontSize: "11px" }}>{directions}</div>

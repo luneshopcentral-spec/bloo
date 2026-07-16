@@ -389,6 +389,51 @@ const OXYCODONE_MR: SeedDrug[] = [
       manufacturer_code: "GN", manufacturer_full: "Generic Health Pty Ltd", is_generic: true, cmi_available: true }),
 ];
 
+// ── Extended-release metformin and sitagliptin (Case 13, two-item script) ──────
+// Metformin XR is a distinct product from the immediate-release tablets above:
+// it must be swallowed whole and is not interchangeable with plain metformin.
+
+const METFORMIN_XR: SeedDrug[] = [
+  d({ seed_id: "metex-xr-tab-500", generic_name: "METFORMIN", brand_name: "METEX XR",
+      full_display_name: "METEX XR ER TAB 500MG",
+      form: "ER TAB", strength: "500MG", pack_size: "120", qty_default: 120, repeats_default: 5,
+      supply_type: "NHS", schedule: "S4", pbs_code: "9435N", ws_cost: 12.40, retail_price: 22.10,
+      manufacturer_code: "AR", manufacturer_full: "Arrotex Pharmaceuticals Pty Ltd", is_generic: false, cmi_available: true }),
+  d({ seed_id: "diabex-xr-tab-500", generic_name: "METFORMIN", brand_name: "DIABEX XR",
+      full_display_name: "DIABEX XR ER TAB 500MG",
+      form: "ER TAB", strength: "500MG", pack_size: "120", qty_default: 120, repeats_default: 5,
+      supply_type: "NHS", schedule: "S4", pbs_code: "9435N", ws_cost: 13.10, retail_price: 22.10,
+      manufacturer_code: "AL", manufacturer_full: "Alphapharm Pty Ltd", is_generic: false, cmi_available: true }),
+  d({ seed_id: "metex-xr-tab-1000", generic_name: "METFORMIN", brand_name: "METEX XR",
+      full_display_name: "METEX XR ER TAB 1000MG",
+      form: "ER TAB", strength: "1000MG", pack_size: "60", qty_default: 60, repeats_default: 5,
+      supply_type: "NHS", schedule: "S4", pbs_code: "9436P", ws_cost: 14.90, retail_price: 22.10,
+      manufacturer_code: "AR", manufacturer_full: "Arrotex Pharmaceuticals Pty Ltd", is_generic: false, cmi_available: true }),
+];
+
+const SITAGLIPTIN: SeedDrug[] = [
+  d({ seed_id: "januvia-tab-100", generic_name: "SITAGLIPTIN", brand_name: "JANUVIA",
+      full_display_name: "JANUVIA TAB 100MG",
+      form: "TAB", strength: "100MG", pack_size: "28", qty_default: 28, repeats_default: 5,
+      supply_type: "AUTHORITY", schedule: "S4", pbs_code: "11576G", ws_cost: 21.60, retail_price: 30.00,
+      manufacturer_code: "MK", manufacturer_full: "Merck Sharp & Dohme (Australia) Pty Ltd", is_generic: false, cmi_available: true }),
+  d({ seed_id: "sitagliptin-apo-tab-100", generic_name: "SITAGLIPTIN", brand_name: "APO",
+      full_display_name: "SITAGLIPTIN (APO) TAB 100MG",
+      form: "TAB", strength: "100MG", pack_size: "28", qty_default: 28, repeats_default: 5,
+      supply_type: "AUTHORITY", schedule: "S4", pbs_code: "11576G", ws_cost: 15.20, retail_price: 30.00,
+      manufacturer_code: "TX", manufacturer_full: "Apotex Pty Ltd", is_generic: true, cmi_available: true }),
+  d({ seed_id: "januvia-tab-50", generic_name: "SITAGLIPTIN", brand_name: "JANUVIA",
+      full_display_name: "JANUVIA TAB 50MG",
+      form: "TAB", strength: "50MG", pack_size: "28", qty_default: 28, repeats_default: 5,
+      supply_type: "AUTHORITY", schedule: "S4", pbs_code: "11577H", ws_cost: 21.60, retail_price: 30.00,
+      manufacturer_code: "MK", manufacturer_full: "Merck Sharp & Dohme (Australia) Pty Ltd", is_generic: false, cmi_available: true }),
+  d({ seed_id: "janumet-xr-tab-50-1000", generic_name: "SITAGLIPTIN WITH METFORMIN", brand_name: "JANUMET XR",
+      full_display_name: "JANUMET XR ER TAB 50MG/1000MG",
+      form: "ER TAB", strength: "50MG/1000MG", pack_size: "56", qty_default: 56, repeats_default: 5,
+      supply_type: "AUTHORITY", schedule: "S4", pbs_code: "10476Q", ws_cost: 26.40, retail_price: 30.00,
+      manufacturer_code: "MK", manufacturer_full: "Merck Sharp & Dohme (Australia) Pty Ltd", is_generic: false, cmi_available: true }),
+];
+
 const FENTANYL_PATCH: SeedDrug[] = [
   d({ seed_id: "durogesic-patch-25", generic_name: "FENTANYL", brand_name: "DUROGESIC",
       full_display_name: "DUROGESIC PATCH 25MCG/H",
@@ -466,6 +511,8 @@ export const DRUG_LIBRARY: SeedDrug[] = [
   ...CEPHALEXIN,     // 4
   ...ATORVASTATIN,   // 4
   ...SERTRALINE,     // 3
+  ...METFORMIN_XR,
+  ...SITAGLIPTIN,
   ...OXYCODONE_MR,
   ...FENTANYL_PATCH,
   ...DEXAMFETAMINE,
