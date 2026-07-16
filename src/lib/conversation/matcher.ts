@@ -7,7 +7,10 @@ import type {
   UnsafeAdviceFinding,
 } from "./types";
 
-const DEFAULT_SEMANTIC_THRESHOLD = 0.55;
+// Calibrated for bge-small-en-v1.5 (see semantic-matcher.worker.ts): measured
+// true paraphrase matches score >= ~0.70 while off-topic and wrong-but-related
+// noise tops out at ~0.59, so 0.62 splits the bands with margin on both sides.
+const DEFAULT_SEMANTIC_THRESHOLD = 0.62;
 const MULTI_MATCH_MARGIN = 0.035;
 const MAX_MATCHES_PER_TURN = 4;
 

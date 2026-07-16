@@ -84,6 +84,7 @@ export function useSemanticMatcher(conversation: ConversationCase) {
         return;
       }
       if (message.type === "error") {
+        console.error("Semantic matcher worker reported:", message.message);
         if (message.requestId) {
           const pending = pendingRef.current.get(message.requestId);
           if (pending) {
@@ -96,7 +97,12 @@ export function useSemanticMatcher(conversation: ConversationCase) {
         setStatusMessage("Semantic model unavailable — expanded on-device matcher active");
       }
     };
-    worker.onerror = () => {
+    worker.onerror = (event) => {
+      console.error(
+        "Semantic matcher worker failed:",
+        event.message || "(no message)",
+        event.filename ? `${event.filename}:${event.lineno}` : ""
+      );
       activateRulesFallback();
       setStatusMessage("Semantic model unavailable — expanded on-device matcher active");
     };

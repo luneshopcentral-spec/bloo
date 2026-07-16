@@ -1,6 +1,13 @@
-import { PreTrainedModel, Tensor } from "@huggingface/transformers";
+import { env, PreTrainedModel, Tensor } from "@huggingface/transformers";
 import { OUTETTS_DECODER_ID, OUTETTS_SAMPLE_RATE } from "@/lib/voice/outetts-config";
 import type { OuteDecoderRequest, OuteDecoderResponse } from "@/lib/voice/outetts-decoder-messages";
+
+// Load the ONNX WASM runtime from our own origin (public/ort, copied at build
+// time) — the site's COOP/COEP headers block the default CDN download.
+env.allowLocalModels = false;
+if (env.backends?.onnx?.wasm) {
+  env.backends.onnx.wasm.wasmPaths = "/ort/";
+}
 
 interface ProgressInfo {
   status: string;

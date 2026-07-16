@@ -11,9 +11,14 @@ const sourceDir = join(projectRoot, "node_modules", "onnxruntime-web", "dist");
 const targetDir = join(projectRoot, "public", "ort");
 
 const runtimeFiles = [
-  // Plain WASM backend (device: "wasm") and the WebGPU-capable jsep variant.
+  // All WASM backend variants — transformers.js picks one at runtime
+  // (currently the asyncify build for device: "wasm").
   "ort-wasm-simd-threaded.mjs",
   "ort-wasm-simd-threaded.wasm",
+  "ort-wasm-simd-threaded.asyncify.mjs",
+  "ort-wasm-simd-threaded.asyncify.wasm",
+  "ort-wasm-simd-threaded.jspi.mjs",
+  "ort-wasm-simd-threaded.jspi.wasm",
   "ort-wasm-simd-threaded.jsep.mjs",
   "ort-wasm-simd-threaded.jsep.wasm",
 ];
