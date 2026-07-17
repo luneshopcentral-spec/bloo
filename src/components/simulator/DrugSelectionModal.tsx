@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { mergeWithLocal, searchLocalDrugs } from "@/lib/directory/local-fallback";
 import type { DrugRow } from "@/lib/types/drug";
 
 interface Props {
@@ -51,11 +52,9 @@ export function DrugSelectionModal({ open, query, onDrugSelected, onClose }: Pro
       .order("brand_name")
       .limit(25);
     setLoading(false);
-    if (error) {
-      setFetchError(error.message);
-      return;
-    }
-    setDrugs((data as DrugRow[]) ?? []);
+    // The bundled directory backs every search so case medicines stay
+    // selectable even when the database is missing rows or unreachable.
+    setDrugs(mergeWithLocal((error ? [] : (data as DrugRow[])) ?? [], searchLocalDrugs(safe), 25));
     setSelectedIndex(-1);
   }
 

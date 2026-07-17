@@ -21,7 +21,7 @@ export function StatusBar({ message }: StatusBarProps) {
         hour: "2-digit",
         minute: "2-digit",
       });
-      setClock(`OVR | ${date} ${time}`);
+      setClock(`${date} ${time}`);
     }
     tick();
     const id = setInterval(tick, 1000);

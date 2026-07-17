@@ -13,7 +13,6 @@ export interface ItemFormState {
 export interface FormState {
   scriptDate: string;
   scriptType: string;
-  hospitalProvNo: string;
   doctor: string;
   prescriberNo: string;
   authorityNumber: string;
@@ -35,7 +34,6 @@ export const EMPTY_ITEM_FORM_STATE: ItemFormState = {
 export const EMPTY_FORM_STATE: FormState = {
   scriptDate: "",
   scriptType: "N — NHS",
-  hospitalProvNo: "",
   doctor: "",
   prescriberNo: "",
   authorityNumber: "",
@@ -74,7 +72,6 @@ export function formReducer(state: FormState, action: FormAction): FormState {
       return {
         scriptDate: c.date,
         scriptType: c.scriptType,
-        hospitalProvNo: "",
         doctor: c.doctor,
         prescriberNo: c.expectedPrescriberNo ?? c.prescriberNo,
         authorityNumber: c.authority?.number ?? "",

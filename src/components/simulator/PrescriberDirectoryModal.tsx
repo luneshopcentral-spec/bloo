@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { mergeWithLocal, searchLocalPrescribers } from "@/lib/directory/local-fallback";
 import type { Prescriber, PrescriberFormData } from "@/lib/types/prescriber";
 
 interface Props {
@@ -89,12 +90,12 @@ export function PrescriberDirectoryModal({ open, query, onSelect, onClose }: Pro
       .order("firstname")
       .limit(30);
     setLoading(false);
-    if (fetchError) {
-      setPrescribers([]);
-      setError(`Prescriber directory unavailable — ${fetchError.message}`);
-      return;
-    }
-    setPrescribers((data as Prescriber[]) ?? []);
+    // Bundled prescribers back the search so case prescribers are always findable.
+    setPrescribers(mergeWithLocal(
+      (fetchError ? [] : (data as Prescriber[])) ?? [],
+      searchLocalPrescribers(safe),
+      30
+    ));
     setSelectedIndex(0);
   }
 
