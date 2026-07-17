@@ -2,11 +2,13 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { CheckCircle2, FlaskConical } from "lucide-react";
+import { STATIC_CASES } from "@/lib/cases/static-cases";
 
 const included = [
-  "Six foundation dispensing scenarios",
+  `${STATIC_CASES.length} dispensing scenarios — foundation to Schedule 8`,
   "Critical safety-gate scoring",
   "Detailed feedback for every check",
+  "Simulated patient counselling with local voice",
   "Assisted-attempt labelling",
   "Laptop-first simulator workspace",
   "Patient, product, label and warning practice",
@@ -22,8 +24,8 @@ export function Pricing() {
             Foundation beta access
           </h2>
           <p className="mt-4 text-slate-600">
-            Use the current foundation library while the broader case set,
-            persistent progress and counselling simulator are developed.
+            Use the full case library while the platform is in beta — progress
+            tracking and the patient-counselling simulator are included.
           </p>
         </div>
 
@@ -63,7 +65,7 @@ export function Pricing() {
               <div className="mt-4 flex items-center justify-center gap-2 rounded-lg bg-emerald-50 px-4 py-2.5">
                 <FlaskConical className="h-4 w-4 text-emerald-600" />
                 <p className="text-sm font-medium text-emerald-800">
-                  Six foundation cases available
+                  {STATIC_CASES.length} cases available
                 </p>
               </div>
 

@@ -18,8 +18,8 @@ interface ResultRowProps {
 }
 
 function ResultRow({ label, detail, passed, warning }: ResultRowProps) {
-  const background = warning ? "#fff3cc" : passed ? "#ccffcc" : "#ffcccc";
-  const border = warning ? "#cc8800" : passed ? "#00aa00" : "#cc0000";
+  const background = warning ? "#fefce8" : passed ? "#f0fdf4" : "#fef2f2";
+  const border = warning ? "#fde68a" : passed ? "#bbf7d0" : "#fecaca";
   const icon = warning ? "⚠️" : passed ? "✅" : "❌";
 
   return (
@@ -27,9 +27,9 @@ function ResultRow({ label, detail, passed, warning }: ResultRowProps) {
       style={{
         background,
         border: `1px solid ${border}`,
-        borderRadius: "2px",
-        padding: "6px 8px",
-        marginBottom: "4px",
+        borderRadius: "8px",
+        padding: "7px 9px",
+        marginBottom: "5px",
         display: "flex",
         gap: "8px",
         alignItems: "flex-start",
@@ -41,7 +41,7 @@ function ResultRow({ label, detail, passed, warning }: ResultRowProps) {
         <div
           style={{
             fontSize: "11px",
-            color: "#444",
+            color: "#475569",
             marginTop: "2px",
             whiteSpace: "pre-line",
           }}
@@ -157,9 +157,10 @@ export function ResultOverlay({
             <span>Stage 1 · Dispensing</span>
             <strong>{result.dispense.pointsEarned}/{result.dispense.pointsTotal}</strong>
           </div>
-          {result.dispense.checks.map((check) => (
+          {/* Index-keyed: multi-item prescriptions repeat check categories. */}
+          {result.dispense.checks.map((check, index) => (
             <ResultRow
-              key={`dispense-${check.category}`}
+              key={`dispense-${check.category}-${index}`}
               label={check.label}
               detail={check.detail}
               passed={check.passed}
