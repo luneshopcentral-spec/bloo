@@ -2802,3 +2802,165 @@
 }
 .fred-root ::-webkit-scrollbar-thumb:hover { background-color: #a9b8cc; }
 .fred-root ::-webkit-scrollbar-track { background: transparent; }
+
+/* ── Counselling stage (stage 2) ─────────────────────────────── */
+.fred-root .fred-counselling-stage {
+  background: var(--sim-bg);
+  padding: 10px;
+  gap: 10px;
+}
+.fred-root .fred-counselling-header {
+  background: var(--surface);
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.07);
+  padding: 10px 14px;
+}
+.fred-root .fred-decision-recap {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  padding: 7px 10px;
+}
+.fred-root .fred-chat-window {
+  background: var(--surface);
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.07);
+}
+.fred-root .fred-chat-titlebar {
+  background: var(--header);
+  padding: 7px 12px;
+}
+.fred-root .fred-chat-transcript {
+  background: var(--surface);
+}
+.fred-root .fred-chat-message p {
+  border: 1px solid var(--line-soft);
+  background: var(--surface-2);
+  border-radius: 12px 12px 12px 4px;
+  padding: 8px 11px;
+}
+.fred-root .fred-chat-message.student p {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  border-radius: 12px 12px 4px 12px;
+}
+.fred-root .fred-chat-message.pending p {
+  background: var(--surface-2);
+  color: var(--ink-muted);
+}
+.fred-root .fred-chat-composer {
+  background: var(--surface);
+  border-top: 1px solid var(--line-soft);
+  padding: 10px 12px;
+}
+.fred-root .fred-chat-composer textarea {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+.fred-root .fred-chat-composer textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+.fred-root .fred-chat-composer textarea:disabled {
+  background: var(--surface-2);
+}
+.fred-root .fred-interaction-mode-switch {
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  border-radius: 999px;
+  padding: 2px;
+  gap: 2px;
+}
+.fred-root .fred-interaction-mode-switch button {
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-muted);
+  transition: all 120ms ease;
+}
+.fred-root .fred-interaction-mode-switch button.active {
+  background: var(--header);
+  color: #fff;
+  box-shadow: none;
+}
+.fred-root .fred-chat-actions button,
+.fred-root .fred-model-card button {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.fred-root .fred-chat-send {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.fred-root .fred-chat-send:hover:not(:disabled) { background: #1d4ed8; }
+.fred-root .fred-chat-finish {
+  background: var(--ok);
+  border-color: var(--ok);
+}
+.fred-root .fred-chat-finish:hover:not(:disabled) { background: #166534; }
+
+/* Voice controls */
+.fred-root .fred-voice-controls {
+  border: 1px solid var(--line-soft);
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+.fred-root .fred-voice-buttons button {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.fred-root .fred-voice-buttons button:first-child {
+  background: var(--ok);
+  border-color: var(--ok);
+}
+.fred-root .fred-voice-buttons button.listening {
+  background: #dc2626;
+  border-color: #dc2626;
+}
+.fred-root .fred-voice-quality-warning {
+  border-radius: 0 6px 6px 0;
+}
+
+/* Sidebar cards */
+.fred-root .fred-assessment-card,
+.fred-root .fred-model-card {
+  background: var(--surface);
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+  padding: 10px 12px;
+}
+.fred-root .fred-assessment-card h2,
+.fred-root .fred-model-card h2 {
+  color: var(--header);
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.fred-root .fred-stage-note {
+  background: #fefce8;
+  border: 1px solid #f0e2a0;
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.fred-root .fred-model-status {
+  border: 1px solid var(--line-soft);
+  background: var(--surface-2);
+  border-radius: var(--radius);
+}
+.fred-root .fred-model-progress {
+  border: none;
+  background: var(--line-soft);
+  border-radius: 999px;
+}
+.fred-root .fred-model-progress span { border-radius: 999px; }
+.fred-root .fred-teachback-help p { border-radius: var(--radius); }

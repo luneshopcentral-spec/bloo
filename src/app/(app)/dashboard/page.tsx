@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { STATIC_CASES } from "@/lib/cases/static-cases";
 import type { Database } from "@/lib/types/database";
 
 type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
@@ -97,7 +98,7 @@ export default async function DashboardPage() {
           variant="outline"
           className="w-fit border-emerald-200 bg-emerald-50 text-emerald-700 text-sm px-3 py-1"
         >
-          Foundation beta · 6 cases
+          Foundation beta · {STATIC_CASES.length} cases
         </Badge>
       </div>
 
@@ -163,7 +164,7 @@ export default async function DashboardPage() {
             <div>
               <CardTitle>Start Practising</CardTitle>
               <CardDescription>
-                Six foundation cases available
+                {STATIC_CASES.length} cases — foundation to Schedule 8
               </CardDescription>
             </div>
           </div>

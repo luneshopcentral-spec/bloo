@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowRight, PlayCircle } from "lucide-react";
+import { STATIC_CASES } from "@/lib/cases/static-cases";
 
 export function Hero() {
   return (
@@ -54,7 +55,7 @@ export function Hero() {
         </div>
 
         <p className="mt-4 text-sm text-slate-500">
-          Six foundation cases — no credit card needed
+          {STATIC_CASES.length} practice cases — no credit card needed
         </p>
 
         {/* mock app screenshot placeholder */}

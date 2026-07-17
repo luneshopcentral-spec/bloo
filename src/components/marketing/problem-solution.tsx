@@ -1,5 +1,6 @@
 import { MapPin, AlertCircle, GraduationCap, CheckCircle2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { STATIC_CASES } from "@/lib/cases/static-cases";
 
 const problems = [
   {
@@ -67,7 +68,7 @@ export function ProblemSolution() {
             DispenseRx Practice brings the dispensing bay to you
           </h3>
           <p className="text-slate-700">
-            A laptop-first, Fred-style training simulator with six foundation
+            A laptop-first, Fred-style training simulator with {STATIC_CASES.length}{" "}
             scenarios, immediate feedback and explicit clinical safety decisions.
           </p>
         </div>

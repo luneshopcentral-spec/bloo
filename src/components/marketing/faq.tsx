@@ -1,3 +1,5 @@
+import { STATIC_CASES } from "@/lib/cases/static-cases";
+
 const faqs = [
   {
     q: "Is DispenseRx Practice affiliated with Fred IT Group?",
@@ -9,7 +11,7 @@ const faqs = [
   },
   {
     q: "What cases are included?",
-    a: "The current beta contains six foundation cases covering antibiotics, warfarin, a paediatric liquid, temazepam, metformin and doxycycline. Authority, streamlined-authority and genuine Schedule 8 workflows are not yet included.",
+    a: `The current beta contains ${STATIC_CASES.length} cases: foundation supplies (antibiotics, warfarin, a paediatric liquid, temazepam, metformin, doxycycline), authority and streamlined-authority prescriptions, Schedule 8 workflows including opioids and a prescriber-number mismatch, high-risk medicines such as weekly methotrexate and lithium during illness, and a two-item diabetes script. Every case finishes with a simulated patient counselling conversation.`,
   },
   {
     q: "Is this a clinical or PBS reference?",

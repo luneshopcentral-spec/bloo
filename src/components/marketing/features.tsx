@@ -6,6 +6,7 @@ import {
   ShieldCheck,
   Laptop,
 } from "lucide-react";
+import { STATIC_CASES } from "@/lib/cases/static-cases";
 
 const features = [
   {
@@ -22,9 +23,9 @@ const features = [
   },
   {
     icon: FileText,
-    title: "Foundation case library",
+    title: "Case library — foundation to Schedule 8",
     description:
-      "Six training scenarios cover patient entry, product selection, labels, warnings and clinically unsafe prescriptions. Live PBS details still require a current reference.",
+      `${STATIC_CASES.length} training scenarios cover patient entry, product selection, labels, warnings, authority prescriptions and clinically unsafe scripts. Live PBS details still require a current reference.`,
   },
   {
     icon: CircleAlert,
@@ -36,7 +37,7 @@ const features = [
     icon: ShieldCheck,
     title: "Clinical decision practice",
     description:
-      "Choose whether to dispense, hold and contact the prescriber, or not supply. Problem cases no longer reveal their answer in the case title.",
+      "Choose whether to dispense, hold and contact the prescriber, or not supply — then explain your decision to a simulated patient before final marking.",
   },
   {
     icon: Laptop,
