@@ -401,6 +401,33 @@ export default function PracticePage() {
   const scriptFormDisabled = !selectedPatient;
   const currentDrug      = selectedDrugs[currentItem] ?? null;
   const currentWarnings  = selectedWarnings[currentItem] ?? new Set<string>();
+  const readinessIssues = [
+    ...getDispenseReadinessIssues({
+      formState,
+      selectedPatient,
+      selectedDrugs,
+      selectedPrescriber,
+      decision: clinicalDecision,
+      caseData: current,
+    }),
+    ...(formState.pharmacistInitials.trim().length < 2 ? ["pharmacist initials"] : []),
+  ];
+  const hasAttemptProgress = Boolean(
+    selectedPatient
+    || selectedPrescriber
+    || clinicalDecision
+    || selectedDrugs.some(Boolean)
+    || selectedWarnings.some((warnings) => warnings.size > 0)
+    || formState.pharmacistInitials.trim()
+    || formState.authorityNumber.trim()
+    || formState.items.some((item) =>
+      item.drug.trim()
+      || item.directions.trim()
+      || item.qty.trim()
+      || item.repeats.trim()
+      || item.price.trim()
+    )
+  );
 
   return (
     <>
@@ -500,6 +527,8 @@ export default function PracticePage() {
                   answersRevealed={answersRevealed}
                   submitted={attemptSubmitted}
                   allowAnswerReveal={practiceMode !== "exam"}
+                  readinessIssues={readinessIssues}
+                  hasProgress={hasAttemptProgress}
                 />
               </div>
 

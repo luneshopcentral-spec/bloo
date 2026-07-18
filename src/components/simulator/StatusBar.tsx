@@ -39,14 +39,15 @@ export function StatusBar({ message, tone, flashKey }: StatusBarProps) {
       // dispense attempt is blocked, even for back-to-back identical errors.
       key={tone === "error" ? `flash-${flashKey}` : "steady"}
       className={`fred-statusbar ${tone}`}
-      role={tone === "error" ? "alert" : "status"}
-      aria-live={tone === "error" ? "assertive" : "polite"}
     >
-      <span>
+      <span
+        role={tone === "error" ? "alert" : "status"}
+        aria-live={tone === "error" ? "assertive" : "polite"}
+      >
         {tone === "error" ? "⚠ " : tone === "success" ? "✓ " : ""}
         {message}
       </span>
-      <span>{clock}</span>
+      <time aria-hidden="true">{clock}</time>
     </div>
   );
 }

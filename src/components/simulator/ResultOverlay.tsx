@@ -18,36 +18,14 @@ interface ResultRowProps {
 }
 
 function ResultRow({ label, detail, passed, warning }: ResultRowProps) {
-  const background = warning ? "#fefce8" : passed ? "#f0fdf4" : "#fef2f2";
-  const border = warning ? "#fde68a" : passed ? "#bbf7d0" : "#fecaca";
   const icon = warning ? "⚠️" : passed ? "✅" : "❌";
 
   return (
-    <div
-      style={{
-        background,
-        border: `1px solid ${border}`,
-        borderRadius: "8px",
-        padding: "7px 9px",
-        marginBottom: "5px",
-        display: "flex",
-        gap: "8px",
-        alignItems: "flex-start",
-      }}
-    >
-      <span style={{ fontSize: "14px", flexShrink: 0, lineHeight: 1.4 }}>{icon}</span>
-      <div style={{ minWidth: 0 }}>
-        <div style={{ fontWeight: "bold", fontSize: "12px" }}>{label}</div>
-        <div
-          style={{
-            fontSize: "11px",
-            color: "#475569",
-            marginTop: "2px",
-            whiteSpace: "pre-line",
-          }}
-        >
-          {detail}
-        </div>
+    <div className={`fred-result-row${warning ? " warning" : passed ? " passed" : " failed"}`}>
+      <span className="fred-result-row-icon" aria-hidden="true">{icon}</span>
+      <div>
+        <strong>{label}</strong>
+        <p>{detail}</p>
       </div>
     </div>
   );
@@ -102,6 +80,11 @@ export function ResultOverlay({
   const counsellingCritical = result.counselling.criticalFailures.length;
   const totalEarned = result.dispense.pointsEarned + result.counselling.pointsEarned;
   const totalAvailable = result.dispense.pointsTotal + result.counselling.pointsTotal;
+  const dispensingNeedsAttention = result.dispense.checks.filter((check) => !check.passed || check.isWarning);
+  const counsellingNeedsAttention = result.counselling.checks.filter((check) => !check.passed);
+  const needsAttentionCount = dispensingNeedsAttention.length + counsellingNeedsAttention.length;
+  const completedCount = result.dispense.checks.filter((check) => check.passed && !check.isWarning).length
+    + result.counselling.checks.filter((check) => check.passed).length;
 
   return (
     <div className="fred-result-overlay show">
@@ -153,33 +136,58 @@ export function ResultOverlay({
             </div>
           )}
 
-          <div className="fred-result-section-heading">
-            <span>Stage 1 · Dispensing</span>
-            <strong>{result.dispense.pointsEarned}/{result.dispense.pointsTotal}</strong>
+          <div className="fred-result-priority-grid">
+            <section className={needsAttentionCount > 0 ? "needs-attention" : "all-clear"}>
+              <span>{needsAttentionCount > 0 ? "Needs attention" : "Safety checks"}</span>
+              <strong>{needsAttentionCount > 0 ? needsAttentionCount : "Clear"}</strong>
+              <p>
+                {needsAttentionCount > 0
+                  ? "Review these items before trying the case again."
+                  : "No marked dispensing or communication gaps."}
+              </p>
+            </section>
+            <section className="completed">
+              <span>Demonstrated</span>
+              <strong>{completedCount}</strong>
+              <p>Workflow and consultation checks completed successfully.</p>
+            </section>
           </div>
-          {/* Index-keyed: multi-item prescriptions repeat check categories. */}
-          {result.dispense.checks.map((check, index) => (
-            <ResultRow
-              key={`dispense-${check.category}-${index}`}
-              label={check.label}
-              detail={check.detail}
-              passed={check.passed}
-              warning={check.isWarning}
-            />
-          ))}
 
-          <div className="fred-result-section-heading counselling">
-            <span>Stage 2 · Patient interaction</span>
-            <strong>{result.counselling.pointsEarned}/{result.counselling.pointsTotal}</strong>
-          </div>
-          {result.counselling.checks.map((check) => (
-            <ResultRow
-              key={`counselling-${check.id}`}
-              label={check.label}
-              detail={check.detail}
-              passed={check.passed}
-            />
-          ))}
+          <details className="fred-result-details" open={!result.passed}>
+            <summary>
+              <span>Stage 1 · Dispensing</span>
+              <strong>{result.dispense.pointsEarned}/{result.dispense.pointsTotal}</strong>
+            </summary>
+            <div className="fred-result-details-body">
+              {/* Index-keyed: multi-item prescriptions repeat check categories. */}
+              {result.dispense.checks.map((check, index) => (
+                <ResultRow
+                  key={`dispense-${check.category}-${index}`}
+                  label={check.label}
+                  detail={check.detail}
+                  passed={check.passed}
+                  warning={check.isWarning}
+                />
+              ))}
+            </div>
+          </details>
+
+          <details className="fred-result-details counselling" open={!result.passed}>
+            <summary>
+              <span>Stage 2 · Patient interaction</span>
+              <strong>{result.counselling.pointsEarned}/{result.counselling.pointsTotal}</strong>
+            </summary>
+            <div className="fred-result-details-body">
+              {result.counselling.checks.map((check) => (
+                <ResultRow
+                  key={`counselling-${check.id}`}
+                  label={check.label}
+                  detail={check.detail}
+                  passed={check.passed}
+                />
+              ))}
+            </div>
+          </details>
 
           <div className="fred-result-method-note">
             <strong>Conversation assessment:</strong>{" "}
@@ -195,7 +203,7 @@ export function ResultOverlay({
         </div>
 
         <div className="fred-result-footer">
-          <button className="fred-result-btn" onClick={onClose}>Review conversation</button>
+          <button className="fred-result-btn" onClick={onClose}>Review transcript</button>
           <button
             className="fred-result-btn"
             onClick={() => {
