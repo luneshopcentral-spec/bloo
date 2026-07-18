@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import type { PracticeCase } from "@/lib/types/case";
-import { PrescriptionForm } from "./PrescriptionForm";
+import { PrescriptionForm, type PrescriptionLayout } from "./PrescriptionForm";
 import "./prescription.css";
 import "./prescriptionDrawer.css";
 
@@ -29,9 +29,23 @@ export function PrescriptionDrawer({
   overlayOpen,
 }: PrescriptionDrawerProps) {
   const [zoom, setZoom] = useState(1);
+  const [layout, setLayout] = useState<PrescriptionLayout>("repeat-authorisation");
   const triggerRef  = useRef<HTMLButtonElement>(null);
   const closeRef    = useRef<HTMLButtonElement>(null);
   const prevOpenRef = useRef(false);
+
+  useEffect(() => {
+    const savedLayout = window.localStorage.getItem("dispense-rx-prescription-layout");
+    if (savedLayout === "repeat-authorisation" || savedLayout === "authority-script") {
+      setLayout(savedLayout);
+    }
+  }, []);
+
+  function selectLayout(nextLayout: PrescriptionLayout) {
+    setLayout(nextLayout);
+    window.localStorage.setItem("dispense-rx-prescription-layout", nextLayout);
+    setZoom(1);
+  }
 
   // Focus management: open → focus close button; close → return to trigger
   useEffect(() => {
@@ -105,9 +119,26 @@ export function PrescriptionDrawer({
         {/* Header bar */}
         <div className="presc-header">
           <span className="presc-title">
-            Case prescription
-            <small>Training artefact</small>
+            Printed prescription
+            <small>Drag this bar to move the window</small>
           </span>
+
+          <div className="presc-layout-switch" role="group" aria-label="Prescription layout">
+            <button
+              type="button"
+              aria-pressed={layout === "repeat-authorisation"}
+              onClick={() => selectLayout("repeat-authorisation")}
+            >
+              Original repeat form
+            </button>
+            <button
+              type="button"
+              aria-pressed={layout === "authority-script"}
+              onClick={() => selectLayout("authority-script")}
+            >
+              Authority script
+            </button>
+          </div>
 
           <div className="presc-zoom-controls">
             <button
@@ -150,7 +181,7 @@ export function PrescriptionDrawer({
         {/* Scrollable content — CSS zoom expands layout dimensions naturally */}
         <div className="presc-scroll">
           <div style={{ zoom: zoom as number }}>
-            <PrescriptionForm caseData={caseData} />
+            <PrescriptionForm caseData={caseData} layout={layout} />
           </div>
         </div>
       </div>

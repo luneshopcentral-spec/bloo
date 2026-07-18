@@ -1,123 +1,98 @@
-/* ====================================================================
-   Prescription Drawer — prescriptionDrawer.css
-   Modern slide-out panel. Does NOT inherit .fred-root retro styles.
-   ==================================================================== */
-
-/* ── System wrapper: trigger tab + drawer panel side-by-side ── */
+/* Floating prescription reference window. It remains independent of the Fred workspace. */
 .presc-system {
-  /* CSS custom properties for responsive widths */
-  --drawer-w: 420px;
-  --system-w: 452px; /* drawer + 32px trigger tab */
-
   position: fixed;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  width: var(--system-w);
-  display: flex;
-  align-items: stretch;
+  inset: 0;
   z-index: 40;
-  transition: transform 250ms ease-out;
+  pointer-events: none;
 }
 
-/* Open/closed states via data-open attribute */
-.presc-system[data-open="false"] {
-  transform: translateX(var(--drawer-w));
-}
-
-.presc-system[data-open="true"] {
-  transform: translateX(0);
-}
-
-/* Common laptop screens: keep the core dispensing fields visible. */
-@media (max-width: 1439px) {
-  .presc-system {
-    --drawer-w: 360px;
-    --system-w: 392px;
-  }
-}
-
-@media (max-width: 1279px) {
-  .presc-system {
-    --drawer-w: 340px;
-    --system-w: 372px;
-  }
-}
-
-/* Mobile: full-width drawer (trigger hides off-screen when open — use X to close) */
-@media (max-width: 767px) {
-  .presc-system {
-    --drawer-w: 100vw;
-    --system-w: calc(100vw + 32px);
-  }
-}
-
-/* ── Trigger tab (32px wide, left side of system) ──────────── */
+/* The tab remains available even after the prescription window has been moved. */
 .presc-trigger {
-  width: 32px;
-  flex-shrink: 0;
-  background: #1a3a5c;
-  border: none;
-  border-radius: 6px 0 0 6px;
-  cursor: pointer;
+  position: fixed;
+  top: 42%;
+  right: 0;
   display: flex;
-  flex-direction: column;
+  width: 32px;
+  height: 176px;
   align-items: center;
   justify-content: center;
+  flex-direction: column;
   gap: 7px;
-  color: #fff;
+  border: 0;
+  border-radius: 6px 0 0 6px;
   padding: 0;
+  background: #1a3a5c;
+  color: #fff;
+  cursor: pointer;
+  pointer-events: auto;
   transition: background 150ms ease;
 }
 
-.presc-trigger:hover {
-  background: #254e7a;
-}
-
-.presc-trigger:focus-visible {
-  outline: 2px solid #7aafdc;
-  outline-offset: -2px;
-  border-radius: 6px 0 0 6px;
-}
+.presc-trigger:hover { background: #254e7a; }
+.presc-trigger:focus-visible { outline: 2px solid #7aafdc; outline-offset: -2px; }
 
 .presc-trigger-label {
+  color: #fff;
+  font: 700 8px/1 Helvetica, Arial, sans-serif;
+  letter-spacing: 1.5px;
   writing-mode: vertical-rl;
   transform: rotate(180deg);
-  font-size: 8px;
-  letter-spacing: 1.5px;
-  font-weight: bold;
-  font-family: Helvetica, Arial, sans-serif;
   user-select: none;
 }
 
-/* ── Drawer panel (right side of system) ───────────────────── */
+/* The panel is deliberately smaller than the viewport so it can be dragged clear of fields. */
 .presc-panel {
-  flex: 1;
-  background: #fff;
-  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.28);
+  position: fixed;
+  top: 52px;
+  right: 42px;
   display: flex;
+  width: min(560px, calc(100vw - 84px));
+  height: min(820px, calc(100vh - 82px));
+  min-width: 0;
   flex-direction: column;
   overflow: hidden;
-  min-width: 0;
+  border: 1px solid #244663;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.34);
+  pointer-events: auto;
+  transition: opacity 160ms ease, transform 160ms ease;
 }
 
-/* ── Drawer header bar ──────────────────────────────────────── */
+.presc-system[data-open="false"] .presc-panel {
+  opacity: 0;
+  transform: translateX(24px) scale(0.985);
+  pointer-events: none;
+}
+
+.presc-system[data-open="true"] .presc-panel {
+  opacity: 1;
+  transform: translateX(0) scale(1);
+}
+
 .presc-header {
-  background: #1a3a5c;
-  color: #fff;
   display: flex;
+  min-height: 46px;
+  height: auto;
   align-items: center;
-  padding: 0 10px 0 12px;
-  height: 40px;
   flex-shrink: 0;
   gap: 8px;
+  padding: 6px 8px 6px 12px;
+  background: #1a3a5c;
+  color: #fff;
   font-family: Helvetica, Arial, sans-serif;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
 }
+
+.presc-panel[data-dialog-dragging="true"] .presc-header { cursor: grabbing; }
 
 .presc-title {
   flex: 1;
+  min-width: 112px;
   font-size: 13px;
-  font-weight: bold;
+  font-weight: 700;
   letter-spacing: 0.2px;
 }
 
@@ -127,9 +102,30 @@
   color: #bae6fd;
   font-size: 8px;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
+
+.presc-layout-switch {
+  display: flex;
+  flex: 0 0 auto;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  border-radius: 4px;
+}
+
+.presc-layout-switch button {
+  border: 0;
+  border-right: 1px solid rgba(255, 255, 255, 0.28);
+  padding: 5px 7px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #dbeafe;
+  font: 700 9px/1 Helvetica, Arial, sans-serif;
+  cursor: pointer;
+}
+
+.presc-layout-switch button:last-child { border-right: 0; }
+.presc-layout-switch button[aria-pressed="true"] { background: #fff; color: #173c5f; }
+.presc-layout-switch button:focus-visible { position: relative; outline: 2px solid #93c5fd; outline-offset: -2px; }
 
 .presc-zoom-controls {
   display: flex;
@@ -138,75 +134,78 @@
 }
 
 .presc-zoom-pct {
-  font-size: 11px;
   min-width: 36px;
-  text-align: center;
-  font-family: monospace;
   color: #d0e8ff;
+  font: 11px/1 monospace;
+  text-align: center;
 }
 
 .presc-zoom-btn {
-  background: rgba(255, 255, 255, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  color: #fff;
-  cursor: pointer;
-  border-radius: 3px;
-  height: 22px;
   display: flex;
+  height: 22px;
   align-items: center;
   justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+  padding: 0 6px;
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
   font-family: monospace;
   line-height: 1;
-  padding: 0 6px;
-  transition: background 120ms;
+  cursor: pointer;
 }
 
-.presc-zoom-btn:hover {
-  background: rgba(255, 255, 255, 0.28);
-}
-
-.presc-zoom-btn:focus-visible {
-  outline: 2px solid #7aafdc;
-}
-
-.presc-zoom-icon {
-  font-size: 15px;
-}
-
-.presc-zoom-reset {
-  font-size: 9px;
-}
+.presc-zoom-btn:hover { background: rgba(255, 255, 255, 0.28); }
+.presc-zoom-btn:focus-visible { outline: 2px solid #7aafdc; }
+.presc-zoom-icon { font-size: 15px; }
+.presc-zoom-reset { font-size: 9px; }
 
 .presc-close-btn {
-  background: transparent;
-  border: none;
-  color: #fff;
-  cursor: pointer;
-  padding: 4px 6px;
   display: flex;
   align-items: center;
-  border-radius: 3px;
-  transition: background 120ms;
   flex-shrink: 0;
+  border: 0;
+  border-radius: 3px;
+  padding: 4px 6px;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
 }
 
-.presc-close-btn:hover {
-  background: rgba(255, 255, 255, 0.18);
-}
+.presc-close-btn:hover { background: rgba(255, 255, 255, 0.18); }
+.presc-close-btn:focus-visible { outline: 2px solid #7aafdc; }
 
-.presc-close-btn:focus-visible {
-  outline: 2px solid #7aafdc;
-}
-
-/* ── Scrollable prescription area ───────────────────────────── */
 .presc-scroll {
   flex: 1;
   overflow: auto;
-  background: #dfe6ee;
   padding: 14px;
-  /* CSS zoom on the inner wrapper creates natural scroll expansion */
+  background: #dfe6ee;
 }
 
 .presc-scroll > div {
-  width: 100%;
+  width: max-content;
+  min-width: 100%;
+}
+
+@media (max-width: 1279px) {
+  .presc-panel {
+    right: 38px;
+    width: min(500px, calc(100vw - 72px));
+  }
+
+  .presc-header { flex-wrap: wrap; }
+  .presc-title { min-width: 150px; }
+}
+
+@media (max-width: 767px) {
+  .presc-panel {
+    inset: 8px 38px 8px 8px;
+    width: auto;
+    height: auto;
+  }
+
+  .presc-trigger { top: 38%; }
+  .presc-title { min-width: 120px; }
+  .presc-layout-switch { order: 4; width: 100%; }
+  .presc-layout-switch button { flex: 1; }
 }

@@ -3149,6 +3149,33 @@
 }
 .fred-root .fred-onboarding-footer button:hover { background: #166534; }
 
+/* Dialog title bars double as bounded drag handles. */
+.fred-root :is(
+  .fred-psel-title,
+  .fred-pdtl-title,
+  .fred-dsel-title,
+  .fred-prsel-title,
+  .fred-reference-titlebar,
+  .fred-onboarding-title,
+  .fred-result-title
+) {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.fred-root [data-dialog-dragging="true"] :is(
+  .fred-psel-title,
+  .fred-pdtl-title,
+  .fred-dsel-title,
+  .fred-prsel-title,
+  .fred-reference-titlebar,
+  .fred-onboarding-title,
+  .fred-result-title
+) {
+  cursor: grabbing;
+}
+
 /* ============================================================
    WORKFLOW CLARITY
    These additions improve guidance around the Fred-style fields

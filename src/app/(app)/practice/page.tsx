@@ -36,6 +36,7 @@ import { StatusBar }           from "@/components/simulator/StatusBar";
 import { HistoryPanel }        from "@/components/simulator/HistoryPanel";
 import { ResultOverlay }       from "@/components/simulator/ResultOverlay";
 import { PrescriptionDrawer }  from "@/components/simulator/PrescriptionDrawer";
+import { DraggableDialogManager } from "@/components/simulator/DraggableDialogManager";
 import { PatientDetailsModal } from "@/components/simulator/PatientDetailsModal";
 import { DrugSelectionModal }  from "@/components/simulator/DrugSelectionModal";
 import { PrescriberDirectoryModal } from "@/components/simulator/PrescriberDirectoryModal";
@@ -431,6 +432,7 @@ export default function PracticePage() {
 
   return (
     <>
+      <DraggableDialogManager />
       <div className="fred-root">
         <div className="fred-narrow-banner">
           DispenseRx Practice is designed for laptops and desktops. For the
