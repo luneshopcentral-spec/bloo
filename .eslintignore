@@ -1,3 +1,5 @@
 .next/
 node_modules/
 next-env.d.ts
+public/ort/
+public/ort-kokoro/

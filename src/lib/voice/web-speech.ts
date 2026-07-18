@@ -1,3 +1,5 @@
+import { normalisePatientUtterance } from "@/lib/voice/patient-utterance";
+
 export interface SpeechRecognitionAlternativeLike {
   transcript: string;
   confidence: number;
@@ -121,7 +123,7 @@ export function patientSpeechRate(patientKey: string): number {
 }
 
 export function preparePatientSpeech(text: string): string {
-  return text
+  return normalisePatientUtterance(text)
     .replace(/(\d)\s*mcg\b/gi, "$1 micrograms")
     .replace(/(\d)\s*mg\b/gi, "$1 milligrams")
     .replace(/(\d)\s*mL\b/gi, "$1 millilitres")

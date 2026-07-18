@@ -7,6 +7,7 @@ import {
   openingAudioSegment,
   patientAudioPublicPath,
 } from "./patient-audio-library";
+import { normalisePatientUtterance } from "./patient-utterance";
 
 describe("patient audio library", () => {
   it("gives every authored patient line a unique, stable MP3 path", () => {
@@ -45,5 +46,23 @@ describe("patient audio library", () => {
   it("constructs the deployed path from the case and cue", () => {
     expect(patientAudioPublicPath("case-3", "topic-storage-02"))
       .toBe("/audio/patients/case-3/topic-storage-02.mp3");
+  });
+
+  it("normalises every recording script for natural punctuation", () => {
+    for (const practiceCase of STATIC_CASES) {
+      const conversation = getConversationCase(practiceCase.id);
+      for (const row of buildConversationAudioManifest(conversation)) {
+        expect(row.text).toBe(row.text.trim());
+        expect(row.text).toMatch(/[.!?…]$/u);
+        expect(row.text).not.toMatch(/ {2,}/);
+        expect(row.text).not.toMatch(/\S[—–]|[—–]\S/u);
+        expect(row.text).not.toContain("'");
+      }
+    }
+  });
+
+  it("adds a spoken ending without changing intentional informal language", () => {
+    expect(normalisePatientUtterance("  Yeah — that's fine  "))
+      .toBe("Yeah — that’s fine.");
   });
 });

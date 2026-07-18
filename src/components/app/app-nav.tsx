@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Pill, LogOut, LayoutDashboard } from "lucide-react";
+import { Pill, LogOut, LayoutDashboard, BrainCircuit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 
@@ -37,10 +37,18 @@ export function AppNav({ userEmail }: AppNavProps) {
 
           <Link
             href="/dashboard"
-            className="flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900"
+            className={`flex items-center gap-1.5 text-sm font-medium hover:text-slate-900 ${pathname === "/dashboard" ? "text-emerald-700" : "text-slate-600"}`}
           >
             <LayoutDashboard className="h-4 w-4" />
             Dashboard
+          </Link>
+
+          <Link
+            href="/quiz"
+            className={`flex items-center gap-1.5 text-sm font-medium hover:text-slate-900 ${pathname === "/quiz" ? "text-emerald-700" : "text-slate-600"}`}
+          >
+            <BrainCircuit className="h-4 w-4" />
+            Consultation quizzes
           </Link>
         </div>
 

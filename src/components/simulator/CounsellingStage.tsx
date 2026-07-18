@@ -49,7 +49,7 @@ export function CounsellingStage({
     {
       id: "patient-opening",
       role: "patient",
-      text: conversation.openingMessage,
+      text: openingAudioSegment(conversation).text,
       patientAudio: [openingAudioSegment(conversation)],
     },
   ]);

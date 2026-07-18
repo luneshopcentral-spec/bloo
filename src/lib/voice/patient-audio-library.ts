@@ -4,6 +4,7 @@ import type {
   ConversationTopic,
   PatientAudioSegment,
 } from "@/lib/conversation/types";
+import { normalisePatientUtterance } from "@/lib/voice/patient-utterance";
 
 export const PATIENT_AUDIO_ROOT = "/audio/patients";
 
@@ -36,27 +37,30 @@ function numberedId(prefix: string, index: number): string {
 }
 
 export function openingAudioSegment(conversation: ConversationCase): PatientAudioSegment {
-  return { cueId: "opening-01", text: conversation.openingMessage };
+  return { cueId: "opening-01", text: normalisePatientUtterance(conversation.openingMessage) };
 }
 
 export function concernAudioSegment(conversation: ConversationCase): PatientAudioSegment {
-  return { cueId: "concern-01", text: conversation.concernPrompt };
+  return { cueId: "concern-01", text: normalisePatientUtterance(conversation.concernPrompt) };
 }
 
 export function patientQuestionAudioSegment(
   conversation: ConversationCase
 ): PatientAudioSegment {
-  return { cueId: "patient-question-01", text: conversation.patientQuestion };
+  return { cueId: "patient-question-01", text: normalisePatientUtterance(conversation.patientQuestion) };
 }
 
 export function noFurtherQuestionsAudioSegment(): PatientAudioSegment {
-  return { cueId: "no-further-questions-01", text: "No further questions, thank you." };
+  return {
+    cueId: "no-further-questions-01",
+    text: "No, I think that covers everything. Thank you.",
+  };
 }
 
 export function teachBackNotReadyAudioSegment(): PatientAudioSegment {
   return {
     cueId: "teach-back-not-ready-01",
-    text: "I’m not sure I could repeat it back yet — could you go through the instructions with me first?",
+    text: "I’m not sure I could repeat that back yet. Could you go through the instructions with me first?",
   };
 }
 
@@ -66,7 +70,7 @@ export function unknownAudioSegment(
 ): PatientAudioSegment {
   return {
     cueId: numberedId("unknown", index),
-    text: conversation.unknownReplies[index],
+    text: normalisePatientUtterance(conversation.unknownReplies[index]),
   };
 }
 
@@ -76,7 +80,7 @@ export function responseIntentAudioSegment(
 ): PatientAudioSegment {
   return {
     cueId: numberedId(`intent-${intent.id}`, index),
-    text: intent.patientReplies[index],
+    text: normalisePatientUtterance(intent.patientReplies[index]),
   };
 }
 
@@ -86,14 +90,14 @@ export function topicAudioSegment(
 ): PatientAudioSegment {
   return {
     cueId: numberedId(`topic-${topic.id}`, index),
-    text: topic.patientReplies[index],
+    text: normalisePatientUtterance(topic.patientReplies[index]),
   };
 }
 
 export function topicRepeatAudioSegment(topic: ConversationTopic): PatientAudioSegment {
   return {
     cueId: `topic-${safeId(topic.id)}-repeat-01`,
-    text: topic.repeatReply ?? "",
+    text: normalisePatientUtterance(topic.repeatReply ?? ""),
   };
 }
 
