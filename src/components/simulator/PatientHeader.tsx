@@ -33,7 +33,7 @@ export function PatientHeader({
           onAddNew={onAddNew}
           onStatusUpdate={onStatusUpdate}
         />
-        <div className="fred-ph-price">{caseData.price}</div>
+        {selectedPatient && <div className="fred-ph-price">{caseData.price}</div>}
       </div>
       {selectedPatient ? (
         <div className="fred-ph-mcare">
