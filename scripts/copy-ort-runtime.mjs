@@ -7,9 +7,6 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const projectRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
-const sourceDir = join(projectRoot, "node_modules", "onnxruntime-web", "dist");
-const targetDir = join(projectRoot, "public", "ort");
-
 const runtimeFiles = [
   // All WASM backend variants — transformers.js picks one at runtime
   // (currently the asyncify build for device: "wasm").
@@ -23,15 +20,41 @@ const runtimeFiles = [
   "ort-wasm-simd-threaded.jsep.wasm",
 ];
 
-mkdirSync(targetDir, { recursive: true });
-
-for (const file of runtimeFiles) {
-  const source = join(sourceDir, file);
-  if (!existsSync(source)) {
-    console.warn(`copy-ort-runtime: missing ${file} in onnxruntime-web/dist — skipped`);
-    continue;
+function copyRuntime(sourceDir, targetDir, label, files) {
+  mkdirSync(targetDir, { recursive: true });
+  for (const file of files) {
+    const source = join(sourceDir, file);
+    if (!existsSync(source)) {
+      console.warn(`copy-ort-runtime: missing ${file} for ${label} — skipped`);
+      continue;
+    }
+    copyFileSync(source, join(targetDir, file));
   }
-  copyFileSync(source, join(targetDir, file));
 }
 
-console.log(`copy-ort-runtime: ONNX runtime copied to public/ort`);
+copyRuntime(
+  join(projectRoot, "node_modules", "onnxruntime-web", "dist"),
+  join(projectRoot, "public", "ort"),
+  "semantic matcher",
+  runtimeFiles
+);
+
+copyRuntime(
+  join(projectRoot, "node_modules", "kokoro-js", "node_modules", "onnxruntime-web", "dist"),
+  join(projectRoot, "public", "ort-kokoro"),
+  "Kokoro safety voice",
+  [
+    "ort.bundle.min.mjs",
+    "ort-wasm-simd-threaded.mjs",
+    "ort-wasm-simd-threaded.wasm",
+    "ort-wasm-simd-threaded.jsep.mjs",
+    "ort-wasm-simd-threaded.jsep.wasm",
+  ]
+);
+
+copyFileSync(
+  join(projectRoot, "node_modules", "kokoro-js", "dist", "kokoro.web.js"),
+  join(projectRoot, "public", "ort-kokoro", "kokoro.web.js")
+);
+
+console.log("copy-ort-runtime: semantic and Kokoro runtimes copied");

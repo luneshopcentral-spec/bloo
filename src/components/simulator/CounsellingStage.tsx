@@ -19,7 +19,8 @@ import { scoreCounselling } from "@/lib/conversation/score";
 import { buildPatientReply } from "@/lib/conversation/reply";
 import { useSemanticMatcher } from "@/hooks/useSemanticMatcher";
 import { useVoiceConversation } from "@/hooks/useVoiceConversation";
-import { formatModelProgress, OUTETTS_DOWNLOAD_MB } from "@/lib/voice/outetts-config";
+import { KOKORO_MODEL_DOWNLOAD_MB } from "@/lib/voice/kokoro-config";
+import { openingAudioSegment } from "@/lib/voice/patient-audio-library";
 import type { PracticeMode } from "@/lib/practice/modes";
 
 interface CounsellingStageProps {
@@ -49,6 +50,7 @@ export function CounsellingStage({
       id: "patient-opening",
       role: "patient",
       text: conversation.openingMessage,
+      patientAudio: [openingAudioSegment(conversation)],
     },
   ]);
   const [input, setInput] = useState("");
@@ -82,6 +84,7 @@ export function CounsellingStage({
   const isPatientAudioBusy = voice.activity === "loading"
     || voice.activity === "generating"
     || voice.activity === "speaking";
+  const hideCompletedTranscript = mode === "exam" && interactionMode === "voice";
 
   function selectTextMode() {
     if (interactionMode === "text") return;
@@ -95,14 +98,14 @@ export function CounsellingStage({
     if (interactionMode === "voice") return;
     setInteractionMode("voice");
     if (patientAudioEnabled && latestPatientMessage) {
-      voice.speak(latestPatientMessage.text);
+      voice.speak(latestPatientMessage.patientAudio ?? []);
     }
   }
 
   function replayPatient() {
     if (!latestPatientMessage) return;
     setPatientAudioEnabled(true);
-    voice.speak(latestPatientMessage.text);
+    voice.speak(latestPatientMessage.patientAudio ?? []);
   }
 
   function togglePatientAudio() {
@@ -113,14 +116,14 @@ export function CounsellingStage({
     }
 
     setPatientAudioEnabled(true);
-    if (latestPatientMessage) voice.speak(latestPatientMessage.text);
+    if (latestPatientMessage) voice.speak(latestPatientMessage.patientAudio ?? []);
   }
 
   const voiceStatus = voice.errorMessage
     ?? (voice.activity === "loading"
-      ? `Loading OuteTTS-0.1 locally${formatModelProgress(voice.outeProgress)}. The first use is the longest.`
+      ? `Loading the Kokoro safety voice locally${voice.kokoroProgress === null ? "" : ` ${Math.round(voice.kokoroProgress)}%`}. The recorded library is preferred.`
       : voice.activity === "generating"
-        ? `OuteTTS-0.1 is generating ${conversation.patientRole}'s reply on this laptop.`
+        ? `Kokoro is generating ${conversation.patientRole}'s missing recorded line on this laptop.`
         : voice.activity === "starting"
       ? "Waiting for microphone permission or the browser speech service."
       : voice.activity === "listening"
@@ -131,7 +134,7 @@ export function CounsellingStage({
           ? "Transcript ready. Check what was heard before sending it for marking."
           : voice.recognitionSupported === false
             ? "Voice input is unavailable in this browser. You can still type and hear the patient."
-            : "Select Start speaking when you are ready. Nothing is sent for marking until you confirm the transcript.");
+          : "Select Start speaking when you are ready. Nothing is sent for marking until you confirm the transcript.");
 
   async function sendMessage() {
     const text = input.trim();
@@ -189,12 +192,13 @@ export function CounsellingStage({
           id: crypto.randomUUID(),
           role: "patient" as const,
           text: patientReply.text,
+          patientAudio: patientReply.audioSegments,
         },
       ];
     });
     setPending(false);
     if (interactionMode === "voice" && patientAudioEnabled) {
-      voice.speak(patientReply.text);
+      voice.speak(patientReply.audioSegments);
     }
     requestAnimationFrame(() => {
       transcriptRef.current?.scrollTo({ top: transcriptRef.current.scrollHeight, behavior: "smooth" });
@@ -240,7 +244,7 @@ export function CounsellingStage({
 
           <div
             ref={transcriptRef}
-            className="fred-chat-transcript"
+            className={`fred-chat-transcript ${hideCompletedTranscript ? "voice-exam" : ""}`}
             aria-live="polite"
             aria-relevant="additions"
           >
@@ -249,7 +253,15 @@ export function CounsellingStage({
                 <span className="fred-chat-speaker">
                   {message.role === "patient" ? conversation.patientRole : "You"}
                 </span>
-                <p>{message.text}</p>
+                {hideCompletedTranscript ? (
+                  <p className="fred-audio-turn" aria-label={message.text}>
+                    {message.role === "patient"
+                      ? "Patient response played — use Replay patient if needed."
+                      : "Your response was recorded."}
+                  </p>
+                ) : (
+                  <p>{message.text}</p>
+                )}
               </div>
             ))}
             {pending && (
@@ -288,24 +300,26 @@ export function CounsellingStage({
                 <div className="fred-voice-controls-heading">
                   <strong id="voice-controls-title">Voice controls</strong>
                   <span>
-                    Patient voice: {voice.patientVoiceEngine === "outetts"
-                      ? `OuteTTS-0.1 · ${voice.patientVoiceName} (${voice.patientVoiceLanguage})`
-                      : `System fallback · ${voice.patientVoiceName ?? "default voice"}`}
+                    Patient voice: {voice.patientVoiceEngine === "prerecorded"
+                      ? "Recorded library · Australian patient voice"
+                      : voice.patientVoiceEngine === "kokoro"
+                        ? `Kokoro safety fallback · ${voice.patientVoiceName}`
+                        : `System fallback · ${voice.patientVoiceName ?? "default voice"}`}
                   </span>
                 </div>
                 {voice.patientVoiceEngine === "system" && voice.patientVoiceName && !voice.patientVoiceIsAustralian && (
                   <p className="fred-voice-quality-warning">
-                    OuteTTS is unavailable in this session and no Australian system voice is installed. The best
-                    available English system voice will be used while the written transcript remains available.
+                    The recorded line and Kokoro fallback are unavailable, and no Australian system voice is installed.
+                    The best available English system voice will be used.
                   </p>
                 )}
                 {voice.patientVoiceNotice && (
                   <p className="fred-voice-quality-warning">{voice.patientVoiceNotice}</p>
                 )}
-                {voice.patientVoiceNotice && voice.outeDiagnostic && (
+                {voice.patientVoiceNotice && voice.patientVoiceDiagnostic && (
                   <details className="fred-voice-quality-warning">
                     <summary>Voice diagnostics</summary>
-                    <code>{voice.outeDiagnostic}</code>
+                    <code>{voice.patientVoiceDiagnostic}</code>
                   </details>
                 )}
                 <div className="fred-voice-buttons">
@@ -352,12 +366,17 @@ export function CounsellingStage({
                   {voiceStatus}
                 </p>
                 <p className="fred-voice-disclosure">
-                  OuteTTS-0.1 patient audio is generated locally with no API key or per-conversation charge. Its
-                  first-use Q4 model and quantized audio decoder download is about {OUTETTS_DOWNLOAD_MB} MB, plus browser
-                  runtime files, and is cached where the browser permits. It is used under CC BY 4.0 with attribution
-                  to OuteAI. Slow or unsupported devices automatically use the system voice. Student speech recognition
-                  may use the browser or operating-system voice service. Text mode is always available.
+                  Approved pre-recorded MP3 files are used first, with no API call or per-conversation charge. Missing
+                  recordings use the Apache-2.0 Kokoro-82M q8 safety voice locally; its first use downloads about {KOKORO_MODEL_DOWNLOAD_MB} MB
+                  plus voice and browser runtime files. If that cannot run, the operating-system voice is used. Student
+                  speech recognition may use the browser or operating-system service. Text mode is always available.
                 </p>
+                {hideCompletedTranscript && (
+                  <p className="fred-voice-exam-note">
+                    Exam voice mode hides completed turns. The current recognised response remains visible only so you
+                    can correct speech-recognition errors before it is marked.
+                  </p>
+                )}
               </section>
             )}
 

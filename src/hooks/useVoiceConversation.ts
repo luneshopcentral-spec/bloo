@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useOutePatientVoice } from "@/hooks/useOutePatientVoice";
+import { usePatientVoice } from "@/hooks/usePatientVoice";
+import type { PatientAudioSegment } from "@/lib/conversation/types";
+import { getKokoroVoice } from "@/lib/voice/kokoro-config";
 import {
   getSpeechRecognitionConstructor,
   patientSpeechRate,
@@ -26,10 +28,6 @@ interface UseVoiceConversationOptions {
   onTranscript: (transcript: string) => void;
 }
 
-type AudioWindow = Window & {
-  webkitAudioContext?: typeof AudioContext;
-};
-
 export function useVoiceConversation({
   patientKey,
   onTranscript,
@@ -39,7 +37,6 @@ export function useVoiceConversation({
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [activity, setActivity] = useState<VoiceActivity>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [patientVoiceNotice, setPatientVoiceNotice] = useState<string | null>(null);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const transcriptCallbackRef = useRef(onTranscript);
 
@@ -50,10 +47,9 @@ export function useVoiceConversation({
   useEffect(() => {
     const recognitionConstructor = getSpeechRecognitionConstructor(window);
     const canUseSystemSpeech = "speechSynthesis" in window && "SpeechSynthesisUtterance" in window;
-    const audioWindow = window as AudioWindow;
-    const canUseOuteTTS = Boolean(window.Worker && (window.AudioContext || audioWindow.webkitAudioContext));
+    const canUseRecordedOrKokoro = Boolean(window.Audio && window.Worker);
     setRecognitionSupported(Boolean(recognitionConstructor));
-    setSynthesisSupported(canUseOuteTTS || canUseSystemSpeech);
+    setSynthesisSupported(canUseRecordedOrKokoro || canUseSystemSpeech);
 
     const loadVoices = () => setVoices(window.speechSynthesis.getVoices());
     if (canUseSystemSpeech) {
@@ -94,52 +90,54 @@ export function useVoiceConversation({
     ));
   }, []);
 
-  const speakWithSystemVoice = useCallback((text: string, fallbackReason?: string) => {
-    if (!("speechSynthesis" in window) || !("SpeechSynthesisUtterance" in window)) {
-      setSynthesisSupported(false);
-      setErrorMessage("Patient audio is unavailable in this browser. The transcript remains available.");
-      setActivity("error");
-      return;
-    }
+  const speakWithSystemVoice = useCallback((text: string, reason: string): Promise<void> => {
+    return new Promise((resolve) => {
+      if (!("speechSynthesis" in window) || !("SpeechSynthesisUtterance" in window)) {
+        setSynthesisSupported(false);
+        setErrorMessage(`Patient audio is unavailable (${reason}). Continue in text mode.`);
+        setActivity("error");
+        resolve();
+        return;
+      }
 
-    window.speechSynthesis.cancel();
-    if (fallbackReason) {
-      setPatientVoiceNotice(`OuteTTS fallback: ${fallbackReason}. The system voice is being used for this session.`);
-    }
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = systemPatientVoice?.lang || "en-AU";
-    utterance.voice = systemPatientVoice;
-    utterance.rate = patientSpeechRate(patientKey);
-    utterance.pitch = 1;
-    utterance.volume = 1;
-    utterance.onstart = () => setActivity("speaking");
-    utterance.onend = () => setActivity("idle");
-    utterance.onerror = (event) => {
-      if (event.error === "canceled" || event.error === "interrupted") return;
-      setErrorMessage("The patient voice could not play. The written response is still available.");
-      setActivity("error");
-    };
-    window.speechSynthesis.speak(utterance);
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(preparePatientSpeech(text));
+      utterance.lang = systemPatientVoice?.lang || "en-AU";
+      utterance.voice = systemPatientVoice;
+      utterance.rate = patientSpeechRate(patientKey);
+      utterance.pitch = 1;
+      utterance.volume = 1;
+      utterance.onstart = () => setActivity("speaking");
+      utterance.onend = () => {
+        setActivity("idle");
+        resolve();
+      };
+      utterance.onerror = (event) => {
+        if (event.error !== "canceled" && event.error !== "interrupted") {
+          setErrorMessage("The patient voice could not play. Continue in text mode.");
+          setActivity("error");
+        }
+        resolve();
+      };
+      window.speechSynthesis.speak(utterance);
+    });
   }, [patientKey, systemPatientVoice]);
 
-  const handleOuteActivity = useCallback((nextActivity: "idle" | "loading" | "generating" | "speaking") => {
-    setActivity(nextActivity);
-  }, []);
+  const handlePatientVoiceActivity = useCallback(
+    (nextActivity: "idle" | "loading" | "generating" | "speaking") => {
+      setActivity(nextActivity);
+    },
+    []
+  );
 
-  const handleOuteFallback = useCallback((text: string, reason: string) => {
-    speakWithSystemVoice(text, reason);
-  }, [speakWithSystemVoice]);
-
-  const outetts = useOutePatientVoice({
+  const patientVoice = usePatientVoice({
     patientKey,
-    onActivity: handleOuteActivity,
-    onFallback: handleOuteFallback,
+    onActivity: handlePatientVoiceActivity,
+    speakWithSystemVoice,
   });
-  const cancelOute = outetts.cancel;
-  const speakWithOute = outetts.speak;
 
   const cancelSpeech = useCallback(() => {
-    cancelOute();
+    patientVoice.cancel();
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       window.speechSynthesis.cancel();
     }
@@ -148,7 +146,7 @@ export function useVoiceConversation({
         ? "idle"
         : current
     ));
-  }, [cancelOute]);
+  }, [patientVoice]);
 
   const stopListening = useCallback(() => {
     try {
@@ -216,28 +214,36 @@ export function useVoiceConversation({
     }
   }, [abortListening, cancelSpeech]);
 
-  const speak = useCallback((text: string) => {
+  const speak = useCallback((segments: PatientAudioSegment[]) => {
     abortListening();
     setErrorMessage(null);
-    speakWithOute(preparePatientSpeech(text));
-  }, [abortListening, speakWithOute]);
+    void patientVoice.speak(segments).catch((error: unknown) => {
+      setErrorMessage(error instanceof Error ? error.message : "The patient voice could not play.");
+      setActivity("error");
+    });
+  }, [abortListening, patientVoice]);
 
-  const usingOute = outetts.engine === "outetts";
+  const engine = patientVoice.engine;
   return {
     recognitionSupported,
     synthesisSupported,
-    patientVoiceName: usingOute ? outetts.profile.name : systemPatientVoice?.name ?? null,
-    patientVoiceLanguage: usingOute ? outetts.profile.language : systemPatientVoice?.lang ?? null,
-    patientVoiceIsAustralian: usingOute
-      ? false
-      : systemPatientVoice?.lang.toLowerCase().replace("_", "-").startsWith("en-au") ?? false,
-    patientVoiceEngine: outetts.engine,
-    outeBackend: outetts.backend,
-    outeQuantization: outetts.quantization,
-    outeProgress: outetts.progress,
-    outeModelReady: outetts.modelReady,
-    outeDiagnostic: outetts.diagnostic,
-    patientVoiceNotice,
+    patientVoiceName: engine === "prerecorded"
+      ? "Recorded patient library"
+      : engine === "kokoro"
+        ? `Kokoro ${getKokoroVoice(patientKey)}`
+        : systemPatientVoice?.name ?? "default voice",
+    patientVoiceLanguage: engine === "prerecorded"
+      ? "en-AU"
+      : engine === "kokoro"
+        ? "en-GB"
+        : systemPatientVoice?.lang ?? null,
+    patientVoiceIsAustralian: engine === "prerecorded"
+      || (engine === "system"
+        && (systemPatientVoice?.lang.toLowerCase().replace("_", "-").startsWith("en-au") ?? false)),
+    patientVoiceEngine: engine,
+    kokoroProgress: patientVoice.progress,
+    patientVoiceDiagnostic: patientVoice.diagnostic,
+    patientVoiceNotice: patientVoice.notice,
     activity,
     errorMessage,
     startListening,

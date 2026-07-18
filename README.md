@@ -95,16 +95,23 @@ Open [http://localhost:3000](http://localhost:3000) — you should see the landi
 
 ### Local patient voice
 
-Voice-mode patient replies use
-[OuteTTS-0.1-350M](https://huggingface.co/OuteAI/OuteTTS-0.1-350M),
-created by OuteAI and licensed under
-[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The simulator runs the
-Q4_K_M model and q8 WavTokenizer decoder in the student's browser; no TTS API
-key or per-conversation service is used. The first voice session downloads
-about 348 MB of model files plus the local browser runtime. Generated audio is
-an optional simulation aid and the written patient transcript remains the
-authoritative exam-practice content. If local generation exceeds 60 seconds,
-the simulator switches to an installed system voice so the attempt can continue.
+Voice-mode patient replies use an asset-first, zero-runtime-API architecture:
+
+1. The simulator looks for the clinically approved MP3 named by the patient
+   conversation state in `public/audio/patients/<case-id>/`.
+2. If that exact recording has not been installed, Apache-2.0
+   [Kokoro-82M](https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX)
+   generates a q8 safety voice locally in the browser (about 93 MB plus its
+   voice and runtime files on first use).
+3. If local generation cannot run, the simulator uses the best installed
+   operating-system English voice. Text mode remains available.
+
+No TTS API key or per-conversation TTS service is used. Generate the complete
+recording list and two-column CSV with `npm run voice:manifest`, then place each
+commercially licensed recording at the listed path. Run `npm run voice:check`
+before release to identify missing files. In exam voice mode, completed patient
+and student transcript turns are hidden; the current speech-recognition draft is
+shown only long enough to correct recognition errors before marking.
 
 ---
 
