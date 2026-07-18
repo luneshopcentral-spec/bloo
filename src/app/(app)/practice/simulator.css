@@ -907,6 +907,11 @@
   color: #1e3a8a;
   text-decoration: none;
 }
+.fred-root .fred-warnings-label-grid {
+  display: grid;
+  grid-template-columns: clamp(280px, 22vw, 340px) minmax(0, 1fr);
+}
+
 .fred-root .fred-warn-entry {
   padding: 3px 4px;
   border-top: 1px solid #d6dde8;
@@ -927,11 +932,11 @@
 }
 .fred-root .fred-warn-entry select {
   min-width: 0;
-  flex: 1;
+  width: 100%;
   border: 1px solid #c8d2e0;
-  padding: 2px 3px;
+  padding: 3px 5px;
   font-family: inherit;
-  font-size: 10px;
+  font-size: 10.5px;
   background: #fff;
 }
 .fred-root .fred-warn-entry button {
@@ -942,7 +947,7 @@
   font-size: 9px;
   font-weight: bold;
   cursor: pointer;
-  min-width: 34px;
+  min-width: 64px;
 }
 .fred-root .fred-warn-entry button:disabled { color: #c8d2e0; cursor: not-allowed; }
 .fred-root .fred-warn-entry p {
@@ -958,9 +963,41 @@
   font-size: 9px;
   line-height: 1.2;
 }
+.fred-root .fred-warn-choice-preview {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 7px;
+  margin-top: 4px;
+  border: 1px solid #c7d7ea;
+  border-radius: 5px;
+  padding: 5px 6px;
+  background: #fff;
+  color: #1e293b;
+}
+.fred-root .fred-warn-choice-codes {
+  display: flex;
+  gap: 3px;
+}
+.fred-root .fred-warn-choice-codes b {
+  display: inline-flex;
+  min-width: 24px;
+  min-height: 20px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  padding: 2px 4px;
+  background: #e8eef8;
+  color: #1d4ed8;
+  font-size: 9px;
+}
+.fred-root .fred-warn-choice-preview > strong {
+  font-size: 10px;
+  line-height: 1.3;
+}
 .fred-root .fred-warn-selected {
   min-height: 36px;
-  max-height: 96px;
+  max-height: 124px;
   overflow-y: auto;
   padding: 3px;
 }
@@ -972,7 +1009,7 @@
 }
 .fred-root .fred-warn-selected-row {
   display: grid;
-  grid-template-columns: 16px 28px minmax(0, 1fr) 18px;
+  grid-template-columns: 24px 36px minmax(0, 1fr) 22px;
   align-items: start;
   gap: 3px;
   margin-bottom: 2px;
@@ -3147,6 +3184,12 @@
   padding: 6px 18px;
   cursor: pointer;
 }
+
+@media (max-width: 760px) {
+  .fred-root .fred-warnings-label-grid {
+    grid-template-columns: 1fr;
+  }
+}
 .fred-root .fred-onboarding-footer button:hover { background: #166534; }
 
 /* Dialog title bars double as bounded drag handles. */
@@ -3703,4 +3746,10 @@
   .fred-root .fred-result-priority-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* Keep warning controls in the normal document flow instead of hiding them
+   behind the final-decision dock on shorter screens. */
+.fred-root .fred-action-dock {
+  position: static;
 }

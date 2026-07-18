@@ -496,7 +496,7 @@ export default function PracticePage() {
                 />
               </div>
 
-              <div className="grid grid-cols-[160px_1fr] gap-1 mb-1">
+              <div className="fred-warnings-label-grid gap-1 mb-1">
                 <WarningsBox
                   warnings={ALL_WARNINGS}
                   selectedWarnings={currentWarnings}
