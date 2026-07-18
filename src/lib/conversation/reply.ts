@@ -1,28 +1,40 @@
 import type {
   ConversationCase,
   ConversationResponseIntent,
+  PatientAudioSegment,
 } from "./types";
+import {
+  concernAudioSegment,
+  noFurtherQuestionsAudioSegment,
+  patientQuestionAudioSegment,
+  responseIntentAudioSegment,
+  teachBackNotReadyAudioSegment,
+  topicAudioSegment,
+  topicRepeatAudioSegment,
+  unknownAudioSegment,
+} from "@/lib/voice/patient-audio-library";
 
 export interface PatientReplyResult {
   text: string;
+  audioSegments: PatientAudioSegment[];
   showConcern: boolean;
 }
 
 // The teach-back reply must only repeat instructions the student has actually
 // given; a canned full-plan recital would hand the remaining answers to the student.
-function buildTeachBackText(
+function buildTeachBackSegments(
   conversation: ConversationCase,
   addressedTopicIds: Set<string>
-): string {
+): PatientAudioSegment[] {
   const covered = conversation.topics.filter(
     (topic) =>
       (topic.category === "clinical_counselling" || topic.category === "safety_netting") &&
       addressedTopicIds.has(topic.id)
   );
   if (covered.length === 0) {
-    return "I’m not sure I could repeat it back yet — could you go through the instructions with me first?";
+    return [teachBackNotReadyAudioSegment()];
   }
-  return covered.map((topic) => topic.patientReplies[0]).join(" ");
+  return covered.map((topic) => topicAudioSegment(topic, 0));
 }
 
 export function buildPatientReply(
@@ -37,39 +49,41 @@ export function buildPatientReply(
   const newTopicIds = matchedTopicIds.filter((id) => !previouslyAddressed.has(id));
   const selectedIds = newTopicIds.length > 0 ? newTopicIds : matchedTopicIds.slice(0, 1);
 
-  let response: string;
+  let responseSegments: PatientAudioSegment[];
   if (selectedIds.length > 0) {
-    response = selectedIds
+    responseSegments = selectedIds
       .slice(0, 3)
-      .map((selectedId, index) => {
+      .flatMap((selectedId, index) => {
         const selectedTopic = topicById.get(selectedId);
-        if (!selectedTopic) return "";
+        if (!selectedTopic) return [];
         if (selectedId === "teach_back") {
           const addressed = new Set([...previouslyAddressed, ...matchedTopicIds]);
           addressed.delete("teach_back");
-          return buildTeachBackText(conversation, addressed);
+          return buildTeachBackSegments(conversation, addressed);
         }
         if (previouslyAddressed.has(selectedId) && selectedTopic.repeatReply) {
-          return selectedTopic.repeatReply;
+          return [topicRepeatAudioSegment(selectedTopic)];
         }
         if (selectedId === "invite_questions") {
           const concernAlreadyResolved =
             previouslyAddressed.has(conversation.concernTopicId) ||
             matchedTopicIds.includes(conversation.concernTopicId);
-          return concernAlreadyResolved
-            ? "No further questions, thank you."
-            : conversation.patientQuestion;
+          return [
+            concernAlreadyResolved
+              ? noFurtherQuestionsAudioSegment()
+              : patientQuestionAudioSegment(conversation),
+          ];
         }
-        return selectedTopic.patientReplies[
-          (studentTurns + index) % selectedTopic.patientReplies.length
-        ];
+        const replyIndex = (studentTurns + index) % selectedTopic.patientReplies.length;
+        return [topicAudioSegment(selectedTopic, replyIndex)];
       })
-      .filter(Boolean)
-      .join(" ");
+      .filter((segment) => segment.text.trim());
   } else if (responseIntent) {
-    response = responseIntent.patientReplies[studentTurns % responseIntent.patientReplies.length];
+    const replyIndex = studentTurns % responseIntent.patientReplies.length;
+    responseSegments = [responseIntentAudioSegment(responseIntent, replyIndex)];
   } else {
-    response = conversation.unknownReplies[studentTurns % conversation.unknownReplies.length];
+    const replyIndex = studentTurns % conversation.unknownReplies.length;
+    responseSegments = [unknownAudioSegment(conversation, replyIndex)];
   }
 
   const shouldShowConcern =
@@ -79,8 +93,11 @@ export function buildPatientReply(
     !previouslyAddressed.has(conversation.concernTopicId) &&
     !matchedTopicIds.includes(conversation.concernTopicId);
 
+  if (shouldShowConcern) responseSegments.push(concernAudioSegment(conversation));
+
   return {
-    text: shouldShowConcern ? `${response} ${conversation.concernPrompt}` : response,
+    text: responseSegments.map((segment) => segment.text).join(" "),
+    audioSegments: responseSegments,
     showConcern: shouldShowConcern,
   };
 }

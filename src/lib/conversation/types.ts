@@ -29,6 +29,13 @@ export interface ConversationResponseIntent {
   patientReplies: string[];
   suppressConcern?: boolean;
 }
+
+export interface PatientAudioSegment {
+  /** Stable identifier used for public/audio/patients/<case>/<cueId>.mp3. */
+  cueId: string;
+  /** Canonical clinically reviewed text spoken by this audio segment. */
+  text: string;
+}
 export interface UnsafeAdviceRule {
   id: string;
   label: string;
@@ -65,6 +72,7 @@ export interface ConversationMessage {
   role: "patient" | "student" | "system";
   text: string;
   matchedTopicIds?: string[];
+  patientAudio?: PatientAudioSegment[];
 }
 
 export interface UnsafeAdviceFinding {

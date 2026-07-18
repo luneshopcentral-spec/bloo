@@ -13,7 +13,9 @@
       "Bash(git *)",
       "Bash(node *)",
       "Bash(supabase --version)",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "Bash(git --no-pager diff HEAD -- src/hooks/useOutePatientVoice.ts src/hooks/useVoiceConversation.ts src/components/simulator/CounsellingStage.tsx src/lib/voice/outetts-config.ts src/lib/voice/outetts-config.test.ts package.json next.config.mjs)",
+      "Bash(npx vitest *)"
     ]
   }
 }

@@ -16,6 +16,13 @@
 
 # self-hosted onnxruntime-web runtime (copied from node_modules at build time)
 /public/ort
+/public/ort-kokoro
+
+# browser and document QA output
+/output
+/.playwright-cli
+/playwright-report
+/test-results
 
 # misc
 .DS_Store
