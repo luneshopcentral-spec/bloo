@@ -18,6 +18,7 @@ export const STATIC_CASES: PracticeCase[] = [
     price: "$13.01",
     doctor: "WILLIS, HARRY",
     prescriberNo: "8015996",
+    prescriberPool: ["prescriber-willis-harry", "prescriber-chen-linda", "prescriber-watson-emily", "prescriber-kowalski-anna", "prescriber-bradley-tom"],
     date: "27/06/17",
     scriptType: "N — NHS",
     items: [
@@ -69,6 +70,7 @@ export const STATIC_CASES: PracticeCase[] = [
     price: "$6.50",
     doctor: "CHEN, LINDA",
     prescriberNo: "7029384",
+    prescriberPool: ["prescriber-willis-harry", "prescriber-chen-linda", "prescriber-watson-emily", "prescriber-kowalski-anna", "prescriber-bradley-tom"],
     date: "27/06/17",
     scriptType: "N — NHS",
     items: [
@@ -135,6 +137,7 @@ export const STATIC_CASES: PracticeCase[] = [
     price: "$5.40",
     doctor: "WATSON, EMILY",
     prescriberNo: "3847291",
+    prescriberPool: ["prescriber-willis-harry", "prescriber-chen-linda", "prescriber-watson-emily", "prescriber-kowalski-anna", "prescriber-bradley-tom"],
     date: "27/06/17",
     scriptType: "N — NHS",
     items: [
@@ -190,6 +193,7 @@ export const STATIC_CASES: PracticeCase[] = [
     price: "Private",
     doctor: "KOWALSKI, ANNA",
     prescriberNo: "9012847",
+    prescriberPool: ["prescriber-willis-harry", "prescriber-chen-linda", "prescriber-watson-emily", "prescriber-kowalski-anna", "prescriber-bradley-tom"],
     date: "27/06/17",
     scriptType: "P — Private",
     items: [
@@ -249,6 +253,7 @@ export const STATIC_CASES: PracticeCase[] = [
     price: "$6.50",
     doctor: "YUEN, RICHARD",
     prescriberNo: "5512847",
+    prescriberPool: ["prescriber-yuen-richard", "prescriber-chen-linda", "prescriber-willis-harry", "prescriber-kowalski-anna"],
     date: "27/06/17",
     scriptType: "N — NHS",
     items: [
@@ -314,6 +319,7 @@ export const STATIC_CASES: PracticeCase[] = [
     price: "$13.01",
     doctor: "BRADLEY, TOM",
     prescriberNo: "6623941",
+    prescriberPool: ["prescriber-willis-harry", "prescriber-chen-linda", "prescriber-watson-emily", "prescriber-kowalski-anna", "prescriber-bradley-tom"],
     date: "27/06/17",
     scriptType: "N — NHS",
     items: [

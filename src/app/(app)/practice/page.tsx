@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useReducer, useEffect } from "react";
+import { useState, useReducer, useEffect, useMemo } from "react";
 import "./simulator.css";
 
 import { STATIC_CASES, ALL_WARNINGS } from "@/lib/cases/static-cases";
+import { applyCaseVariant } from "@/lib/cases/variants";
 import { formReducer, emptyFormStateFor } from "@/components/simulator/state";
 import { validateDispense } from "@/lib/scoring/validate";
 import { getDispenseReadinessIssues } from "@/lib/scoring/readiness";
@@ -40,9 +41,12 @@ import { DrugSelectionModal }  from "@/components/simulator/DrugSelectionModal";
 import { PrescriberDirectoryModal } from "@/components/simulator/PrescriberDirectoryModal";
 import { CounsellingStage }    from "@/components/simulator/CounsellingStage";
 import { ExamStopwatch }       from "@/components/simulator/ExamStopwatch";
+import { OnboardingModal }     from "@/components/simulator/OnboardingModal";
+import type { StatusTone }     from "@/components/simulator/StatusBar";
 
 const DEFAULT_STATUS =
   "Search for patient by surname, then enter drug details and complete the label.";
+const ONBOARDING_STORAGE_KEY = "dispenserx-onboarding-v1";
 
 export default function PracticePage() {
   const [stage, setStage]                         = useState<"dispensing" | "counselling">("dispensing");
@@ -57,6 +61,12 @@ export default function PracticePage() {
   const [selectedWarnings, setSelectedWarnings]    = useState<Set<string>[]>([new Set()]);
   const [currentItem, setCurrentItem]              = useState(0);
   const [statusMessage, setStatusMessage]          = useState(DEFAULT_STATUS);
+  const [statusTone, setStatusTone]                = useState<StatusTone>("info");
+  const [statusFlash, setStatusFlash]              = useState(0);
+  // Every attempt gets its own variant of the case (date, authority number,
+  // rotated prescriber) so repeat practice cannot rely on memorised details.
+  const [attemptSeed, setAttemptSeed]              = useState(() => Date.now());
+  const [onboardingOpen, setOnboardingOpen]        = useState(false);
 
   const [sessionScore, setSessionScore]   = useState({ correct: 0, total: 0 });
   const [pendingDispenseResult, setPendingDispenseResult] = useState<DispenseResult | null>(null);
@@ -87,13 +97,42 @@ export default function PracticePage() {
   const [prescriberModalOpen, setPrescriberModalOpen] = useState(false);
   const [prescriberModalQuery, setPrescriberModalQuery] = useState("");
 
-  const current = STATIC_CASES[currentCaseIndex];
+  const current = useMemo(
+    () => applyCaseVariant(STATIC_CASES[currentCaseIndex], attemptSeed),
+    [currentCaseIndex, attemptSeed]
+  );
   const currentConversation = getConversationCase(current.id);
   const editorialRecord = getCaseEditorialRecord(current.id);
 
-  // ── Reset form + patient + drug whenever the case changes ─────────
+  function showStatus(text: string, tone: StatusTone = "info") {
+    setStatusMessage(text);
+    setStatusTone(tone);
+    if (tone === "error") setStatusFlash((count) => count + 1);
+  }
+
+  // First visit: open the walkthrough until the student dismisses it.
   useEffect(() => {
-    const c = STATIC_CASES[currentCaseIndex];
+    try {
+      if (!window.localStorage.getItem(ONBOARDING_STORAGE_KEY)) setOnboardingOpen(true);
+    } catch {
+      // Storage unavailable (private browsing) — skip auto-open.
+    }
+  }, []);
+
+  function dismissOnboarding() {
+    setOnboardingOpen(false);
+    try {
+      window.localStorage.setItem(ONBOARDING_STORAGE_KEY, "seen");
+    } catch {
+      // Storage unavailable — the walkthrough will offer itself again next visit.
+    }
+  }
+
+  // ── Reset form + patient + drug whenever the case changes ─────────
+  // Reads the current attempt's variant; the handlers that change the case
+  // always refresh the seed in the same render.
+  useEffect(() => {
+    const c = current;
 
     dispatch({ type: "RESET", itemCount: c.items.length });
     dispatch({ type: "SET_FIELD", field: "scriptDate",   value: c.date });
@@ -103,6 +142,7 @@ export default function PracticePage() {
     setCurrentItem(0);
     setInitialsError(false);
     setStatusMessage(DEFAULT_STATUS);
+    setStatusTone("info");
     setDrawerOpen(false);
     setClinicalDecision(null);
     setAnswersRevealed(false);
@@ -124,6 +164,9 @@ export default function PracticePage() {
     setSelectedPrescriber(null);
     setPrescriberModalOpen(false);
     setPrescriberModalQuery("");
+    // The variant (current) always changes together with the index because the
+    // case-change handlers refresh the attempt seed in the same render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentCaseIndex]);
 
   // ── Load patient scripts when a patient is selected ───────────────
@@ -142,26 +185,42 @@ export default function PracticePage() {
   // ── Status nudge when pharmacist initials reach ≥2 chars ─────────
   useEffect(() => {
     if (formState.pharmacistInitials.trim().length >= 2) {
-      setStatusMessage("Pharmacist initials entered. Ready to dispense.");
+      showStatus("Pharmacist initials entered. Ready to dispense.");
     }
   }, [formState.pharmacistInitials]);
 
   // ── Handlers ──────────────────────────────────────────────────────
-  function handleCaseChange(n: number) { setCurrentCaseIndex(n); }
+  function handleCaseChange(n: number) {
+    setAttemptSeed(Date.now());
+    setCurrentCaseIndex(n);
+  }
   function handleModeChange(mode: PracticeMode) {
     setPracticeMode(mode);
     handleClear();
-    setStatusMessage(`${mode[0].toUpperCase()}${mode.slice(1)} mode selected. A fresh attempt has started.`);
+    showStatus(`${mode[0].toUpperCase()}${mode.slice(1)} mode selected. A fresh attempt has started.`);
   }
-  function handleNext() { setCurrentCaseIndex((i) => (i + 1) % STATIC_CASES.length); }
-  function handleNextFromOverlay() { setCurrentCaseIndex((i) => (i + 1) % STATIC_CASES.length); }
+  function handleNext() {
+    setAttemptSeed(Date.now());
+    setCurrentCaseIndex((i) => (i + 1) % STATIC_CASES.length);
+  }
+  function handleNextFromOverlay() {
+    setAttemptSeed(Date.now());
+    setCurrentCaseIndex((i) => (i + 1) % STATIC_CASES.length);
+  }
 
   function handleClear() {
+    // A cleared attempt is a fresh attempt: derive a new variant so the script
+    // details differ, and pre-fill the form from that variant.
+    const seed = Date.now();
+    const variant = applyCaseVariant(STATIC_CASES[currentCaseIndex], seed);
+    setAttemptSeed(seed);
     setAttemptResetCounter((value) => value + 1);
-    dispatch({ type: "RESET", itemCount: current.items.length });
-    setSelectedWarnings(current.items.map(() => new Set()));
+    dispatch({ type: "RESET", itemCount: variant.items.length });
+    dispatch({ type: "SET_FIELD", field: "scriptDate", value: variant.date });
+    dispatch({ type: "SET_FIELD", field: "scriptType", value: variant.scriptType });
+    setSelectedWarnings(variant.items.map(() => new Set()));
     setCurrentItem(0);
-    setSelectedDrugs(current.items.map(() => null));
+    setSelectedDrugs(variant.items.map(() => null));
     setSelectedPrescriber(null);
     setClinicalDecision(null);
     setAnswersRevealed(false);
@@ -170,7 +229,7 @@ export default function PracticePage() {
     setStage("dispensing");
     setPendingDispenseResult(null);
     setLastResult(null);
-    setStatusMessage("Form cleared. Enter the next script.");
+    showStatus("Form cleared. A fresh attempt with new script details has started.");
   }
 
   async function handleShowAnswers() {
@@ -178,7 +237,7 @@ export default function PracticePage() {
     setSelectedWarnings(current.items.map((item) => new Set(item.correctWarnings)));
     setClinicalDecision(current.expectedDecision);
     setAnswersRevealed(true);
-    setStatusMessage(
+    showStatus(
       "Answers shown — this is now an assisted attempt and will not count in the session score."
     );
 
@@ -206,7 +265,7 @@ export default function PracticePage() {
   function handleDispense() {
     if (formState.pharmacistInitials.trim().length < 2) {
       setInitialsError(true);
-      setStatusMessage("⚠ Pharmacist initials required before dispensing.");
+      showStatus("Pharmacist initials required before dispensing.", "error");
       setTimeout(() => setInitialsError(false), 3000);
       return;
     }
@@ -221,8 +280,9 @@ export default function PracticePage() {
     });
 
     if (incompleteItems.length > 0) {
-      setStatusMessage(
-        `Complete the dispensing workflow before handover: ${incompleteItems.join(", ")}.`
+      showStatus(
+        `Cannot dispense yet — still missing: ${incompleteItems.join(", ")}.`,
+        "error"
       );
       return;
     }
@@ -230,7 +290,7 @@ export default function PracticePage() {
     const result = validateDispense({
       formState,
       selectedWarnings,
-      caseData: STATIC_CASES[currentCaseIndex],
+      caseData: current,
       selectedPatient,
       selectedDrugs,
       selectedPrescriber,
@@ -241,7 +301,7 @@ export default function PracticePage() {
     setPendingDispenseResult(result);
     setAttemptSubmitted(true);
     setDrawerOpen(false);
-    setStatusMessage("Dispensing stage submitted. Complete the patient interaction to receive your result.");
+    showStatus("Dispensing stage submitted. Complete the patient interaction to receive your result.");
     setStage("counselling");
   }
 
@@ -258,13 +318,13 @@ export default function PracticePage() {
         total: prev.total + 1,
       }));
     }
-    setStatusMessage(
-      completeResult.assisted
-        ? "Assisted dispensing and counselling review complete — not counted in the session score."
-        : completeResult.passed
-          ? "Complete dispensing and counselling attempt passed."
-          : "Complete attempt needs review. See the combined result panel."
-    );
+    if (completeResult.assisted) {
+      showStatus("Assisted dispensing and counselling review complete — not counted in the session score.");
+    } else if (completeResult.passed) {
+      showStatus("Complete dispensing and counselling attempt passed.", "success");
+    } else {
+      showStatus("Complete attempt needs review. See the combined result panel.", "error");
+    }
     setOverlayOpen(true);
 
     void persistCompletedAttempt({
@@ -276,9 +336,9 @@ export default function PracticePage() {
     }).then((persistence) => {
       if (persistence.saved) return;
       if (persistence.reason === "schema_update_required") {
-        setStatusMessage("Attempt completed, but cloud progress needs the latest Supabase migration (0007_attempt_progress.sql). Results remain available in this session.");
+        showStatus("Attempt completed, but cloud progress needs the latest Supabase migration (0007_attempt_progress.sql). Results remain available in this session.", "error");
       } else if (persistence.reason === "database_error") {
-        setStatusMessage("Attempt completed, but cloud progress could not be saved. Results remain available in this session.");
+        showStatus("Attempt completed, but cloud progress could not be saved. Results remain available in this session.", "error");
       }
     });
   }
@@ -304,7 +364,7 @@ export default function PracticePage() {
   function handlePatientSaved(patient: Patient) {
     setAddPatientModalOpen(false);
     setSelectedPatient(patient);
-    setStatusMessage(`Attempt patient entered: ${patient.surname}, ${patient.firstname}`);
+    showStatus(`Attempt patient entered: ${patient.surname}, ${patient.firstname}`);
   }
 
   function handleOpenDrugModal(query: string) {
@@ -316,7 +376,7 @@ export default function PracticePage() {
     setSelectedDrugs((prev) => prev.map((existing, index) => (index === currentItem ? drug : existing)));
     setDrugModalOpen(false);
     dispatch({ type: "SET_ITEM_FIELD", index: currentItem, field: "drug", value: drug.full_display_name });
-    setStatusMessage(
+    showStatus(
       current.items.length > 1
         ? `Item ${currentItem + 1} product selected: ${drug.full_display_name}`
         : `Drug selected: ${drug.full_display_name}`
@@ -333,7 +393,7 @@ export default function PracticePage() {
     setPrescriberModalOpen(false);
     dispatch({ type: "SET_FIELD", field: "doctor", value: formatPrescriberName(prescriber) });
     dispatch({ type: "SET_FIELD", field: "prescriberNo", value: prescriber.prescriber_number });
-    setStatusMessage(`Prescriber selected: ${formatPrescriberName(prescriber)}`);
+    showStatus(`Prescriber selected: ${formatPrescriberName(prescriber)}`);
   }
 
   const patientName      = selectedPatient ? `${selectedPatient.surname}, ${selectedPatient.firstname}` : "";
@@ -370,6 +430,7 @@ export default function PracticePage() {
               sessionScore={sessionScore}
               mode={practiceMode}
               onModeChange={handleModeChange}
+              onOpenHelp={() => setOnboardingOpen(true)}
             />
 
             <div className="fred-workspace">
@@ -381,7 +442,7 @@ export default function PracticePage() {
                 selectedPatient={selectedPatient}
                 onPatientSelect={handlePatientSelect}
                 onAddNew={handleAddNew}
-                onStatusUpdate={setStatusMessage}
+                onStatusUpdate={showStatus}
               />
 
               <div className="grid grid-cols-[1fr_220px] gap-1 mb-1">
@@ -442,7 +503,7 @@ export default function PracticePage() {
                 />
               </div>
 
-              <StatusBar message={statusMessage} />
+              <StatusBar message={statusMessage} tone={statusTone} flashKey={statusFlash} />
             </div>
           </div>
 
@@ -450,7 +511,7 @@ export default function PracticePage() {
           <HistoryPanel
             patient={selectedPatient}
             patientScripts={patientScripts}
-            onStatusUpdate={setStatusMessage}
+            onStatusUpdate={showStatus}
           />
             </div>
           </>
@@ -464,6 +525,8 @@ export default function PracticePage() {
             mode={practiceMode}
           />
         )}
+
+        <OnboardingModal open={onboardingOpen} onClose={dismissOnboarding} />
 
         <ResultOverlay
           show={overlayOpen}
