@@ -2,7 +2,8 @@
 .presc-system {
   position: fixed;
   inset: 0;
-  z-index: 40;
+  /* Keep the tab and floating prescription usable while directory dialogs are open. */
+  z-index: 130;
   pointer-events: none;
 }
 
