@@ -22,6 +22,7 @@ export function WarningsBox({
   const selectedLabels = Array.from(selectedWarnings).map((text) =>
     warnings.find((warning) => warning.text === text) ?? { lbl: "?", sig: "CUSTOM", text }
   );
+  const pendingLabel = warnings.find((warning) => warning.text === selectedOption);
 
   function addSelectedLabel() {
     const match = warnings.find((warning) => warning.text === selectedOption);
@@ -60,6 +61,7 @@ export function WarningsBox({
           <select
             id="warning-label-entry"
             value={selectedOption}
+            title={pendingLabel?.text ?? "Select a warning label"}
             onChange={(event) => {
               setSelectedOption(event.target.value);
               setEntryMessage("");
@@ -68,12 +70,21 @@ export function WarningsBox({
             <option value="">— Select a label —</option>
             {warnings.map((warning) => (
               <option key={warning.text} value={warning.text} disabled={selectedWarnings.has(warning.text)}>
-                {warning.lbl} · {warning.sig} · {warning.text}
+                {warning.text} ({warning.lbl} · {warning.sig})
               </option>
             ))}
           </select>
-          <button type="submit" disabled={!selectedOption}>Add</button>
+          <button type="submit" disabled={!selectedOption}>Add label</button>
         </div>
+        {pendingLabel && (
+          <div className="fred-warn-choice-preview" aria-label="Selected warning label">
+            <span className="fred-warn-choice-codes">
+              <b>{pendingLabel.lbl}</b>
+              <b>{pendingLabel.sig}</b>
+            </span>
+            <strong>{pendingLabel.text}</strong>
+          </div>
+        )}
         <p>Use the medicines reference to decide which standard labels apply, then choose them here.</p>
         {entryMessage && <span className="fred-warn-entry-message" role="status">{entryMessage}</span>}
       </form>
