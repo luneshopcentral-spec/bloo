@@ -8,9 +8,10 @@ interface ToolbarProps {
   sessionScore: { correct: number; total: number };
   mode: PracticeMode;
   onModeChange: (mode: PracticeMode) => void;
+  onOpenHelp: () => void;
 }
 
-export function Toolbar({ currentCase, onCaseChange, cases, sessionScore, mode, onModeChange }: ToolbarProps) {
+export function Toolbar({ currentCase, onCaseChange, cases, sessionScore, mode, onModeChange, onOpenHelp }: ToolbarProps) {
   return (
     <div className="fred-toolbar">
       <label htmlFor="practice-mode" className="fred-toolbar-label">Mode:</label>
@@ -50,6 +51,15 @@ export function Toolbar({ currentCase, onCaseChange, cases, sessionScore, mode, 
           </option>
         ))}
       </select>
+
+      <button
+        type="button"
+        className="fred-toolbar-help"
+        onClick={onOpenHelp}
+        title="Reopen the case walkthrough"
+      >
+        ? How it works
+      </button>
     </div>
   );
 }

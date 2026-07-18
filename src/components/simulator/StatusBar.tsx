@@ -2,11 +2,16 @@
 
 import { useState, useEffect } from "react";
 
+export type StatusTone = "info" | "error" | "success";
+
 interface StatusBarProps {
   message: string;
+  tone: StatusTone;
+  /** Increment to replay the error flash even when the message text repeats. */
+  flashKey: number;
 }
 
-export function StatusBar({ message }: StatusBarProps) {
+export function StatusBar({ message, tone, flashKey }: StatusBarProps) {
   const [clock, setClock] = useState("");
 
   useEffect(() => {
@@ -29,8 +34,18 @@ export function StatusBar({ message }: StatusBarProps) {
   }, []);
 
   return (
-    <div className="fred-statusbar" role="status" aria-live="polite">
-      <span>{message}</span>
+    <div
+      // Remounting on flashKey replays the CSS flash animation each time a
+      // dispense attempt is blocked, even for back-to-back identical errors.
+      key={tone === "error" ? `flash-${flashKey}` : "steady"}
+      className={`fred-statusbar ${tone}`}
+      role={tone === "error" ? "alert" : "status"}
+      aria-live={tone === "error" ? "assertive" : "polite"}
+    >
+      <span>
+        {tone === "error" ? "⚠ " : tone === "success" ? "✓ " : ""}
+        {message}
+      </span>
       <span>{clock}</span>
     </div>
   );

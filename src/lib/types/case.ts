@@ -69,6 +69,12 @@ export interface PracticeCase {
   doctor: string;
   prescriberNo: string; // number printed on the prescription
   expectedPrescriberNo?: string; // directory number when the printed number is deliberately incorrect
+  /**
+   * seed_ids of clinically interchangeable prescribers this case may rotate
+   * between on each attempt. Omit when the prescriber is part of the teaching
+   * point (authority specialists, the deliberate number mismatch).
+   */
+  prescriberPool?: string[];
   date: string;
   scriptType: string;
   /** Every medicine ordered on this prescription, in printed order. */
