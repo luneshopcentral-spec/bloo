@@ -21,6 +21,7 @@ import {
   BarChart3,
   Target,
   ShieldCheck,
+  BrainCircuit,
 } from "lucide-react";
 
 function readableCompetency(key: string): string {
@@ -155,6 +156,7 @@ export default async function DashboardPage() {
       )}
 
       {/* Main CTA */}
+      <div className="grid gap-5 md:grid-cols-2">
       <Card className="border-2 border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50">
         <CardHeader>
           <div className="flex items-center gap-3">
@@ -184,6 +186,33 @@ export default async function DashboardPage() {
           </div>
         </CardContent>
       </Card>
+
+      <Card className="border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50">
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-700">
+              <BrainCircuit className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <CardTitle>Consultation quizzes</CardTitle>
+              <CardDescription>10 hard case sets · 40 questions</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <p className="mb-4 text-sm text-slate-600">
+            Analyse single and double prescriptions using the medicines book,
+            then choose the safest patient-facing response.
+          </p>
+          <Button size="lg" variant="outline" className="gap-2 border-blue-300 bg-white text-blue-800 hover:bg-blue-50" asChild>
+            <Link href="/quiz">
+              Open Quizzes
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </Button>
+        </CardContent>
+      </Card>
+      </div>
     </div>
   );
 }

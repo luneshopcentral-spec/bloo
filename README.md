@@ -113,6 +113,20 @@ before release to identify missing files. In exam voice mode, completed patient
 and student transcript turns are hidden; the current speech-recognition draft is
 shown only long enough to correct recognition errors before marking.
 
+### Consultation quizzes
+
+The protected `/quiz` route is separate from the dispensing simulator. It
+contains 10 advanced prescription-based case sets (40 questions) in two modes:
+
+- **Guided practice** reveals the answer rationale after each response.
+- **Challenge mode** keeps answers hidden until the final result.
+
+Every case includes a realistic prescription, patient-specific consultation
+information and access to the searchable medicines learning book. A pass needs
+at least 75% and every safety-critical answer. Best results are cached in the
+browser for study continuity; quiz attempts are not currently written to
+Supabase or included in simulator competency analytics.
+
 ---
 
 ## Project structure
@@ -122,7 +136,7 @@ src/
   app/
     (marketing)/        # Landing page, pricing, about
     (auth)/             # Sign-in, sign-up, forgot-password
-    (app)/              # Protected app routes (dashboard, practice)
+    (app)/              # Protected app routes (dashboard, practice, quiz)
     auth/callback/      # Supabase auth callback handler
   components/
     ui/                 # shadcn/ui primitives
@@ -145,6 +159,7 @@ supabase/migrations/    # SQL migration files
 - [ ] A row appears in `profiles` automatically on sign-up
 - [ ] Sign out → sign back in → dashboard visible
 - [ ] Visiting `/dashboard` while logged out redirects to `/sign-in`
+- [ ] `/quiz` opens the consultation quiz library and medicines book
 - [ ] SQL migration runs cleanly on a fresh Supabase project
 
 ---
