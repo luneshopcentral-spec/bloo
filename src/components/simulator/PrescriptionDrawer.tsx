@@ -85,7 +85,7 @@ export function PrescriptionDrawer({
         ref={triggerRef}
         className="presc-trigger"
         onClick={() => onOpenChange(!open)}
-        aria-label={open ? "Close prescription view" : "Open prescription view"}
+        aria-label={open ? "Close simulated prescription" : "View simulated prescription"}
         aria-expanded={open}
         aria-controls="presc-dialog"
       >
@@ -97,14 +97,17 @@ export function PrescriptionDrawer({
       <div
         id="presc-dialog"
         role="dialog"
-        aria-label="Original prescription"
+        aria-label="Simulated case prescription"
         aria-hidden={!open}
         inert={!open}
         className="presc-panel"
       >
         {/* Header bar */}
         <div className="presc-header">
-          <span className="presc-title">Prescription</span>
+          <span className="presc-title">
+            Case prescription
+            <small>Training artefact</small>
+          </span>
 
           <div className="presc-zoom-controls">
             <button

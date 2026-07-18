@@ -121,6 +121,16 @@
   letter-spacing: 0.2px;
 }
 
+.presc-title small {
+  display: block;
+  margin-top: 1px;
+  color: #bae6fd;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .presc-zoom-controls {
   display: flex;
   align-items: center;
@@ -192,7 +202,11 @@
 .presc-scroll {
   flex: 1;
   overflow: auto;
-  background: #cccccc;
+  background: #dfe6ee;
   padding: 14px;
   /* CSS zoom on the inner wrapper creates natural scroll expansion */
+}
+
+.presc-scroll > div {
+  width: 100%;
 }

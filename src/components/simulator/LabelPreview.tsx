@@ -31,43 +31,53 @@ export function LabelPreview({
   const repeats = itemForm?.repeats || "—";
   const price = itemForm?.price ? `$${itemForm.price}` : "$—";
   const warnList = Array.from(selectedWarnings).join(", ");
+  const isEmpty = !patientName && !itemForm?.drug && !itemForm?.directions;
 
   return (
-    <div>
+    <div className="fred-label-preview">
       <div className="fred-label-section-title">
         {itemCount > 1
           ? `— Script Label · Item ${itemIndex + 1} of ${itemCount} —`
           : "— Script Label —"}
       </div>
-      <div className="fred-label-box">
-        <div className="fred-label-drug">{drug}</div>
-        <div style={{ marginTop: "2px", fontSize: "11px" }}>{directions}</div>
-        <div className="fred-label-bottom">
-          <div>
-            <div style={{ fontWeight: "bold" }}>{patientName || "—"}</div>
-            <div style={{ fontSize: "10px", color: "#555" }}>
-              {date} &nbsp; Dr {doctor}
+      <div className={`fred-label-box${isEmpty ? " is-empty" : ""}`}>
+        {isEmpty ? (
+          <div className="fred-label-empty">
+            <strong>Label preview</strong>
+            <span>Select the patient and medicine, then enter directions to build the dispensing label.</span>
+          </div>
+        ) : (
+          <>
+            <div className="fred-label-drug">{drug}</div>
+            <div style={{ marginTop: "2px", fontSize: "11px" }}>{directions}</div>
+            <div className="fred-label-bottom">
+              <div>
+                <div style={{ fontWeight: "bold" }}>{patientName || "—"}</div>
+                <div style={{ fontSize: "10px", color: "#555" }}>
+                  {date} &nbsp; Dr {doctor}
+                </div>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <div>
+                  Qty {qty} | {repeats} Rpt
+                </div>
+                <div style={{ fontSize: "10px" }}>{price}</div>
+              </div>
             </div>
-          </div>
-          <div style={{ textAlign: "right" }}>
-            <div>
-              Qty {qty} | {repeats} Rpt
-            </div>
-            <div style={{ fontSize: "10px" }}>{price}</div>
-          </div>
-        </div>
-        {warnList && (
-          <div
-            style={{
-              marginTop: "4px",
-              fontSize: "10px",
-              color: "#555",
-              borderTop: "1px solid #aaa",
-              paddingTop: "2px",
-            }}
-          >
-            {warnList}
-          </div>
+            {warnList && (
+              <div
+                style={{
+                  marginTop: "4px",
+                  fontSize: "10px",
+                  color: "#555",
+                  borderTop: "1px solid #aaa",
+                  paddingTop: "2px",
+                }}
+              >
+                {warnList}
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

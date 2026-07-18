@@ -85,6 +85,17 @@ export function CounsellingStage({
     || voice.activity === "generating"
     || voice.activity === "speaking";
   const hideCompletedTranscript = mode === "exam" && interactionMode === "voice";
+  const patientInitials = conversation.patientRole
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+  const consultationStatus = complete
+    ? "Consultation completed"
+    : studentTurns > 0
+      ? "Consultation in progress"
+      : "Awaiting your first response";
 
   function selectTextMode() {
     if (interactionMode === "text") return;
@@ -207,7 +218,7 @@ export function CounsellingStage({
   }
 
   function finishConversation() {
-    if (complete || pending || studentTurns < 2) return;
+    if (complete || pending || studentTurns < 1) return;
     voice.abortListening();
     voice.cancelSpeech();
     const result = scoreCounselling({
@@ -224,10 +235,13 @@ export function CounsellingStage({
   return (
     <main className="fred-counselling-stage">
       <header className="fred-counselling-header">
-        <div>
-          <div className="fred-stage-kicker">Stage 2 of 2 · Post-dispensing patient interaction</div>
-          <h1>Patient handover: {conversation.patientRole}</h1>
-          <p>{conversation.handoverGoal}</p>
+        <div className="fred-consultation-identity">
+          <div className="fred-patient-avatar" aria-hidden="true">{patientInitials}</div>
+          <div>
+            <div className="fred-stage-kicker">Stage 2 of 2 · Patient consultation</div>
+            <h1>{conversation.patientRole}</h1>
+            <p>{conversation.handoverGoal}</p>
+          </div>
         </div>
         <div className="fred-decision-recap">
           <span>Your recorded decision</span>
@@ -238,8 +252,8 @@ export function CounsellingStage({
       <div className="fred-counselling-grid">
         <section className="fred-chat-window" aria-labelledby="patient-conversation-title">
           <div className="fred-chat-titlebar">
-            <span id="patient-conversation-title">Patient Conversation</span>
-            <span>{studentTurns} student turn{studentTurns === 1 ? "" : "s"}</span>
+            <span id="patient-conversation-title">Consultation transcript</span>
+            <span>{consultationStatus}</span>
           </div>
 
           <div
@@ -248,31 +262,34 @@ export function CounsellingStage({
             aria-live="polite"
             aria-relevant="additions"
           >
-            {messages.map((message) => (
-              <div key={message.id} className={`fred-chat-message ${message.role}`}>
-                <span className="fred-chat-speaker">
-                  {message.role === "patient" ? conversation.patientRole : "You"}
-                </span>
-                {hideCompletedTranscript ? (
-                  <p className="fred-audio-turn" aria-label={message.text}>
-                    {message.role === "patient"
-                      ? "Patient response played — use Replay patient if needed."
-                      : "Your response was recorded."}
-                  </p>
-                ) : (
-                  <p>{message.text}</p>
-                )}
-              </div>
-            ))}
-            {pending && (
-              <div className="fred-chat-message patient pending" role="status">
-                <span className="fred-chat-speaker">{conversation.patientRole}</span>
-                <p>Thinking…</p>
-              </div>
-            )}
+            <div className="fred-chat-thread">
+              {messages.map((message) => (
+                <div key={message.id} className={`fred-chat-message ${message.role}`}>
+                  <span className="fred-chat-speaker">
+                    {message.role === "patient" ? conversation.patientRole : "You"}
+                  </span>
+                  {hideCompletedTranscript ? (
+                    <p className="fred-audio-turn" aria-label={message.text}>
+                      {message.role === "patient"
+                        ? "Patient response played — use Replay patient if needed."
+                        : "Your response was recorded."}
+                    </p>
+                  ) : (
+                    <p>{message.text}</p>
+                  )}
+                </div>
+              ))}
+              {pending && (
+                <div className="fred-chat-message patient pending" role="status">
+                  <span className="fred-chat-speaker">{conversation.patientRole}</span>
+                  <p>Thinking…</p>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="fred-chat-composer">
+            <div className="fred-chat-composer-inner">
             <div className="fred-interaction-mode-row">
               <span>Interaction method</span>
               <div className="fred-interaction-mode-switch" role="group" aria-label="Interaction method">
@@ -365,12 +382,15 @@ export function CounsellingStage({
                 >
                   {voiceStatus}
                 </p>
-                <p className="fred-voice-disclosure">
-                  Approved pre-recorded MP3 files are used first, with no API call or per-conversation charge. Missing
-                  recordings use the Apache-2.0 Kokoro-82M q8 safety voice locally; its first use downloads about {KOKORO_MODEL_DOWNLOAD_MB} MB
-                  plus voice and browser runtime files. If that cannot run, the operating-system voice is used. Student
-                  speech recognition may use the browser or operating-system service. Text mode is always available.
-                </p>
+                <details className="fred-voice-details">
+                  <summary>How voice works</summary>
+                  <p className="fred-voice-disclosure">
+                    Approved pre-recorded MP3 files are used first, with no API call or per-conversation charge. Missing
+                    recordings use the Apache-2.0 Kokoro-82M q8 safety voice locally; its first use downloads about {KOKORO_MODEL_DOWNLOAD_MB} MB
+                    plus voice and browser runtime files. If that cannot run, the operating-system voice is used. Student
+                    speech recognition may use the browser or operating-system service. Text mode is always available.
+                  </p>
+                </details>
                 {hideCompletedTranscript && (
                   <p className="fred-voice-exam-note">
                     Exam voice mode hides completed turns. The current recognised response remains visible only so you
@@ -408,9 +428,11 @@ export function CounsellingStage({
             />
             <div className="fred-chat-actions">
               <span>
-                {interactionMode === "voice"
-                  ? "Check the transcript before sending · Ctrl/⌘ + Enter"
-                  : "Ctrl/⌘ + Enter to send"}
+                {studentTurns < 1
+                  ? "Send at least one response before finishing the consultation."
+                  : interactionMode === "voice"
+                    ? "Check the transcript before sending · Ctrl/⌘ + Enter"
+                    : "Ctrl/⌘ + Enter to send"}
               </span>
               <button
                 type="button"
@@ -424,24 +446,29 @@ export function CounsellingStage({
                 type="button"
                 className="fred-chat-finish"
                 onClick={complete ? onViewResults : finishConversation}
-                disabled={pending || (!complete && studentTurns < 2)}
+                disabled={pending || (!complete && studentTurns < 1)}
               >
                 {complete ? "View results" : "Finish consultation"}
               </button>
+            </div>
             </div>
           </div>
         </section>
 
         <aside className="fred-counselling-sidebar" aria-label="Conversation assessment information">
           <section className="fred-assessment-card">
-            <h2>Assessment conditions</h2>
+            <span className={`fred-mode-badge ${mode}`}>{mode} mode</span>
+            <h2>Consultation approach</h2>
             <p>
               {mode === "exam"
-                ? "Exam mode: coaching and checklist detail stay hidden until you finish."
-                : "Communicate as you would in an exam. Checklist progress and marks stay hidden until you finish."}
+                ? "Respond independently. Coaching and checklist detail remain hidden until you finish."
+                : mode === "practice"
+                  ? "Complete the consultation independently. Detailed feedback appears after you finish."
+                  : "Use the optional guide while learning the structure of a safe patient consultation."}
             </p>
-            {mode !== "exam" && (
-              <>
+            {mode === "learn" && (
+              <details className="fred-consultation-guide">
+                <summary>Open communication guide</summary>
                 <ul>
                   <li>Gather information before making assumptions.</li>
                   <li>Use patient-friendly language.</li>
@@ -456,29 +483,33 @@ export function CounsellingStage({
                     your explanation, not a test of them. “Do you understand?” does not demonstrate teach-back.
                   </p>
                 </details>
-              </>
+              </details>
             )}
           </section>
 
-          <section className="fred-model-card" aria-live="polite">
-            <h2>On-device language matching</h2>
+          <section className="fred-model-card fred-model-card-compact">
+            <div className="fred-model-card-heading">
+              <h2>Conversation readiness</h2>
+              <span>Local</span>
+            </div>
             <div className={`fred-model-status ${matcher.status}`}>
               <span className="fred-model-dot" />
-              <span>{matcher.statusMessage}</span>
+              <span role="status" aria-live="polite">{matcher.statusMessage}</span>
             </div>
             {matcher.status === "loading" && matcher.progress !== null && (
               <div className="fred-model-progress" aria-label={`${matcher.progress}% loaded`}>
                 <span style={{ width: `${matcher.progress}%` }} />
               </div>
             )}
-            <p>
-              Your conversation is processed locally in this browser. No paid model API or API key is used.
-            </p>
             {matcher.status === "loading" && (
               <button type="button" onClick={matcher.activateRulesFallback}>
                 Continue with expanded local matching
               </button>
             )}
+            <details className="fred-model-privacy">
+              <summary>Privacy and matching details</summary>
+              <p>Your conversation is processed locally in this browser. No paid model API or API key is used.</p>
+            </details>
           </section>
 
           <section className="fred-stage-note">
