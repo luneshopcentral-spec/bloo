@@ -139,7 +139,7 @@ describe("conversation configuration", () => {
       null
     );
     expect(first.text).toBe(conversation.patientQuestion);
-    expect(repeat.text).toBe("No other questions, thank you.");
+    expect(repeat.text).toBe("No, I think that covers everything. Thank you.");
   });
 
   it("does not reopen a concern that was already answered when closing the handover", () => {
@@ -153,7 +153,7 @@ describe("conversation configuration", () => {
       null
     );
 
-    expect(reply.text).toBe("No further questions, thank you.");
+    expect(reply.text).toBe("No, I think that covers everything. Thank you.");
   });
 
   it("recognises teach-back only when the patient is asked to explain the plan", () => {

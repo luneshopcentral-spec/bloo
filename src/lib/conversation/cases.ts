@@ -47,11 +47,11 @@ function commonTopics(facts: CommonTopicFacts): ConversationTopic[] {
         "\\bmy name is\\b.*\\b(?:pharmacist|pharmacy)\\b",
       ],
       patientReplies: [
-        "Hello. Yes, that would be helpful.",
-        "Hi. Okay, I'm listening.",
-        "Oh good, thank you. Go ahead.",
+        "Hi, yes. That would be really helpful.",
+        "Okay, I’m listening.",
+        "Great, thanks. Go ahead.",
       ],
-      repeatReply: "Yes, hello again.",
+      repeatReply: "Yes, I’m still with you.",
     },
     {
       id: "confirm_identity",
@@ -152,9 +152,9 @@ function commonResponseIntents(facts: CommonResponseFacts): ConversationResponse
         "\\bis (?:that|it) (?:okay|ok) if i\\b",
       ],
       patientReplies: [
-        "Of course. What would you like to ask?",
-        "Yes, that's fine. Go ahead.",
-        "Sure, I'm happy to answer a few questions.",
+        "Of course. What would you like to ask me?",
+        "Yes, that’s fine. Go ahead.",
+        "Sure, I’m happy to answer a few questions.",
       ],
     },
     {
@@ -195,9 +195,9 @@ function commonResponseIntents(facts: CommonResponseFacts): ConversationResponse
         "\\bcommon side effects?\\b",
       ],
       patientReplies: [
-        "Okay. What should I do if that happens?",
+        "Okay, what should I do if that happens?",
         "Thanks for explaining that. I’ll keep an eye out for it.",
-        "All right. Is there anything that would mean I should seek help?",
+        "All right. Is there anything that would mean I need urgent help?",
       ],
     },
     {
@@ -210,8 +210,8 @@ function commonResponseIntents(facts: CommonResponseFacts): ConversationResponse
         "\\b(?:is|it's) an? (?:strong|mild)? ?(?:opioid|antibiotic|painkiller|steroid|anticoagulant|blood thinner|mood stabiliser|mood stabilizer|antidepressant)\\b",
       ],
       patientReplies: [
-        "Okay, that helps me understand what it is.",
-        "Thanks, that makes sense.",
+        "Okay, that helps me understand what it’s for.",
+        "Thanks, that makes sense now.",
       ],
     },
     {
@@ -224,8 +224,8 @@ function commonResponseIntents(facts: CommonResponseFacts): ConversationResponse
         "\\b(?:do not|don't|never)\\b.*\\b(?:crush|chew)\\b",
       ],
       patientReplies: [
-        "Okay, I follow how to take it.",
-        "Understood, thank you.",
+        "Okay, I understand how to take it.",
+        "Got it, thank you.",
       ],
     },
     {
@@ -236,9 +236,9 @@ function commonResponseIntents(facts: CommonResponseFacts): ConversationResponse
         "\\bthat(?:'s| is) all\\b",
       ],
       patientReplies: [
-        "Thank you for taking the time to explain it. Goodbye.",
-        "Thanks. I feel clearer about the plan now.",
-        "Thank you. I’ll follow the label and contact the pharmacy if I’m unsure.",
+        "Thanks for taking the time to explain everything. Bye.",
+        "Thanks, I feel much clearer about the plan now.",
+        "Thank you. I’ll follow the label and call the pharmacy if I’m unsure about anything.",
       ],
       suppressConcern: true,
     },
@@ -252,8 +252,8 @@ function commonResponseIntents(facts: CommonResponseFacts): ConversationResponse
         "\\b(?:stop|do not take|don't take)\\b",
       ],
       patientReplies: [
-        "Okay, I won't. What exactly should I do instead?",
-        "All right. Could you tell me exactly what to do?",
+        "Okay, I won’t. What should I do instead?",
+        "All right. Could you tell me what I should do now?",
       ],
     },
     {
@@ -263,8 +263,8 @@ function commonResponseIntents(facts: CommonResponseFacts): ConversationResponse
         "\\byou can (?:keep|continue|carry on)\\b",
       ],
       patientReplies: [
-        "Okay, thank you for confirming.",
-        "Good, that's a relief to hear.",
+        "Okay, thanks for confirming that.",
+        "Good, that’s a relief.",
       ],
     },
     {
@@ -274,7 +274,7 @@ function commonResponseIntents(facts: CommonResponseFacts): ConversationResponse
         "\\bglad (?:that|to)\\b",
       ],
       patientReplies: [
-        "Okay. Is there anything else I need to know?",
+        "Okay. Is there anything else I should know?",
         "All right, I’m listening.",
       ],
       suppressConcern: true,
@@ -285,10 +285,10 @@ function commonResponseIntents(facts: CommonResponseFacts): ConversationResponse
 function variedUnknownReplies(...caseSpecific: string[]): string[] {
   return [
     ...caseSpecific,
-    "I'm not sure how that relates to this medicine. Could you put it another way?",
-    "I'm not quite following. Could you say that in a different way?",
-    "I didn't quite follow that. Could you say it more simply for me?",
-    "I'm not certain what you mean. Could you use a little more detail?",
+    "I’m not sure how that relates to this medicine. Could you explain it another way?",
+    "Sorry, I’m not quite following. Could you say that differently?",
+    "I didn’t quite understand that. Could you explain it more simply?",
+    "I’m not sure what you mean. Could you give me a little more detail?",
   ];
 }
 
@@ -330,8 +330,8 @@ function closingTopics(teachBackReply: string): ConversationTopic[] {
         "\\bany (?:other )?(?:questions|concerns)\\b",
         "\\banything else\\b.*\\b(?:ask|know|concern)\\b",
       ],
-      patientReplies: ["I do have one question before I go."],
-      repeatReply: "No other questions, thank you.",
+      patientReplies: ["I do have one more question before I go."],
+      repeatReply: "No, I think that covers everything. Thank you.",
     },
   ];
 }
@@ -363,7 +363,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
   "case-1": {
     caseId: "case-1",
     patientRole: "John Smith",
-    openingMessage: "Hi, I’m John. Is my antibiotic ready?",
+    openingMessage: "Hey, I was just wondering if my antibiotics are ready yet?",
     handoverGoal: "Hand over this supply and counsel to your professional standard.",
     concernAfterTurns: 3,
     concernTopicId: "complete_course",
@@ -389,11 +389,11 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
           "This is my first supply of this antibiotic.",
         ],
         conditionsReplies: [
-          "I have high blood pressure and high cholesterol recorded with the pharmacy.",
+          "The pharmacy has my high blood pressure and high cholesterol on record.",
           "The pharmacy has my blood pressure and cholesterol history on file.",
         ],
         symptomsReplies: [
-          "No chest pain. I just have the infection that my doctor assessed.",
+          "No chest pain or breathing problems. I just have the infection my doctor examined me for.",
           "Nothing like chest pain or breathing trouble—just the symptoms I saw my doctor about.",
         ],
       }),
@@ -538,7 +538,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
   "case-2": {
     caseId: "case-2",
     patientRole: "Margaret Jones",
-    openingMessage: "Hello. I’m here to collect my warfarin.",
+    openingMessage: "Hi, I’m here to pick up my warfarin. Is it ready yet?",
     handoverGoal: "Hand over this supply and counsel to your professional standard.",
     concernAfterTurns: 3,
     concernTopicId: "interactions",
@@ -552,7 +552,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
       ],
       conditionsReplies: [
         "I have the condition the anticoagulation clinic manages, and they monitor my warfarin.",
-        "My relevant medical history is already recorded with the anticoagulation clinic.",
+        "The anticoagulation clinic already has all of that in my records.",
       ],
       symptomsReplies: [
         "I haven't noticed unusual bleeding, black stools or a recent head injury.",
@@ -564,7 +564,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
         nameReply: ["Margaret Jones. Yes, the warfarin is for me.", "Margaret Jones — it's my own prescription."],
         ageReply: ["My date of birth is 22 June 1948.", "22 June 1948."],
         allergiesReply: [
-          "No known medicine allergies.",
+          "No, I don’t have any medicine allergies that I know of.",
           "None that I've ever been told about.",
         ],
         medicinesReply: [
@@ -591,7 +591,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
           ["\\b(?:dose plan|dosing plan|warfarin book\\w*|yellow book\\w*|anticoagulation clinic|as directed|clinic)\\b"],
         ],
         patientReplies: [
-          "I have my current dosing plan and will follow that.",
+          "I’ve got the clinic’s current dose sheet, and I’ll follow that.",
           "Yes, I keep the clinic's dosing sheet on the fridge and stick to it.",
         ],
       },
@@ -654,7 +654,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
         ],
         patientReplies: [
           "I’ll seek help if I have serious or unusual bleeding.",
-          "Right — black stools or bleeding that won't stop means straight to the doctor.",
+          "Right. If I have black stools or bleeding that won’t stop, I need urgent medical help.",
         ],
       },
       ...closingTopics("I’ll follow my current dose plan, attend my INR tests and check before taking other medicines."),
@@ -678,7 +678,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
   "case-3": {
     caseId: "case-3",
     patientRole: "Liam Henderson’s parent",
-    openingMessage: "Hi, I’m Liam’s mum. I’m collecting his antibiotic mixture.",
+    openingMessage: "Hi, I’m Liam’s mum. I was just wondering if his antibiotic mixture is ready yet?",
     handoverGoal: "Hand over this supply and counsel to your professional standard.",
     concernAfterTurns: 3,
     concernTopicId: "liquid_handling",
@@ -701,7 +701,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
       ...commonResponseIntents({
         previousUseReplies: [
           "Liam has had an antibiotic before, but this is his first supply for this infection.",
-          "He has used antibiotics previously, though not for this current infection.",
+          "He’s had antibiotics before, but not for this infection.",
         ],
         conditionsReplies: [
           "Liam doesn't have any other medical conditions that I know of.",
@@ -738,7 +738,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
         requiredPatternGroups: [["\\b(?:infection\\w*|bacteria|bacterial)\\b"]],
         patientReplies: [
           "Okay, it’s for the infection.",
-          "Good — so it should clear the infection up.",
+          "Okay, so it should help clear up the infection.",
         ],
       },
       {
@@ -817,7 +817,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
         forbiddenPatterns: ["\\b(?:can|should) stop\\b.*\\bfeel(?:s|ing)? better\\b"],
         patientReplies: [
           "I’ll complete the full course even if Liam improves.",
-          "Understood — we keep going for the whole ten days no matter how he seems.",
+          "Okay, we’ll keep going for the full ten days, even if he seems better.",
         ],
       },
       {
@@ -889,7 +889,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
   "case-4": {
     caseId: "case-4",
     patientRole: "David Park",
-    openingMessage: "Hi. Is my sleeping-tablet prescription ready?",
+    openingMessage: "Hi, I was just wondering if my sleeping tablets are ready yet?",
     handoverGoal: "Hand over this supply and counsel to your professional standard.",
     concernAfterTurns: 2,
     concernTopicId: "explain_hold",
@@ -899,10 +899,10 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
     responseIntents: commonResponseIntents({
       previousUseReplies: [
         "Yes, I've used temazepam before when I couldn't sleep.",
-        "Yes. I've had sleeping tablets previously.",
+        "Yes, I’ve had sleeping tablets before.",
       ],
       conditionsReplies: [
-        "I have anxiety and a past history with alcohol that is recorded at the pharmacy.",
+        "I have anxiety, and the pharmacy has a record of my past alcohol dependence.",
         "My anxiety and previous alcohol dependence are the main relevant conditions.",
       ],
       symptomsReplies: [
@@ -1031,7 +1031,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
   "case-5": {
     caseId: "case-5",
     patientRole: "Carol Simmons",
-    openingMessage: "Hello. I’m collecting my metformin prescription.",
+    openingMessage: "Hi, I’m here to pick up my metformin. Is it ready yet?",
     handoverGoal: "Hand over this supply and counsel to your professional standard.",
     concernAfterTurns: 2,
     concernTopicId: "explain_hold",
@@ -1049,7 +1049,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
       ],
       symptomsReplies: [
         "I feel well today and don't have vomiting, severe weakness or breathing trouble.",
-        "No new symptoms today; this is a regular prescription.",
+        "No new symptoms today. It’s just my regular prescription.",
       ],
     }),
     topics: [
@@ -1086,7 +1086,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
         ],
         patientReplies: [
           "My doctor said my kidney function was a little reduced at my last blood test.",
-          "The last blood test showed my kidneys were down a little — the doctor is keeping an eye on it.",
+          "My last blood test showed that my kidney function was a little low, so the doctor is keeping an eye on it.",
         ],
       },
       {
@@ -1147,7 +1147,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
           "\\b(?:do not|don't) (?:stop|change)\\b.*\\b(?:medicine|tablet|metformin|cimetidine)\\b.*\\b(?:doctor|advice|told)\\b",
         ],
         patientReplies: [
-          "I won’t change anything myself; I’ll wait for the reviewed plan.",
+          "I won’t change anything myself. I’ll wait until you’ve checked the plan.",
           "Okay — I'll keep everything as it is until I hear back from you or the doctor.",
         ],
       },
@@ -1172,7 +1172,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
   "case-6": {
     caseId: "case-6",
     patientRole: "Fiona Chang",
-    openingMessage: "Hi. I’m Fiona, and I’m here for the doxycycline prescription.",
+    openingMessage: "Hi, I’m Fiona. I was just wondering if my doxycycline is ready yet?",
     handoverGoal: "Hand over this supply and counsel to your professional standard.",
     concernAfterTurns: 3,
     concernTopicId: "separation",
@@ -1224,7 +1224,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
         ],
         patientReplies: [
           "No, I’m not pregnant or breastfeeding.",
-          "No — not pregnant, not breastfeeding, and not planning to be.",
+          "No, I’m not pregnant or breastfeeding, and I’m not planning to become pregnant.",
         ],
       },
       {
@@ -1329,7 +1329,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
   "case-7": {
     caseId: "case-7",
     patientRole: "Peter Morales",
-    openingMessage: "Hello. I’m here for my regular OxyContin prescription.",
+    openingMessage: "Hi, I’m here to pick up my usual OxyContin prescription. Is it ready yet?",
     handoverGoal: "Hand over this supply and counsel to your professional standard.",
     concernAfterTurns: 3,
     concernTopicId: "secure_storage",
@@ -1404,7 +1404,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
         ],
         patientReplies: [
           "One tablet every 12 hours, swallowed whole. I won’t crush or chew it.",
-          "Understood — whole tablet, twice a day, no crushing.",
+          "Okay, I’ll take one whole tablet twice a day, without crushing it.",
         ],
       },
       {
@@ -1458,8 +1458,8 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
           "\\bcall\\b.*\\b(?:000|triple zero|an ambulance)\\b",
         ],
         patientReplies: [
-          "I’ll call 000 if breathing becomes slow or difficult or if I cannot be woken.",
-          "Understood — slow breathing or someone can't rouse me, that's a triple-zero call.",
+          "I’ll call triple zero if my breathing becomes slow or difficult, or if someone can’t wake me.",
+          "If my breathing slows or someone can’t wake me, that’s a triple-zero call.",
         ],
       },
       ...closingTopics("I’ll take one whole tablet every 12 hours, avoid alcohol and unsafe driving, lock it away and seek emergency help for breathing trouble or unresponsiveness."),
@@ -1474,7 +1474,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
   "case-8": {
     caseId: "case-8",
     patientRole: "Helen Brooks",
-    openingMessage: "Hello. The doctor has prescribed a pain patch for me.",
+    openingMessage: "Hi, my doctor prescribed a pain patch for me. I was wondering if it’s ready yet?",
     handoverGoal: "Hand over this supply and counsel to your professional standard.",
     concernAfterTurns: 2,
     concernTopicId: "explain_hold",
@@ -1504,7 +1504,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
           "No, no allergies that I've ever known about.",
         ],
         medicinesReply: [
-          "I only use paracetamol for pain. I do not take sleeping tablets or strong pain medicines.",
+          "I only use paracetamol for pain. I don’t take sleeping tablets or strong pain medicines.",
           "Just paracetamol when the arthritis plays up — nothing stronger, and no sleeping tablets.",
         ],
         medicinesCritical: true,
@@ -1525,7 +1525,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
           "\\bopioid[- ]naive\\b",
         ],
         patientReplies: [
-          "No. I have never taken a strong opioid regularly; I use paracetamol.",
+          "No, I’ve never taken a strong opioid regularly. I only use paracetamol.",
           "Never — this would be my first time on anything like fentanyl.",
         ],
       },
@@ -1572,7 +1572,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
           "All right — I'll stick with the paracetamol and wait to hear from you.",
         ],
       },
-      ...closingTopics("You will hold the fentanyl patch, contact my doctor and update me. I will not apply it."),
+      ...closingTopics("You’ll hold the fentanyl patch, contact my doctor, and update me. I won’t apply it."),
     ],
     unsafeAdviceRules: withCommonUnsafe({
       id: "supply_fentanyl_naive",
@@ -1584,7 +1584,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
   "case-9": {
     caseId: "case-9",
     patientRole: "Noah Williams’s parent",
-    openingMessage: "Hi. I’m collecting Noah’s usual dexamfetamine.",
+    openingMessage: "Hi, I’m here to pick up Noah’s usual dexamfetamine. Is it ready yet?",
     handoverGoal: "Hand over this supply and counsel to your professional standard.",
     concernAfterTurns: 2,
     concernTopicId: "explain_hold",
@@ -1614,7 +1614,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
           "No — he's never had a reaction to anything.",
         ],
         medicinesReply: [
-          "He takes dexamfetamine only; no decongestants, antidepressants or supplements.",
+          "He only takes dexamfetamine. He doesn’t use decongestants, antidepressants, or supplements.",
           "Just the dexamfetamine. Nothing else, not even vitamins.",
         ],
         medicinesCritical: true,
@@ -1666,7 +1666,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
           "Thank you. Ring me as soon as you hear back — Noah needs his medicine.",
         ],
       },
-      ...closingTopics("You will hold the medicine, contact the clinic through the verified directory, document it and update me."),
+      ...closingTopics("You’ll hold the medicine, contact the clinic using the verified number, document what happens, and update me."),
     ],
     unsafeAdviceRules: withCommonUnsafe({
       id: "call_unverified_number",
@@ -1678,7 +1678,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
   "case-10": {
     caseId: "case-10",
     patientRole: "Grace Lim",
-    openingMessage: "Hello. I’m collecting my methotrexate.",
+    openingMessage: "Hi, I was just wondering if my methotrexate is ready yet?",
     handoverGoal: "Hand over this supply and counsel to your professional standard.",
     concernAfterTurns: 2,
     concernTopicId: "explain_hold",
@@ -1708,7 +1708,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
           "No allergies that I've ever been told about.",
         ],
         medicinesReply: [
-          "I take folic acid on a different day and sometimes paracetamol. I do not use ibuprofen unless advised.",
+          "I take folic acid on a different day and sometimes use paracetamol. I don’t take ibuprofen unless I’m told to.",
           "Folic acid once a week on a different day, and paracetamol occasionally. I avoid ibuprofen.",
         ],
         medicinesCritical: true,
@@ -1768,7 +1768,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
           "Okay — mouth ulcers, fever or strange bruising means I call for help straight away.",
         ],
       },
-      ...closingTopics("I will not take a daily dose. You will hold the prescription and have the doctor confirm a corrected once-weekly plan."),
+      ...closingTopics("I won’t take it every day. You’ll hold the prescription and ask the doctor to confirm the correct once-weekly plan."),
     ],
     unsafeAdviceRules: withCommonUnsafe({
       id: "daily_methotrexate",
@@ -1780,7 +1780,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
   "case-11": {
     caseId: "case-11",
     patientRole: "Rahul Mehta",
-    openingMessage: "Hi. I need my lithium, but I’ve had a stomach bug for two days.",
+    openingMessage: "Hi, I was just wondering if my lithium is ready. I’ve also had a stomach bug for the past two days.",
     handoverGoal: "Hand over this supply and counsel to your professional standard.",
     concernAfterTurns: 2,
     concernTopicId: "urgent_plan",
@@ -1797,7 +1797,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
         "Bipolar disorder — that's what the lithium is for. My kidneys have been fine.",
       ],
       symptomsReplies: [
-        "I have vomiting, diarrhoea, poor fluid intake, a worse tremor and feel unsteady.",
+        "I’ve been vomiting and have diarrhoea. I’m hardly drinking, my tremor is worse, and I feel unsteady.",
         "I've been vomiting with diarrhoea, barely keeping fluids down, and my tremor is worse than usual.",
       ],
     }),
@@ -1824,7 +1824,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
         fallbackPatterns: ["\\b(?:vomit|diarrh|dehydrat|fluid|drink)\\w*\\b", "\\b(?:ibuprofen|nsaid|naproxen)\\b", "\\b(?:tremor|shak|unsteady|ataxia|confus)\\w*\\b"],
         requiredPatternGroups: [["\\b(?:vomit|diarrh|dehydrat|fluid|drink)\\w*\\b"], ["\\b(?:ibuprofen|nsaid|naproxen)\\b"]],
         patientReplies: [
-          "Yes—vomiting and diarrhoea, hardly drinking, ibuprofen, a worse tremor and some unsteadiness.",
+          "Yes. I’ve had vomiting and diarrhoea, and I’m hardly drinking. I’ve also taken ibuprofen, and my tremor and balance are worse.",
           "It's been rough — vomiting, not drinking much, ibuprofen for the aches, and now my hands are shakier.",
         ],
       },
@@ -1870,7 +1870,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
           "I didn't realise being unwell and the ibuprofen could push my lithium up like that.",
         ],
       },
-      ...closingTopics("I will seek urgent assessment now because the illness, ibuprofen and symptoms could mean lithium toxicity."),
+      ...closingTopics("I’ll get urgent medical help now because the illness, ibuprofen, and my symptoms could mean lithium toxicity."),
     ],
     unsafeAdviceRules: withCommonUnsafe({
       id: "routine_lithium_continue",
@@ -1882,7 +1882,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
   "case-12": {
     caseId: "case-12",
     patientRole: "Evelyn Scott",
-    openingMessage: "Hello. I’m collecting my Eliquis. The tablet looks stronger this time.",
+    openingMessage: "Hi, I’m here to pick up my Eliquis. Is it meant to be a stronger tablet this time?",
     handoverGoal: "Hand over this supply and counsel to your professional standard.",
     concernAfterTurns: 2,
     concernTopicId: "explain_hold",
@@ -1976,7 +1976,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
           "I see — the arthritis tablets and the blood thinner together. I'll watch for any bleeding and get help fast.",
         ],
       },
-      ...closingTopics("You will hold the 5 milligram Eliquis, check the atrial-fibrillation dose and naproxen with my doctor, then update me."),
+      ...closingTopics("You’ll hold the 5 milligram Eliquis, check the dose and naproxen with my doctor, and then update me."),
     ],
     unsafeAdviceRules: withCommonUnsafe({
       id: "start_high_apixaban",
@@ -1988,7 +1988,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
   "case-13": {
     caseId: "case-13",
     patientRole: "Christopher Carruthers",
-    openingMessage: "Hi. I’m picking up my two diabetes tablets.",
+    openingMessage: "Hi, I was just wondering if my two diabetes medicines are ready yet?",
     handoverGoal: "Hand over this supply and counsel to your professional standard.",
     concernAfterTurns: 3,
     concernTopicId: "metformin_xr_admin",
@@ -2002,7 +2002,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
       ],
       conditionsReplies: [
         "Just the type 2 diabetes. My kidneys were fine at my last check.",
-        "Type 2 diabetes — that is all the doctor manages me for.",
+        "I have type 2 diabetes. That’s the only condition my doctor is managing.",
       ],
       symptomsReplies: [
         "I feel well. No shakiness, sweating or dizzy spells.",
@@ -2073,7 +2073,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
         ],
         forbiddenPatterns: ["\\b(?:you can|fine to|okay to)\\b.*\\b(?:crush|chew|halve|split)\\b"],
         patientReplies: [
-          "Understood — swallow them whole, no breaking them up.",
+          "Okay, I’ll swallow them whole and won’t break them up.",
           "Okay, so the big ones go down whole even though they're a mouthful.",
         ],
       },
@@ -2160,7 +2160,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
         ],
         patientReplies: [
           "I'll get seen straight away if I get bad stomach pain or any swelling.",
-          "Understood — severe pain or swelling means urgent help.",
+          "Okay, severe pain or swelling means I need urgent help.",
         ],
       },
       ...closingTopics("I'll take four metformin daily with food, swallowed whole, and one sitagliptin a day. If I go shaky or sweaty I'll have some sugar, and bad stomach pain means urgent help."),
