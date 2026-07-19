@@ -98,10 +98,75 @@ export const CASE1_WARNING_TONES: Record<string, WarningStickerTone> = {
   "Keep refrigerated": "green",
 };
 
-export const STICKER_DIMENSIONS = {
-  main: { width: 66, height: 34 },
-  warning: { width: 34, height: 9 },
-} as const;
+/**
+ * Physical model. Labels have a fixed real-world size and aspect ratio taken
+ * from the reference pack photos, and each carton face has real dimensions.
+ * A label therefore occupies a different *fraction* of a wide front panel than
+ * of a narrow side panel — but the same real size — which is what keeps it
+ * looking identical in the tray, under the cursor and once placed.
+ *
+ * Units are millimetres. The editor renders every face at a single mm→px scale
+ * so a label is literally the same pixel size on every face.
+ */
+export interface PhysicalSize {
+  /** width in mm */
+  w: number;
+  /** height in mm */
+  h: number;
+}
+
+export const ASSEMBLY_MM_PX = 6.5;
+
+export const FACE_PHYSICAL: Record<PackFace, PhysicalSize> = {
+  front: { w: 60, h: 40 },
+  back: { w: 60, h: 40 },
+  left: { w: 20, h: 40 },
+  right: { w: 20, h: 40 },
+  top: { w: 60, h: 20 },
+  bottom: { w: 60, h: 20 },
+};
+
+export const STICKER_PHYSICAL: Record<StickerKind, PhysicalSize> = {
+  // Dispensing label ≈ 2.35:1 landscape, ancillary warning ≈ 2.2:1 compact box.
+  main: { w: 40, h: 17 },
+  warning: { w: 22, h: 10 },
+};
+
+/** A sticker's size as a percentage of a given face. */
+export function stickerSizePercent(
+  face: PackFace,
+  kind: StickerKind
+): { width: number; height: number } {
+  const faceSize = FACE_PHYSICAL[face];
+  const sticker = STICKER_PHYSICAL[kind];
+  return {
+    width: (sticker.w / faceSize.w) * 100,
+    height: (sticker.h / faceSize.h) * 100,
+  };
+}
+
+export const CASE1_WARNING_CODES: Record<string, string> = {
+  "Take with food or milk": "5",
+  "Complete the full course": "3",
+  "May cause nausea": "12",
+  "May cause drowsiness": "15",
+  "Avoid alcohol": "2",
+  "Take with a full glass of water": "7",
+  "Keep refrigerated": "6",
+};
+
+/** Full cautionary advisory wording, as printed on a real ancillary label. */
+export const CASE1_ANCILLARY_TEXT: Record<string, string> = {
+  "Take with food or milk": "Take this medicine with food or milk.",
+  "Complete the full course":
+    "Take this medicine until the course is finished, unless your doctor tells you to stop.",
+  "May cause nausea": "This medicine may cause nausea. Tell your pharmacist if it troubles you.",
+  "May cause drowsiness":
+    "This medicine may cause drowsiness. If affected, do not drive or operate machinery.",
+  "Avoid alcohol": "Do not drink alcohol while taking this medicine.",
+  "Take with a full glass of water": "Take this medicine with a full glass of water.",
+  "Keep refrigerated": "Keep this medicine refrigerated. Do not freeze.",
+};
 
 interface ProtectedZone {
   x: number;
@@ -295,7 +360,7 @@ function stickerOverlapIssues(submission: Case1AssemblySubmission): string[] {
 }
 
 function rotatedStickerBounds(placement: StickerPlacement, kind: StickerKind) {
-  const size = STICKER_DIMENSIONS[kind];
+  const size = stickerSizePercent(placement.face, kind);
   const radians = (placement.rotation * Math.PI) / 180;
   const rotatedWidth = Math.abs(size.width * Math.cos(radians))
     + Math.abs(size.height * Math.sin(radians));

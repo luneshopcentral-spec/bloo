@@ -4719,3 +4719,222 @@
 .fred-root .fred-action-dock {
   position: static;
 }
+
+/* ============================================================
+   PACK ASSEMBLY — flat face editor + true-size labels
+   Replaces the 3D-cube placement (unreliable hit-testing) with a
+   face-on panel, so every panel accepts labels and drag maths are
+   exact. Labels have one fixed real size shown identically in the
+   tray, under the cursor and once placed.
+   ============================================================ */
+
+/* Face editing viewport + panel */
+.fred-root .fred-face-viewport {
+  position: relative;
+  min-height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  border: 1px solid #d5dde7;
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 50% 44%, rgba(255,255,255,.96) 0 30%, rgba(233,238,245,.9) 74%),
+    #eef2f7;
+  overflow: hidden;
+}
+.fred-root .fred-face-panel {
+  position: relative;
+  box-sizing: border-box;
+  border: 1px solid #9ea9b7;
+  border-radius: 4px;
+  background: #fbfcfd;
+  box-shadow: 0 10px 26px rgba(36, 52, 77, 0.18), inset 0 0 24px rgba(78, 94, 119, 0.05);
+  cursor: crosshair;
+  overflow: visible; /* a label pushed past the edge must read as "off the box" */
+  touch-action: none;
+}
+/* Coloured carton spine down the left of every panel */
+.fred-root .fred-face-panel::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 30px;
+  border-radius: 4px 0 0 4px;
+  background: #3678bb;
+  content: "";
+  z-index: 0;
+}
+.fred-root .colour-coral.fred-face-panel::before  { background: #d05f59; }
+.fred-root .colour-green.fred-face-panel::before  { background: #4e9569; }
+.fred-root .colour-purple.fred-face-panel::before { background: #7b68aa; }
+.fred-root .colour-amber.fred-face-panel::before  { background: #c58b2c; }
+.fred-root .fred-face-panel .fred-carton-print { z-index: 0; }
+
+/* ── One label look, used in the tray, the drag ghost and on the panel ── */
+.fred-root .fred-label-render {
+  position: relative;
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 3px;
+  font-family: var(--sim-font);
+  color: #1e293b;
+}
+.fred-root .fred-label-render.main {
+  border: 1px solid #cbb76a;
+  background: #fffdf4;
+  padding: 4px 6px 0;
+  box-shadow: inset 0 0 0 2px #fffdf4, inset 0 0 0 3px #eadfae;
+}
+.fred-root .fred-label-render.main i {
+  display: block;
+  font-style: normal;
+  font-size: 6px;
+  letter-spacing: 0.3px;
+  color: #7a6a1f;
+  text-transform: uppercase;
+}
+.fred-root .fred-label-render.main strong {
+  display: block;
+  margin-top: 1px;
+  font-size: 9px;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fred-root .fred-label-render.main em {
+  display: block;
+  margin-top: 2px;
+  font-style: italic;
+  font-size: 8px;
+  line-height: 1.15;
+}
+.fred-root .fred-label-render.main b { display: block; margin-top: 2px; font-size: 8.5px; }
+.fred-root .fred-label-render.main small { display: block; margin-top: 1px; color: #4b5563; font-size: 6.5px; }
+.fred-root .fred-label-render.main .fred-label-footer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 2px 6px;
+  background: #f1e4a6;
+  color: #6b5a13;
+  font-size: 6px;
+  letter-spacing: 0.4px;
+  text-align: right;
+}
+
+.fred-root .fred-label-render.warning {
+  --tone: #6d5aa0;
+  border: 1px solid var(--tone);
+  border-left-width: 5px;
+  background: #ffffff;
+  padding: 4px 6px 4px 26px;
+  display: flex;
+  align-items: center;
+}
+.fred-root .fred-label-render.warning .fred-warning-code {
+  position: absolute;
+  left: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  min-width: 15px;
+  height: 15px;
+  padding: 0 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  background: var(--tone);
+  color: #fff;
+  font-size: 8px;
+  font-weight: 700;
+}
+.fred-root .fred-label-render.warning .fred-warning-text {
+  font-size: 8px;
+  line-height: 1.15;
+  color: #29303c;
+}
+.fred-root .tone-blue   .fred-label-render.warning,
+.fred-root .fred-label-render.warning.tone-blue   { --tone: #2f6db0; }
+.fred-root .tone-red    .fred-label-render.warning,
+.fred-root .fred-label-render.warning.tone-red    { --tone: #b23a30; }
+.fred-root .tone-orange .fred-label-render.warning,
+.fred-root .fred-label-render.warning.tone-orange { --tone: #c07a1e; }
+.fred-root .tone-green  .fred-label-render.warning,
+.fred-root .fred-label-render.warning.tone-green  { --tone: #3f8a5c; }
+.fred-root .tone-purple .fred-label-render.warning,
+.fred-root .fred-label-render.warning.tone-purple { --tone: #6d5aa0; }
+
+/* Chip container (tray + on-panel + ghost all wrap a .fred-label-render) */
+.fred-root .fred-label-chip {
+  position: relative;
+  box-sizing: border-box;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: grab;
+  touch-action: none;
+  border-radius: 4px;
+  transition: box-shadow 120ms ease, transform 120ms ease;
+}
+.fred-root .fred-label-chip:hover { transform: translateY(-1px); }
+.fred-root .fred-label-chip.armed { box-shadow: 0 0 0 2px #2563eb, 0 4px 12px rgba(37,99,235,.28); }
+.fred-root .fred-label-chip.placed:not(.placed-on-face) { opacity: .5; }
+.fred-root .fred-label-chip.disabled { opacity: .45; cursor: not-allowed; pointer-events: none; }
+.fred-root .fred-label-chip.placed-on-face { cursor: grab; }
+.fred-root .fred-label-chip.placed-on-face.selected { box-shadow: 0 0 0 2px #2563eb; }
+.fred-root .fred-label-chip.placed-on-face:not(.selected) { box-shadow: 0 2px 6px rgba(15,23,42,.28); }
+.fred-root .fred-chip-placed-flag {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: rgba(21,128,61,.92);
+  color: #fff;
+  font-size: 7px;
+  font-weight: 700;
+}
+
+/* Remove button on a placed label */
+.fred-root .fred-label-chip .fred-remove-applied-sticker {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #d1d5db;
+  border-radius: 50%;
+  background: #fff;
+  color: #b91c1c;
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(15,23,42,.3);
+}
+.fred-root .fred-label-chip.placed-on-face:not(.selected) .fred-remove-applied-sticker { display: none; }
+
+/* Tray layout */
+.fred-root .fred-warning-chip-roll {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 14px;
+  padding: 4px 2px 2px;
+}
+.fred-root .fred-sticker-group { margin-top: 10px; }
+
+/* Drag ghost that follows the cursor */
+.fred-root .fred-sticker-ghost {
+  position: fixed;
+  z-index: 120;
+  pointer-events: none;
+  opacity: 0.92;
+  filter: drop-shadow(0 8px 14px rgba(15,23,42,.35));
+}
