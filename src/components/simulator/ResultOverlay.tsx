@@ -155,7 +155,7 @@ export function ResultOverlay({
 
           <details className="fred-result-details" open={!result.passed}>
             <summary>
-              <span>Stage 1 · Dispensing</span>
+              <span>Dispensing workflow · Entry and pack checks</span>
               <strong>{result.dispense.pointsEarned}/{result.dispense.pointsTotal}</strong>
             </summary>
             <div className="fred-result-details-body">
@@ -174,7 +174,7 @@ export function ResultOverlay({
 
           <details className="fred-result-details counselling" open={!result.passed}>
             <summary>
-              <span>Stage 2 · Patient interaction</span>
+              <span>Patient interaction</span>
               <strong>{result.counselling.pointsEarned}/{result.counselling.pointsTotal}</strong>
             </summary>
             <div className="fred-result-details-body">
