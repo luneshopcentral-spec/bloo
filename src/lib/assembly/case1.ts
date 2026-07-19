@@ -7,6 +7,8 @@ export interface StickerPlacement {
   /** Top-left position as a percentage of the visible carton face. */
   x: number;
   y: number;
+  /** Clockwise rotation in degrees around the centre of the label. */
+  rotation: number;
 }
 
 export type StickerKind = "main" | "warning";
@@ -97,8 +99,8 @@ export const CASE1_WARNING_TONES: Record<string, WarningStickerTone> = {
 };
 
 export const STICKER_DIMENSIONS = {
-  main: { width: 78, height: 40 },
-  warning: { width: 48, height: 11 },
+  main: { width: 66, height: 34 },
+  warning: { width: 34, height: 9 },
 } as const;
 
 interface ProtectedZone {
@@ -143,12 +145,12 @@ export function evaluateStickerPlacement(
 ): { safe: boolean; issue?: string } {
   if (!placement) return { safe: false, issue: "the dispensing label was not applied" };
 
-  const size = STICKER_DIMENSIONS[kind];
+  const bounds = rotatedStickerBounds(placement, kind);
   if (
-    placement.x < 0
-    || placement.y < 0
-    || placement.x + size.width > 100
-    || placement.y + size.height > 100
+    bounds.x < 0
+    || bounds.y < 0
+    || bounds.x + bounds.width > 100
+    || bounds.y + bounds.height > 100
   ) {
     return { safe: false, issue: "a label extends beyond the carton face" };
   }
@@ -161,7 +163,7 @@ export function evaluateStickerPlacement(
   }
 
   const collision = PROTECTED_ZONES[placement.face].find((zone) => rectanglesOverlap(
-    { ...placement, width: size.width, height: size.height },
+    bounds,
     zone
   ));
   if (collision) {
@@ -213,7 +215,7 @@ export function addCase1AssemblyChecks(
       isCritical: true,
       expected: "Labels positioned without covering medicine, batch, expiry, barcode or closure information",
       actual: submission.mainLabelPlacement
-        ? `${titleCase(submission.mainLabelPlacement.face)} face at ${Math.round(submission.mainLabelPlacement.x)}%, ${Math.round(submission.mainLabelPlacement.y)}%`
+        ? `${titleCase(submission.mainLabelPlacement.face)} face at ${Math.round(submission.mainLabelPlacement.x)}%, ${Math.round(submission.mainLabelPlacement.y)}%, rotated ${Math.round(submission.mainLabelPlacement.rotation)}°`
         : "Main label not applied",
       detail: placementPassed
         ? "The dispensing and warning labels are fully attached without covering medicine identity, batch, expiry, barcode or closure information."
@@ -280,11 +282,9 @@ function stickerOverlapIssues(submission: Case1AssemblySubmission): string[] {
       const first = stickers[firstIndex];
       const second = stickers[secondIndex];
       if (first.placement.face !== second.placement.face) continue;
-      const firstSize = STICKER_DIMENSIONS[first.kind];
-      const secondSize = STICKER_DIMENSIONS[second.kind];
       if (rectanglesOverlap(
-        { ...first.placement, width: firstSize.width, height: firstSize.height },
-        { ...second.placement, width: secondSize.width, height: secondSize.height }
+        rotatedStickerBounds(first.placement, first.kind),
+        rotatedStickerBounds(second.placement, second.kind)
       )) {
         issues.push(`${first.label} overlaps ${second.label}.`);
       }
@@ -292,4 +292,21 @@ function stickerOverlapIssues(submission: Case1AssemblySubmission): string[] {
   }
 
   return issues;
+}
+
+function rotatedStickerBounds(placement: StickerPlacement, kind: StickerKind) {
+  const size = STICKER_DIMENSIONS[kind];
+  const radians = (placement.rotation * Math.PI) / 180;
+  const rotatedWidth = Math.abs(size.width * Math.cos(radians))
+    + Math.abs(size.height * Math.sin(radians));
+  const rotatedHeight = Math.abs(size.width * Math.sin(radians))
+    + Math.abs(size.height * Math.cos(radians));
+  const centreX = placement.x + size.width / 2;
+  const centreY = placement.y + size.height / 2;
+  return {
+    x: centreX - rotatedWidth / 2,
+    y: centreY - rotatedHeight / 2,
+    width: rotatedWidth,
+    height: rotatedHeight,
+  };
 }
