@@ -394,6 +394,7 @@ export function AssemblyStage({
             <>
               <div className="fred-face-viewport">
                 <div
+                  key={activeFace}
                   ref={faceRef}
                   className={`fred-face-panel colour-${selectedPack.colour}`}
                   style={{ width: `${facePx.width}px`, height: `${facePx.height}px` }}
