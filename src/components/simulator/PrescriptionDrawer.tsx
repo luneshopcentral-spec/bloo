@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import type { PracticeCase } from "@/lib/types/case";
-import { PrescriptionForm, type PrescriptionLayout } from "./PrescriptionForm";
+import { PrescriptionForm, layoutForCase } from "./PrescriptionForm";
 import "./prescription.css";
 import "./prescriptionDrawer.css";
 
@@ -29,23 +29,16 @@ export function PrescriptionDrawer({
   overlayOpen,
 }: PrescriptionDrawerProps) {
   const [zoom, setZoom] = useState(1);
-  const [layout, setLayout] = useState<PrescriptionLayout>("repeat-authorisation");
+  // New patients have never had this medicine dispensed before (original script
+  // only); existing patients are continuing therapy (repeat script instead).
+  const layout = layoutForCase(caseData);
   const triggerRef  = useRef<HTMLButtonElement>(null);
   const closeRef    = useRef<HTMLButtonElement>(null);
   const prevOpenRef = useRef(false);
 
   useEffect(() => {
-    const savedLayout = window.localStorage.getItem("dispense-rx-prescription-layout");
-    if (savedLayout === "repeat-authorisation" || savedLayout === "authority-script") {
-      setLayout(savedLayout);
-    }
-  }, []);
-
-  function selectLayout(nextLayout: PrescriptionLayout) {
-    setLayout(nextLayout);
-    window.localStorage.setItem("dispense-rx-prescription-layout", nextLayout);
     setZoom(1);
-  }
+  }, [caseData.id]);
 
   // Focus management: open → focus close button; close → return to trigger
   useEffect(() => {
@@ -122,23 +115,6 @@ export function PrescriptionDrawer({
             Printed prescription
             <small>Drag this bar to move the window</small>
           </span>
-
-          <div className="presc-layout-switch" role="group" aria-label="Prescription layout">
-            <button
-              type="button"
-              aria-pressed={layout === "repeat-authorisation"}
-              onClick={() => selectLayout("repeat-authorisation")}
-            >
-              Original repeat form
-            </button>
-            <button
-              type="button"
-              aria-pressed={layout === "authority-script"}
-              onClick={() => selectLayout("authority-script")}
-            >
-              Authority script
-            </button>
-          </div>
 
           <div className="presc-zoom-controls">
             <button

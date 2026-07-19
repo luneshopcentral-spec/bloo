@@ -5,14 +5,24 @@ interface PrescriptionFormProps {
   layout?: PrescriptionLayout;
 }
 
-export type PrescriptionLayout = "repeat-authorisation" | "authority-script";
+export type PrescriptionLayout = "repeat-authorisation" | "original-script";
+
+/**
+ * A new patient has never had this medicine dispensed before, so there is no
+ * repeat form yet — only the doctor's original script exists. An existing
+ * patient continuing therapy presents the pharmacy-generated repeat instead,
+ * which is a distinct, newer document referencing that original.
+ */
+export function layoutForCase(caseData: PracticeCase): PrescriptionLayout {
+  return caseData.patientLookup.requiresNewPatient ? "original-script" : "repeat-authorisation";
+}
 
 export function PrescriptionForm({
   caseData,
-  layout = "repeat-authorisation",
+  layout = layoutForCase(caseData),
 }: PrescriptionFormProps) {
-  if (layout === "authority-script") {
-    return <AuthorityScriptPrescription caseData={caseData} />;
+  if (layout === "original-script") {
+    return <OriginalScriptPrescription caseData={caseData} />;
   }
 
   // Stable pseudo-random prescription number seeded by caseNumber
@@ -161,7 +171,7 @@ export function PrescriptionForm({
               </span>
               <span className="pbs-meta-sep">|</span>
               <span>
-                <span className="pbs-tiny">Rpts</span>{" "}
+                <span className="pbs-tiny">Rpts left</span>{" "}
                 <span className="pbs-bold">{item.repeats}</span>
               </span>
             </div>
@@ -190,7 +200,7 @@ export function PrescriptionForm({
           <div className="pbs-bold">{pbsApproval}</div>
         </div>
         <div className="pbs-fcell">
-          <div className="pbs-tiny">No. of repeats authorised</div>
+          <div className="pbs-tiny">Repeats remaining</div>
           <div className="pbs-bold">
             {items.map((item) => item.repeats).join(" / ")}
           </div>
@@ -301,30 +311,33 @@ export function PrescriptionForm({
   );
 }
 
-function AuthorityScriptPrescription({ caseData }: { caseData: PracticeCase }) {
+function OriginalScriptPrescription({ caseData }: { caseData: PracticeCase }) {
   const patient = caseData.patientLookup.prescriptionPatient;
   const prescriptionNumber = String(
     ((caseData.caseNumber * 3571 + 48271) % 90000000) + 10000000
   );
-  const authorityNumber = caseData.authority?.number ?? `A${caseData.caseNumber}846`;
+  const authority = caseData.authority;
+  const authorityNumber = authority?.number ?? `A${caseData.caseNumber}846`;
   const substitutionNotPermitted = caseData.items.some((item) => !item.genericSubstitutionAllowed);
 
   return (
     <article
       className="authority-rx"
-      aria-label={`Authority prescription training specimen for case ${caseData.caseNumber}`}
+      aria-label={`Original prescription training specimen for case ${caseData.caseNumber}`}
     >
       <div className="authority-rx-watermark" aria-hidden="true">TRAINING SPECIMEN</div>
 
       <header className="authority-rx-header">
         <div>
-          <strong>PBS/DVA AUTHORITY SCRIPT No.</strong>
+          <strong>{authority ? "PBS/DVA AUTHORITY SCRIPT No." : "PBS/RPBS ORIGINAL PRESCRIPTION No."}</strong>
           <b>Dr {caseData.doctor}</b>
           <span>DispenseRx Training Practice</span>
           <span>Central NSW 2001</span>
         </div>
         <div className="authority-rx-number">{prescriptionNumber}</div>
-        <div className="authority-rx-red-tab">Authority<br />Prescription<br />Number</div>
+        <div className="authority-rx-red-tab">
+          {authority ? <>Authority<br />Prescription<br />Number</> : <>Prescription<br />Number</>}
+        </div>
       </header>
 
       <section className="authority-rx-provider">
@@ -384,16 +397,22 @@ function AuthorityScriptPrescription({ caseData }: { caseData: PracticeCase }) {
             <strong>Dr {caseData.doctor}</strong>
             <span>Prescriber signature</span>
           </div>
-          <div className="authority-rx-approval">
-            <strong>Authority Approval No:</strong>
-            <b>{authorityNumber}</b>
-          </div>
-          <div className="authority-rx-authorised-row">
-            <strong>Authorised</strong>
-            <span>Delegate</span>
-          </div>
+          {authority && (
+            <>
+              <div className="authority-rx-approval">
+                <strong>Authority Approval No:</strong>
+                <b>{authorityNumber}</b>
+              </div>
+              <div className="authority-rx-authorised-row">
+                <strong>Authorised</strong>
+                <span>Delegate</span>
+              </div>
+            </>
+          )}
         </div>
-        <div className="authority-rx-red-tab authority-rx-red-tab-bottom">Authority<br />Approval<br />Number</div>
+        {authority && (
+          <div className="authority-rx-red-tab authority-rx-red-tab-bottom">Authority<br />Approval<br />Number</div>
+        )}
       </section>
 
       <footer className="authority-rx-footer">

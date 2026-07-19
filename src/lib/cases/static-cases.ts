@@ -49,9 +49,12 @@ export const STATIC_CASES: PracticeCase[] = [
         },
       },
     ],
-    errors: [],
-    expectedDecision: "dispense",
-    tip: "Erythromycin is a macrolide antibiotic. Check the selected product information, patient allergies and interactions, and counsel the patient to complete the prescribed course. PBS quantities and repeats are item-specific and must be checked against a current reference.",
+    errors: [
+      "Patient history shows this course (25 capsules, three times daily — about an 8-day supply) was last dispensed on 23/06/17, only 4 days before this presentation. The repeat is being requested well before the previous course should have run out.",
+      "Hold supply and contact the prescriber to confirm why the patient needs more erythromycin this early before dispensing the repeat.",
+    ],
+    expectedDecision: "hold_contact_prescriber",
+    tip: "Erythromycin is a macrolide antibiotic. Before relying on the printed repeats, always check the patient's dispensing history: work out how long the previous supply should have lasted from the quantity and directions, and compare that against the last fill date. A repeat requested well before the prior course should have run out needs prescriber clarification, not routine dispensing.",
   },
   {
     id: "case-2",
