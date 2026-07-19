@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import type { DragEvent, MouseEvent as ReactMouseEvent } from "react";
 import { expandAbbrevs } from "@/lib/scoring/abbreviations";
 import type { FormState } from "@/components/simulator/state";
+import { MedicinesReferenceDesk } from "@/components/simulator/MedicinesReferenceDesk";
 import type { DispenseDecision, PracticeCase } from "@/lib/types/case";
 import {
   CASE1_PACK_OPTIONS,
@@ -79,13 +80,15 @@ function centredPlacement(face: PackFace, kind: StickerKind): StickerPlacement {
     face,
     x: (100 - size.width) / 2,
     y: (100 - size.height) / 2,
+    rotation: 0,
   };
 }
 
 function pointerPlacement(
   event: ReactMouseEvent<HTMLElement> | DragEvent<HTMLElement>,
   face: PackFace,
-  kind: StickerKind
+  kind: StickerKind,
+  rotation = 0
 ): StickerPlacement {
   const rect = event.currentTarget.getBoundingClientRect();
   const size = STICKER_DIMENSIONS[kind];
@@ -95,6 +98,7 @@ function pointerPlacement(
     face,
     x: Math.max(0, Math.min(100 - size.width, x)),
     y: Math.max(0, Math.min(100 - size.height, y)),
+    rotation,
   };
 }
 
@@ -104,13 +108,13 @@ function initialWarningPlacements(
 ): Record<string, StickerPlacement> {
   if (!answersRevealed) return {};
   const positions = [
-    { x: 4, y: 55 },
-    { x: 52, y: 55 },
+    { x: 4, y: 57 },
+    { x: 40, y: 57 },
     { x: 4, y: 68 },
   ];
   return Object.fromEntries(Array.from(initialWarnings).map((warning, index) => [
     warning,
-    { face: "back" as PackFace, ...(positions[index] ?? { x: 52, y: 68 }) },
+    { face: "back" as PackFace, ...(positions[index] ?? { x: 40, y: 68 }), rotation: 0 },
   ]));
 }
 
@@ -136,6 +140,14 @@ export function AssemblyStage({
   const item = formState.items[0];
   const placedWarningCount = Object.keys(warningPlacements).length;
   const canComplete = Boolean(selectedPackId && mainLabelPlacement);
+  const armedWarning = armedSticker?.startsWith("warning:")
+    ? armedSticker.slice("warning:".length)
+    : null;
+  const armedPlacement = armedSticker === "main-label"
+    ? mainLabelPlacement
+    : armedWarning
+      ? warningPlacements[armedWarning] ?? null
+      : null;
 
   const warningOptions = useMemo(() => {
     const unique = new Set([...PROTOTYPE_WARNINGS, ...caseData.items[0].correctWarnings]);
@@ -185,11 +197,42 @@ export function AssemblyStage({
   function handleDrop(event: DragEvent<HTMLElement>, face: PackFace) {
     event.preventDefault();
     const token = (event.dataTransfer.getData("text/plain") || armedSticker) as StickerToken | null;
-    if (token) applySticker(token, pointerPlacement(event, face, stickerKind(token)));
+    if (token) {
+      const existingRotation = token === "main-label"
+        ? mainLabelPlacement?.rotation ?? 0
+        : warningPlacements[token.slice("warning:".length)]?.rotation ?? 0;
+      applySticker(token, pointerPlacement(event, face, stickerKind(token), existingRotation));
+    }
   }
 
   function handleFaceClick(event: ReactMouseEvent<HTMLElement>, face: PackFace) {
-    if (armedSticker) applySticker(armedSticker, pointerPlacement(event, face, stickerKind(armedSticker)));
+    if (!armedSticker) return;
+    const existingRotation = armedSticker === "main-label"
+      ? mainLabelPlacement?.rotation ?? 0
+      : warningPlacements[armedSticker.slice("warning:".length)]?.rotation ?? 0;
+    applySticker(
+      armedSticker,
+      pointerPlacement(event, face, stickerKind(armedSticker), existingRotation)
+    );
+  }
+
+  function rotateArmedSticker(delta: number) {
+    if (!armedSticker) return;
+    if (armedSticker === "main-label") {
+      setMainLabelPlacement((previous) => previous
+        ? { ...previous, rotation: normaliseRotation(previous.rotation + delta) }
+        : previous);
+      return;
+    }
+    const warning = armedSticker.slice("warning:".length);
+    setWarningPlacements((previous) => {
+      const placement = previous[warning];
+      if (!placement) return previous;
+      return {
+        ...previous,
+        [warning]: { ...placement, rotation: normaliseRotation(placement.rotation + delta) },
+      };
+    });
   }
 
   function resetBench() {
@@ -299,7 +342,9 @@ export function AssemblyStage({
                         onKeyDown={(event) => {
                           if ((event.key === "Enter" || event.key === " ") && armedSticker) {
                             event.preventDefault();
-                            applySticker(armedSticker, centredPlacement(face, stickerKind(armedSticker)));
+                            const centred = centredPlacement(face, stickerKind(armedSticker));
+                            centred.rotation = armedPlacement?.rotation ?? 0;
+                            applySticker(armedSticker, centred);
                           }
                         }}
                         aria-label={`${faceLabel(face)} face${activeFace === face ? ", visible" : ""}`}
@@ -395,6 +440,19 @@ export function AssemblyStage({
                 ))}
               </div>
 
+              {armedSticker && armedPlacement && (
+                <div className="fred-label-transform-controls" role="group" aria-label="Selected label rotation">
+                  <span>
+                    Selected: {armedSticker === "main-label" ? "dispensing label" : armedWarning}
+                    <b>{Math.round(armedPlacement.rotation)}°</b>
+                  </span>
+                  <button type="button" onClick={() => rotateArmedSticker(-15)}>↶ 15°</button>
+                  <button type="button" onClick={() => rotateArmedSticker(15)}>15° ↷</button>
+                  <button type="button" onClick={() => rotateArmedSticker(90)}>Turn 90°</button>
+                  <button type="button" onClick={() => setArmedSticker(null)}>Done</button>
+                </div>
+              )}
+
               <div className="fred-carton-checks" aria-live="polite">
                 <span className={mainLabelPlacement ? "done" : ""}>
                   {mainLabelPlacement ? "✓" : "1"} Main label applied
@@ -425,6 +483,14 @@ export function AssemblyStage({
               <h2 id="sticker-tray-title">Apply the labels</h2>
               <p>Label choice and placement are marked only after you continue.</p>
             </div>
+          </div>
+
+          <div className="fred-assembly-reference-row">
+            <div>
+              <strong>Medicines reference book</strong>
+              <span>Check the exact product and applicable ancillary labels.</span>
+            </div>
+            <MedicinesReferenceDesk medicineName={selectedPack?.generic ?? item.drug} />
           </div>
 
           <div className="fred-sticker-group">
@@ -530,7 +596,13 @@ function placementStyle(placement: StickerPlacement, kind: StickerKind) {
     top: `${placement.y}%`,
     width: `${size.width}%`,
     height: `${size.height}%`,
+    transform: `rotate(${placement.rotation}deg)`,
   };
+}
+
+function normaliseRotation(rotation: number): number {
+  const normalised = rotation % 360;
+  return normalised < 0 ? normalised + 360 : normalised;
 }
 
 function CartonFaceContent({

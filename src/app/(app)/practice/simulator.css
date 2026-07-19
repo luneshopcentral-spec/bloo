@@ -1169,7 +1169,7 @@
   background: #fbfcfd;
   box-shadow: inset 0 0 20px rgba(78, 94, 119, 0.05);
   backface-visibility: hidden;
-  pointer-events: none;
+  pointer-events: auto;
 }
 .fred-root .fred-carton-face.active {
   pointer-events: auto;
@@ -1187,21 +1187,21 @@
   width: 340px;
   height: 220px;
 }
-.fred-root .fred-carton-face.face-front { transform: rotateY(0deg) translateZ(65px); }
-.fred-root .fred-carton-face.face-back { transform: rotateY(180deg) translateZ(65px); }
+.fred-root .fred-carton-face.face-front { transform: rotateY(0deg) translateZ(105px); }
+.fred-root .fred-carton-face.face-back { transform: rotateY(180deg) translateZ(105px); }
 .fred-root .fred-carton-face.face-right,
 .fred-root .fred-carton-face.face-left {
-  left: 105px;
-  width: 130px;
+  left: 65px;
+  width: 210px;
   height: 220px;
 }
 .fred-root .fred-carton-face.face-right { transform: rotateY(90deg) translateZ(170px); }
 .fred-root .fred-carton-face.face-left { transform: rotateY(-90deg) translateZ(170px); }
 .fred-root .fred-carton-face.face-top,
 .fred-root .fred-carton-face.face-bottom {
-  top: 45px;
+  top: 5px;
   width: 340px;
-  height: 130px;
+  height: 210px;
 }
 .fred-root .fred-carton-face.face-top { transform: rotateX(90deg) translateZ(110px); }
 .fred-root .fred-carton-face.face-bottom { transform: rotateX(-90deg) translateZ(110px); }
@@ -1692,6 +1692,17 @@
 .fred-root .tone-green { --warning-colour: #46865e; }
 .fred-root .tone-purple { --warning-colour: #735b98; }
 
+.fred-root .fred-warning-sticker-roll button.tone-blue,
+.fred-root .fred-applied-warning-label.tone-blue { --warning-colour: #315d9a; }
+.fred-root .fred-warning-sticker-roll button.tone-red,
+.fred-root .fred-applied-warning-label.tone-red { --warning-colour: #b0443e; }
+.fred-root .fred-warning-sticker-roll button.tone-orange,
+.fred-root .fred-applied-warning-label.tone-orange { --warning-colour: #cf7c33; }
+.fred-root .fred-warning-sticker-roll button.tone-green,
+.fred-root .fred-applied-warning-label.tone-green { --warning-colour: #46865e; }
+.fred-root .fred-warning-sticker-roll button.tone-purple,
+.fred-root .fred-applied-warning-label.tone-purple { --warning-colour: #735b98; }
+
 .fred-root .fred-main-label-sticker { padding: 0; overflow: hidden; border-style: solid; background: #fffdf1; }
 .fred-root .fred-warning-sticker-roll button {
   --warning-colour: #315d9a;
@@ -1733,6 +1744,70 @@
 .fred-root .fred-warning-sticker-roll button.armed {
   border-color: var(--warning-colour);
   outline-color: color-mix(in srgb, var(--warning-colour) 28%, transparent);
+}
+
+.fred-root .fred-label-transform-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 7px;
+  border: 1px solid #aebfd5;
+  border-radius: 5px;
+  padding: 5px;
+  background: #eef5ff;
+}
+.fred-root .fred-label-transform-controls > span {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  color: #2b4e7c;
+  font-size: 8px;
+  font-weight: bold;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.fred-root .fred-label-transform-controls > span b {
+  margin-left: 5px;
+  border-radius: 3px;
+  padding: 2px 4px;
+  background: #d8e5f7;
+}
+.fred-root .fred-label-transform-controls button {
+  border: 1px solid #9fb2ca;
+  border-radius: 3px;
+  padding: 4px 6px;
+  background: #fff;
+  color: #294f81;
+  font-family: inherit;
+  font-size: 8px;
+  font-weight: bold;
+  cursor: pointer;
+}
+.fred-root .fred-label-transform-controls button:last-child {
+  border-color: #315f99;
+  background: #315f99;
+  color: #fff;
+}
+.fred-root .fred-assembly-reference-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 1px 0 9px;
+  border: 1px solid #c8d6e8;
+  border-radius: 5px;
+  padding: 7px;
+  background: #f2f7fd;
+}
+.fred-root .fred-assembly-reference-row strong,
+.fred-root .fred-assembly-reference-row span { display: block; }
+.fred-root .fred-assembly-reference-row strong { color: #294f81; font-size: 9px; }
+.fred-root .fred-assembly-reference-row span { margin-top: 2px; color: #63758d; font-size: 7.5px; line-height: 1.25; }
+.fred-root .fred-assembly-reference-row .fred-reference-open {
+  width: auto;
+  flex: 0 0 auto;
+  padding: 5px 7px;
+  white-space: nowrap;
 }
 .fred-root .fred-assembly-actions {
   display: flex;
