@@ -912,6 +912,614 @@
   grid-template-columns: clamp(280px, 22vw, 340px) minmax(0, 1fr);
 }
 
+/* ── Case 1 physical pack assembly prototype ───────────────────────────── */
+.fred-root .fred-assembly-stage {
+  min-height: calc(100vh - 66px);
+  padding: 14px 18px 18px;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.78)),
+    repeating-linear-gradient(90deg, #e7edf4 0, #e7edf4 1px, transparent 1px, transparent 48px),
+    #eef2f6;
+  color: #172033;
+}
+.fred-root .fred-assembly-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  border: 1px solid #cfd8e5;
+  border-radius: 10px 10px 0 0;
+  padding: 13px 16px;
+  background: #fff;
+  box-shadow: 0 4px 16px rgba(30, 48, 76, 0.06);
+}
+.fred-root .fred-assembly-header h1 {
+  margin: 2px 0 3px;
+  font-size: 19px;
+  line-height: 1.2;
+}
+.fred-root .fred-assembly-header p {
+  margin: 0;
+  color: #64748b;
+  font-size: 11px;
+}
+.fred-root .fred-stage-kicker {
+  color: #315b98;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.fred-root .fred-assembly-decision {
+  min-width: 260px;
+  border-left: 3px solid #d5962c;
+  padding: 7px 10px;
+  background: #fff9e8;
+}
+.fred-root .fred-assembly-decision span,
+.fred-root .fred-assembly-decision strong { display: block; }
+.fred-root .fred-assembly-decision span {
+  color: #7c6130;
+  font-size: 9px;
+  text-transform: uppercase;
+}
+.fred-root .fred-assembly-decision strong {
+  margin-top: 2px;
+  font-size: 12px;
+}
+.fred-root .fred-assembly-safety-note {
+  border-right: 1px solid #efdca7;
+  border-bottom: 1px solid #efdca7;
+  border-left: 1px solid #efdca7;
+  padding: 7px 12px;
+  background: #fff9e8;
+  color: #72551f;
+  font-size: 10px;
+  line-height: 1.35;
+}
+.fred-root .fred-assembly-order {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  margin: 10px 0;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  padding: 8px 12px;
+  background: #f8fafc;
+  font-size: 10px;
+}
+.fred-root .fred-assembly-order > span:first-child {
+  border-radius: 3px;
+  padding: 3px 6px;
+  background: #243f68;
+  color: #fff;
+  font-size: 8px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+.fred-root .fred-assembly-order > span:last-child { color: #526177; }
+.fred-root .fred-assembly-workbench {
+  display: grid;
+  grid-template-columns: minmax(255px, 0.78fr) minmax(430px, 1.35fr) minmax(270px, 0.85fr);
+  gap: 10px;
+  align-items: stretch;
+}
+.fred-root .fred-pack-shelf,
+.fred-root .fred-carton-bench,
+.fred-root .fred-sticker-tray {
+  min-width: 0;
+  border: 1px solid #cdd6e2;
+  border-radius: 8px;
+  padding: 11px;
+  background: #fff;
+  box-shadow: 0 4px 14px rgba(30, 48, 76, 0.05);
+}
+.fred-root .fred-carton-bench { background: linear-gradient(#fbfcfe, #f3f6fa); }
+.fred-root .fred-assembly-section-heading {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  min-height: 43px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid #dbe2eb;
+  padding-bottom: 7px;
+}
+.fred-root .fred-assembly-section-heading > span {
+  display: inline-flex;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #243f68;
+  color: #fff;
+  font-size: 11px;
+  font-weight: bold;
+}
+.fred-root .fred-assembly-section-heading h2 {
+  margin: 0;
+  font-size: 12px;
+}
+.fred-root .fred-assembly-section-heading p {
+  margin: 2px 0 0;
+  color: #6b778a;
+  font-size: 9px;
+  line-height: 1.3;
+}
+.fred-root .fred-pack-options {
+  display: grid;
+  gap: 7px;
+}
+.fred-root .fred-pack-option {
+  display: grid;
+  grid-template-columns: 55px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  border: 1px solid #d4dce7;
+  border-radius: 6px;
+  padding: 7px;
+  background: #fff;
+  color: #172033;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+}
+.fred-root .fred-pack-option:hover { border-color: #6e8fbd; transform: translateY(-1px); }
+.fred-root .fred-pack-option.selected {
+  border-color: #2f67ad;
+  box-shadow: 0 0 0 2px rgba(47, 103, 173, 0.14);
+  background: #f5f9ff;
+}
+.fred-root .fred-mini-carton {
+  position: relative;
+  display: flex;
+  min-height: 42px;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid #aeb9c8;
+  border-radius: 2px;
+  padding: 4px 5px 4px 11px;
+  background: #fff;
+  box-shadow: 2px 2px 0 #d7dde6;
+}
+.fred-root .fred-mini-carton i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 7px;
+  background: #3678bb;
+}
+.fred-root .colour-coral .fred-mini-carton i,
+.fred-root .colour-coral.fred-carton-face::before { background: #d05f59; }
+.fred-root .colour-green .fred-mini-carton i,
+.fred-root .colour-green.fred-carton-face::before { background: #4e9569; }
+.fred-root .colour-purple .fred-mini-carton i,
+.fred-root .colour-purple.fred-carton-face::before { background: #7b68aa; }
+.fred-root .colour-amber .fred-mini-carton i,
+.fred-root .colour-amber.fred-carton-face::before { background: #c58b2c; }
+.fred-root .fred-mini-carton b { font-size: 8px; line-height: 1; }
+.fred-root .fred-mini-carton small { margin-top: 2px; color: #536276; font-size: 7px; }
+.fred-root .fred-pack-option-copy small,
+.fred-root .fred-pack-option-copy strong,
+.fred-root .fred-pack-option-copy span { display: block; }
+.fred-root .fred-pack-option-copy small { color: #66758a; font-size: 8px; }
+.fred-root .fred-pack-option-copy strong { margin-top: 1px; font-size: 10px; line-height: 1.2; }
+.fred-root .fred-pack-option-copy span { margin-top: 2px; color: #526177; font-size: 8.5px; }
+.fred-root .fred-pack-select-state {
+  border: 1px solid #c8d3e1;
+  border-radius: 3px;
+  padding: 3px 5px;
+  color: #315b98;
+  font-size: 8px;
+  font-weight: bold;
+}
+.fred-root .fred-pack-option.selected .fred-pack-select-state {
+  border-color: #2f67ad;
+  background: #2f67ad;
+  color: #fff;
+}
+.fred-root .fred-carton-viewer {
+  position: relative;
+  min-height: 330px;
+  overflow: hidden;
+  border: 1px solid #d5dde7;
+  border-radius: 7px;
+  background:
+    radial-gradient(circle at 50% 44%, rgba(255,255,255,.95) 0 28%, rgba(234,239,246,.9) 72%),
+    #edf1f6;
+}
+.fred-root .fred-carton-viewer::after {
+  position: absolute;
+  right: 16%;
+  bottom: 26px;
+  left: 16%;
+  height: 15px;
+  border-radius: 50%;
+  background: rgba(36, 52, 77, 0.16);
+  filter: blur(8px);
+  content: "";
+}
+.fred-root .fred-carton-scene {
+  position: relative;
+  z-index: 1;
+  width: 390px;
+  height: 292px;
+  margin: 6px auto 0;
+  perspective: 1000px;
+}
+.fred-root .fred-carton-cube {
+  position: absolute;
+  top: 40px;
+  left: 25px;
+  width: 340px;
+  height: 220px;
+  transform-style: preserve-3d;
+  transition: transform 520ms cubic-bezier(.2,.8,.2,1);
+}
+.fred-root .fred-carton-face {
+  position: absolute;
+  display: block;
+  box-sizing: border-box;
+  overflow: hidden;
+  border: 1px solid #9ea9b7;
+  background: #fbfcfd;
+  box-shadow: inset 0 0 20px rgba(78, 94, 119, 0.05);
+  backface-visibility: hidden;
+  pointer-events: none;
+}
+.fred-root .fred-carton-face.active {
+  pointer-events: auto;
+  cursor: crosshair;
+}
+.fred-root .fred-carton-face::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 28px;
+  background: #3678bb;
+  content: "";
+}
+.fred-root .fred-carton-face.face-front,
+.fred-root .fred-carton-face.face-back {
+  width: 340px;
+  height: 220px;
+}
+.fred-root .fred-carton-face.face-front { transform: rotateY(0deg) translateZ(65px); }
+.fred-root .fred-carton-face.face-back { transform: rotateY(180deg) translateZ(65px); }
+.fred-root .fred-carton-face.face-right,
+.fred-root .fred-carton-face.face-left {
+  left: 105px;
+  width: 130px;
+  height: 220px;
+}
+.fred-root .fred-carton-face.face-right { transform: rotateY(90deg) translateZ(170px); }
+.fred-root .fred-carton-face.face-left { transform: rotateY(-90deg) translateZ(170px); }
+.fred-root .fred-carton-face.face-top,
+.fred-root .fred-carton-face.face-bottom {
+  top: 45px;
+  width: 340px;
+  height: 130px;
+}
+.fred-root .fred-carton-face.face-top { transform: rotateX(90deg) translateZ(110px); }
+.fred-root .fred-carton-face.face-bottom { transform: rotateX(-90deg) translateZ(110px); }
+.fred-root .fred-carton-print {
+  position: absolute;
+  inset: 0;
+  padding: 24px 20px 18px 48px;
+  color: #203047;
+}
+.fred-root .fred-carton-print small,
+.fred-root .fred-carton-print strong,
+.fred-root .fred-carton-print b,
+.fred-root .fred-carton-print span,
+.fred-root .fred-carton-print i { display: block; }
+.fred-root .fred-carton-print.front-print small {
+  color: #5c6b7e;
+  font-size: 10px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.fred-root .fred-carton-print.front-print strong { margin-top: 10px; font-size: 25px; line-height: 1; }
+.fred-root .fred-carton-print.front-print b { margin-top: 5px; color: #2d65a4; font-size: 21px; }
+.fred-root .colour-coral .fred-carton-print.front-print b { color: #b14d49; }
+.fred-root .colour-green .fred-carton-print.front-print b { color: #357c52; }
+.fred-root .colour-purple .fred-carton-print.front-print b { color: #675496; }
+.fred-root .colour-amber .fred-carton-print.front-print b { color: #9b6917; }
+.fred-root .fred-carton-print.front-print span { margin-top: 3px; font-size: 12px; }
+.fred-root .fred-carton-print.front-print i { position: absolute; right: 17px; bottom: 15px; font-size: 10px; font-style: normal; }
+.fred-root .fred-carton-print.back-print { padding-top: 44px; text-align: center; }
+.fred-root .fred-carton-print.back-print strong { font-size: 15px; }
+.fred-root .fred-carton-print.back-print span { margin: 7px auto; max-width: 210px; color: #718095; font-size: 9px; line-height: 1.4; }
+.fred-root .fred-carton-print.back-print i { color: #8b98a9; font-size: 8px; font-style: normal; }
+.fred-root .fred-carton-print.side-print {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 18px 12px 18px 38px;
+}
+.fred-root .fred-carton-print.side-print strong { margin-top: 6px; font-size: 10px; }
+.fred-root .fred-carton-print.side-print span { margin-top: 2px; color: #64748b; font-size: 8px; }
+.fred-root .fred-carton-print.side-print.clear { text-align: center; }
+.fred-root .fred-carton-print.end-print {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 14px 18px 14px 46px;
+}
+.fred-root .fred-carton-print.end-print strong { font-size: 13px; }
+.fred-root .fred-carton-print.end-print span { margin-top: 3px; color: #5f6f83; font-size: 9px; }
+.fred-root .fred-carton-print.end-print b { position: absolute; right: 16px; color: #8996a7; font-size: 8px; }
+.fred-root .fred-applied-main-label {
+  position: absolute;
+  z-index: 4;
+  top: 37px;
+  right: 13px;
+  left: 38px;
+  min-height: 82px;
+  overflow: hidden;
+  border: 1px solid #606873;
+  border-radius: 2px;
+  padding: 8px;
+  background: #fffef3;
+  color: #111827;
+  font-family: "Courier New", monospace;
+  text-align: left;
+  box-shadow: 0 2px 5px rgba(30, 40, 55, 0.2);
+  cursor: pointer;
+}
+.fred-root .fred-applied-main-label strong,
+.fred-root .fred-applied-main-label span,
+.fred-root .fred-applied-main-label b,
+.fred-root .fred-applied-main-label small { display: block; }
+.fred-root .fred-applied-main-label strong { overflow: hidden; font-size: 9px; line-height: 1.15; white-space: nowrap; text-overflow: ellipsis; }
+.fred-root .fred-applied-main-label span { margin: 4px 0; font-size: 8px; }
+.fred-root .fred-applied-main-label b { font-size: 9px; }
+.fred-root .fred-applied-main-label small { margin-top: 3px; color: #4b5563; font-size: 7px; }
+.fred-root .face-right .fred-applied-main-label,
+.fred-root .face-left .fred-applied-main-label {
+  right: 8px;
+  left: 34px;
+  padding: 5px;
+}
+.fred-root .face-right .fred-applied-main-label strong,
+.fred-root .face-left .fred-applied-main-label strong { white-space: normal; }
+.fred-root .fred-applied-warning-stack {
+  position: absolute;
+  z-index: 5;
+  right: 12px;
+  bottom: 10px;
+  left: 39px;
+  display: grid;
+  gap: 3px;
+}
+.fred-root .fred-applied-warning-stack button {
+  display: flex;
+  justify-content: space-between;
+  border: 1px solid #d0b547;
+  border-radius: 2px;
+  padding: 3px 5px;
+  background: #fff6a7;
+  color: #473b0d;
+  font-family: inherit;
+  font-size: 7px;
+  line-height: 1.1;
+  text-align: left;
+  cursor: pointer;
+}
+.fred-root .fred-applied-warning-stack b { margin-left: 5px; color: #a33d33; }
+.fred-root .face-right .fred-applied-warning-stack,
+.fred-root .face-left .fred-applied-warning-stack { right: 7px; left: 34px; }
+.fred-root .fred-sticker-armed {
+  position: absolute;
+  z-index: 3;
+  right: 10px;
+  bottom: 8px;
+  left: 10px;
+  border: 1px solid #92acd0;
+  border-radius: 4px;
+  padding: 5px 7px;
+  background: rgba(235, 244, 255, 0.96);
+  color: #254f87;
+  font-size: 8px;
+  text-align: center;
+}
+.fred-root .fred-carton-controls {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 4px;
+  margin-top: 7px;
+}
+.fred-root .fred-carton-controls button {
+  border: 1px solid #c8d2df;
+  border-radius: 4px;
+  padding: 5px 3px;
+  background: #fff;
+  color: #44546b;
+  font-family: inherit;
+  font-size: 8px;
+  font-weight: bold;
+  cursor: pointer;
+}
+.fred-root .fred-carton-controls button.active {
+  border-color: #315f99;
+  background: #315f99;
+  color: #fff;
+}
+.fred-root .fred-carton-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 7px;
+}
+.fred-root .fred-carton-checks span {
+  border: 1px solid #d5dde7;
+  border-radius: 999px;
+  padding: 4px 7px;
+  background: #fff;
+  color: #637187;
+  font-size: 8px;
+}
+.fred-root .fred-carton-checks span.done { border-color: #a8ceb4; background: #edf8f0; color: #24663b; }
+.fred-root .fred-carton-checks span.attention { border-color: #e4bd6c; background: #fff7e6; color: #855d17; }
+.fred-root .fred-carton-empty {
+  display: flex;
+  min-height: 370px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  border: 1px dashed #bdc8d6;
+  border-radius: 7px;
+  background: #f8fafc;
+  color: #69788d;
+  text-align: center;
+}
+.fred-root .fred-carton-empty > span { color: #9aabba; font-size: 70px; line-height: 1; transform: rotate(-12deg); }
+.fred-root .fred-carton-empty strong { margin-top: 8px; color: #3c4b61; font-size: 12px; }
+.fred-root .fred-carton-empty p { max-width: 230px; margin: 5px 0 0; font-size: 9px; line-height: 1.4; }
+.fred-root .fred-sticker-group { margin-top: 9px; }
+.fred-root .fred-sticker-group-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+.fred-root .fred-sticker-group-title strong { font-size: 10px; }
+.fred-root .fred-sticker-group-title span { color: #6a788c; font-size: 8px; }
+.fred-root .fred-main-label-sticker {
+  display: block;
+  width: 100%;
+  border: 1px dashed #7a8492;
+  border-radius: 3px;
+  padding: 8px;
+  background: #fffef3;
+  color: #111827;
+  font-family: "Courier New", monospace;
+  text-align: left;
+  box-shadow: 0 2px 4px rgba(30, 40, 55, 0.08);
+  cursor: grab;
+}
+.fred-root .fred-main-label-sticker:disabled,
+.fred-root .fred-warning-sticker-roll button:disabled { opacity: .46; cursor: not-allowed; }
+.fred-root .fred-main-label-sticker.armed,
+.fred-root .fred-warning-sticker-roll button.armed {
+  outline: 3px solid rgba(49, 95, 153, .25);
+  border-color: #315f99;
+}
+.fred-root .fred-main-label-sticker strong,
+.fred-root .fred-main-label-sticker span,
+.fred-root .fred-main-label-sticker b,
+.fred-root .fred-main-label-sticker small { display: block; }
+.fred-root .fred-main-label-sticker strong { overflow: hidden; font-size: 8.5px; white-space: nowrap; text-overflow: ellipsis; }
+.fred-root .fred-main-label-sticker span { margin: 4px 0; font-size: 8px; }
+.fred-root .fred-main-label-sticker b { font-size: 9px; }
+.fred-root .fred-main-label-sticker small { margin-top: 3px; color: #4b5563; font-size: 7.5px; }
+.fred-root .fred-warning-sticker-roll {
+  display: grid;
+  gap: 4px;
+  max-height: 268px;
+  overflow-y: auto;
+  padding: 2px 3px 2px 2px;
+}
+.fred-root .fred-warning-sticker-roll button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: center;
+  width: 100%;
+  border: 1px solid #d1ba59;
+  border-radius: 3px;
+  padding: 5px 6px;
+  background: #fff7ad;
+  color: #473b0d;
+  font-family: inherit;
+  font-size: 8px;
+  text-align: left;
+  cursor: grab;
+}
+.fred-root .fred-warning-sticker-roll button.placed { border-color: #82aa8c; background: #f0f8e9; }
+.fred-root .fred-warning-sticker-roll button small { color: #756520; font-size: 7px; font-weight: bold; }
+.fred-root .fred-sticker-help {
+  margin-top: 9px;
+  border: 1px solid #cdd8e6;
+  border-radius: 5px;
+  padding: 7px;
+  background: #f4f7fb;
+}
+.fred-root .fred-sticker-help strong { font-size: 9px; }
+.fred-root .fred-sticker-help p { margin: 3px 0 0; color: #607087; font-size: 8px; line-height: 1.35; }
+.fred-root .fred-assembly-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  padding: 8px;
+  background: #fff;
+  box-shadow: 0 4px 14px rgba(30, 48, 76, .05);
+}
+.fred-root .fred-assembly-actions > button {
+  border: 1px solid #c7d2e0;
+  border-radius: 5px;
+  padding: 8px 11px;
+  font-family: inherit;
+  font-size: 9px;
+  font-weight: bold;
+  cursor: pointer;
+}
+.fred-root .fred-assembly-actions > button.secondary { background: #fff; color: #294f81; }
+.fred-root .fred-assembly-actions > button.primary { border-color: #2d7441; background: #397f4d; color: #fff; }
+.fred-root .fred-assembly-actions > button.primary:disabled { border-color: #c7d2e0; background: #e9eef4; color: #96a2b2; cursor: not-allowed; }
+.fred-root .fred-assembly-ready {
+  min-width: 0;
+  flex: 1;
+  padding-left: 8px;
+}
+.fred-root .fred-assembly-ready strong,
+.fred-root .fred-assembly-ready span { display: block; }
+.fred-root .fred-assembly-ready strong { font-size: 9px; }
+.fred-root .fred-assembly-ready span { margin-top: 2px; color: #68778b; font-size: 8px; }
+
+.fred-root .fred-case1-assembly-notice {
+  display: flex;
+  min-height: 96px;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #c8d6e8;
+  border-radius: 6px;
+  padding: 10px 12px;
+  background: #f2f7fd;
+  color: #294f81;
+}
+.fred-root .fred-case1-assembly-notice > span {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #315f99;
+  color: #fff;
+  font-weight: bold;
+}
+.fred-root .fred-case1-assembly-notice strong,
+.fred-root .fred-case1-assembly-notice small { display: block; }
+.fred-root .fred-case1-assembly-notice strong { font-size: 10px; }
+.fred-root .fred-case1-assembly-notice small { margin-top: 3px; color: #5f7189; font-size: 8.5px; line-height: 1.35; }
+
+@media (max-width: 1320px) {
+  .fred-root .fred-assembly-workbench {
+    grid-template-columns: 250px minmax(390px, 1fr) 260px;
+  }
+  .fred-root .fred-carton-scene { transform: scale(.9); transform-origin: top center; }
+  .fred-root .fred-carton-viewer { min-height: 305px; }
+}
+
 .fred-root .fred-warn-entry {
   padding: 3px 4px;
   border-top: 1px solid #d6dde8;

@@ -11,6 +11,7 @@ interface ActionButtonsProps {
   allowAnswerReveal: boolean;
   readinessIssues: string[];
   hasProgress: boolean;
+  submitLabelOverride?: string;
 }
 
 export function ActionButtons({
@@ -24,10 +25,11 @@ export function ActionButtons({
   allowAnswerReveal,
   readinessIssues,
   hasProgress,
+  submitLabelOverride,
 }: ActionButtonsProps) {
-  const submitLabel = decision === "dispense"
+  const submitLabel = submitLabelOverride ?? (decision === "dispense"
     ? "Complete dispensing → Patient handover"
-    : "Submit decision → Patient consultation";
+    : "Submit decision → Patient consultation");
   const visibleIssues = readinessIssues.slice(0, 4);
   const remainingIssueCount = readinessIssues.length - visibleIssues.length;
 

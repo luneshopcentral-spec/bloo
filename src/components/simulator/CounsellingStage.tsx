@@ -29,6 +29,7 @@ interface CounsellingStageProps {
   onComplete: (result: CounsellingResult) => void;
   onViewResults: () => void;
   mode: PracticeMode;
+  stageLabel?: string;
 }
 
 function decisionLabel(decision: DispenseDecision | null): string {
@@ -44,6 +45,7 @@ export function CounsellingStage({
   onComplete,
   onViewResults,
   mode,
+  stageLabel = "Stage 2 of 2 · Patient consultation",
 }: CounsellingStageProps) {
   const [messages, setMessages] = useState<ConversationMessage[]>([
     {
@@ -238,7 +240,7 @@ export function CounsellingStage({
         <div className="fred-consultation-identity">
           <div className="fred-patient-avatar" aria-hidden="true">{patientInitials}</div>
           <div>
-            <div className="fred-stage-kicker">Stage 2 of 2 · Patient consultation</div>
+            <div className="fred-stage-kicker">{stageLabel}</div>
             <h1>{conversation.patientRole}</h1>
             <p>{conversation.handoverGoal}</p>
           </div>

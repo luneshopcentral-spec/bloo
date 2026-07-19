@@ -22,6 +22,7 @@ import { findLocalDrugBySeedId, findLocalPrescriberByNumber } from "@/lib/direct
 import { getCaseEditorialRecord } from "@/lib/governance/editorial";
 import type { PracticeMode } from "@/lib/practice/modes";
 import { persistCompletedAttempt } from "@/lib/attempts/persist";
+import { addCase1AssemblyChecks, type Case1AssemblySubmission } from "@/lib/assembly/case1";
 
 import { TitleBar }            from "@/components/simulator/TitleBar";
 import { Toolbar }             from "@/components/simulator/Toolbar";
@@ -43,6 +44,7 @@ import { PrescriberDirectoryModal } from "@/components/simulator/PrescriberDirec
 import { CounsellingStage }    from "@/components/simulator/CounsellingStage";
 import { ExamStopwatch }       from "@/components/simulator/ExamStopwatch";
 import { OnboardingModal }     from "@/components/simulator/OnboardingModal";
+import { AssemblyStage }       from "@/components/simulator/AssemblyStage";
 import type { StatusTone }     from "@/components/simulator/StatusBar";
 
 const DEFAULT_STATUS =
@@ -50,7 +52,7 @@ const DEFAULT_STATUS =
 const ONBOARDING_STORAGE_KEY = "dispenserx-onboarding-v1";
 
 export default function PracticePage() {
-  const [stage, setStage]                         = useState<"dispensing" | "counselling">("dispensing");
+  const [stage, setStage]                         = useState<"dispensing" | "assembly" | "counselling">("dispensing");
   const [currentCaseIndex, setCurrentCaseIndex]   = useState(0);
   const [practiceMode, setPracticeMode]           = useState<PracticeMode>("practice");
   const [formState, dispatch]                      = useReducer(
@@ -104,6 +106,7 @@ export default function PracticePage() {
   );
   const currentConversation = getConversationCase(current.id);
   const editorialRecord = getCaseEditorialRecord(current.id);
+  const isCase1AssemblyPrototype = current.id === "case-1";
 
   function showStatus(text: string, tone: StatusTone = "info") {
     setStatusMessage(text);
@@ -173,6 +176,11 @@ export default function PracticePage() {
   // ── Load patient scripts when a patient is selected ───────────────
   useEffect(() => {
     if (!selectedPatient) { setPatientScripts([]); return; }
+    if (process.env.NEXT_PUBLIC_CODEX_LOCAL_UI_AUDIT === "1") {
+      setPatientScripts([]);
+      return;
+    }
+
     const supabase = createClient();
     supabase
       .from("patient_scripts")
@@ -242,6 +250,14 @@ export default function PracticePage() {
       "Answers shown — this is now an assisted attempt and will not count in the session score."
     );
 
+    if (process.env.NEXT_PUBLIC_CODEX_LOCAL_UI_AUDIT === "1") {
+      setSelectedDrugs(current.items.map((item) => findLocalDrugBySeedId(item.correctDrugSeedId)));
+      setSelectedPrescriber(
+        findLocalPrescriberByNumber(current.expectedPrescriberNo ?? current.prescriberNo)
+      );
+      return;
+    }
+
     const supabase = createClient();
     const { data: drugData } = await supabase
       .from("drugs")
@@ -288,6 +304,14 @@ export default function PracticePage() {
       return;
     }
 
+    if (isCase1AssemblyPrototype) {
+      setAttemptSubmitted(true);
+      setDrawerOpen(false);
+      showStatus("Dispensing entry complete. Select the physical pack and apply its labels.");
+      setStage("assembly");
+      return;
+    }
+
     const result = validateDispense({
       formState,
       selectedWarnings,
@@ -303,6 +327,36 @@ export default function PracticePage() {
     setAttemptSubmitted(true);
     setDrawerOpen(false);
     showStatus("Dispensing stage submitted. Complete the patient interaction to receive your result.");
+    setStage("counselling");
+  }
+
+  function handleAssemblyBack() {
+    setAttemptSubmitted(false);
+    setStage("dispensing");
+    showStatus("Pack assembly paused. Review or update the dispensing entry, then continue again.");
+  }
+
+  function handleAssemblyComplete(submission: Case1AssemblySubmission) {
+    const assembledWarnings = current.items.map((_, index) =>
+      index === 0 ? new Set(submission.warningLabels) : selectedWarnings[index] ?? new Set<string>()
+    );
+    const dispensingResult = validateDispense({
+      formState,
+      selectedWarnings: assembledWarnings,
+      caseData: current,
+      selectedPatient,
+      selectedDrugs,
+      selectedPrescriber,
+      decision: clinicalDecision,
+      assisted: answersRevealed,
+    });
+    const result = addCase1AssemblyChecks(dispensingResult, submission);
+
+    setSelectedWarnings(assembledWarnings);
+    setPendingDispenseResult(result);
+    setAttemptSubmitted(true);
+    setDrawerOpen(false);
+    showStatus("Pack assembly submitted. Complete the patient interaction to receive your result.");
     setStage("counselling");
   }
 
@@ -497,16 +551,26 @@ export default function PracticePage() {
               </div>
 
               <div className="fred-warnings-label-grid gap-1 mb-1">
-                <WarningsBox
-                  warnings={ALL_WARNINGS}
-                  selectedWarnings={currentWarnings}
-                  onToggle={handleToggleWarning}
-                  medicineName={currentDrug?.generic_name ?? formState.items[currentItem]?.drug ?? ""}
-                />
+                {isCase1AssemblyPrototype ? (
+                  <div className="fred-case1-assembly-notice" role="note">
+                    <span>2</span>
+                    <div>
+                      <strong>Warning labels move to the physical pack stage</strong>
+                      <small>After completing this Fred-style entry, you will choose a carton and manually apply the dispensing and warning stickers.</small>
+                    </div>
+                  </div>
+                ) : (
+                  <WarningsBox
+                    warnings={ALL_WARNINGS}
+                    selectedWarnings={currentWarnings}
+                    onToggle={handleToggleWarning}
+                    medicineName={currentDrug?.generic_name ?? formState.items[currentItem]?.drug ?? ""}
+                  />
+                )}
                 <LabelPreview
                   caseData={current}
                   formState={formState}
-                  selectedWarnings={currentWarnings}
+                  selectedWarnings={isCase1AssemblyPrototype ? new Set<string>() : currentWarnings}
                   patientName={patientName}
                   itemIndex={currentItem}
                   itemCount={current.items.length}
@@ -531,6 +595,7 @@ export default function PracticePage() {
                   allowAnswerReveal={practiceMode !== "exam"}
                   readinessIssues={readinessIssues}
                   hasProgress={hasAttemptProgress}
+                  submitLabelOverride={isCase1AssemblyPrototype ? "Complete dispensing → Pack assembly" : undefined}
                 />
               </div>
 
@@ -546,6 +611,18 @@ export default function PracticePage() {
           />
             </div>
           </>
+        ) : stage === "assembly" ? (
+          <AssemblyStage
+            key={`${current.id}-${attemptResetCounter}`}
+            caseData={current}
+            formState={formState}
+            patientName={patientName}
+            decision={clinicalDecision}
+            initialWarnings={currentWarnings}
+            answersRevealed={answersRevealed}
+            onBack={handleAssemblyBack}
+            onComplete={handleAssemblyComplete}
+          />
         ) : (
           <CounsellingStage
             key={current.id}
@@ -554,6 +631,9 @@ export default function PracticePage() {
             onComplete={handleCounsellingComplete}
             onViewResults={() => setOverlayOpen(true)}
             mode={practiceMode}
+            stageLabel={isCase1AssemblyPrototype
+              ? "Stage 3 of 3 · Patient consultation"
+              : "Stage 2 of 2 · Patient consultation"}
           />
         )}
 

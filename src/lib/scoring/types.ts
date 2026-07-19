@@ -8,6 +8,8 @@ export type CheckCategory =
   | "quantity"
   | "repeats"
   | "warnings"
+  | "assembly_pack"
+  | "label_placement"
   | "errors";
 
 export interface CheckResult {

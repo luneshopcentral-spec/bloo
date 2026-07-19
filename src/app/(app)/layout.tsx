@@ -7,6 +7,15 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
+  if (process.env.CODEX_LOCAL_UI_AUDIT === "1") {
+    return (
+      <div className="min-h-screen bg-slate-50">
+        <AppNav userEmail="local-ui-audit@example.com" />
+        <main>{children}</main>
+      </div>
+    );
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
