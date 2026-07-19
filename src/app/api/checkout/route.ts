@@ -1,18 +1,27 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getStripe, stripePriceId, siteUrl } from "@/lib/stripe/server";
+import { isPlanId } from "@/lib/billing/plan";
 
 export const runtime = "nodejs";
 
 /** Starts a Stripe subscription Checkout Session for the signed-in user and
- * redirects the browser to Stripe. Triggered by a plain form POST, so it works
- * without client-side JavaScript. */
-export async function POST() {
+ * redirects the browser to Stripe. Triggered by a plain form POST (with a
+ * hidden "plan" field of "monthly" or "yearly"), so it works without
+ * client-side JavaScript. */
+export async function POST(req: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.redirect(`${siteUrl()}/sign-in`, { status: 303 });
   }
+
+  const form = await req.formData();
+  const planField = form.get("plan");
+  if (!isPlanId(planField)) {
+    return NextResponse.redirect(`${siteUrl()}/dashboard?checkout=error`, { status: 303 });
+  }
+  const plan = planField;
 
   const { data: profileRow } = await supabase
     .from("profiles")
@@ -30,15 +39,15 @@ export async function POST() {
     const stripe = getStripe();
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
-      line_items: [{ price: stripePriceId(), quantity: 1 }],
+      line_items: [{ price: stripePriceId(plan), quantity: 1 }],
       // Reuse the stored customer if we have one, otherwise let Stripe create it
       // from the user's email.
       ...(profile?.stripe_customer_id
         ? { customer: profile.stripe_customer_id }
         : { customer_email: user.email ?? undefined }),
       client_reference_id: user.id,
-      metadata: { supabase_user_id: user.id },
-      subscription_data: { metadata: { supabase_user_id: user.id } },
+      metadata: { supabase_user_id: user.id, plan },
+      subscription_data: { metadata: { supabase_user_id: user.id, plan } },
       allow_promotion_codes: true,
       success_url: `${siteUrl()}/dashboard?checkout=success`,
       cancel_url: `${siteUrl()}/dashboard?checkout=cancelled`,

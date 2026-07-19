@@ -1,5 +1,5 @@
 import type { PracticeCase } from "@/lib/types/case";
-import { PLAN } from "@/lib/billing/plan";
+import { PLAN_OPTIONS } from "@/lib/billing/plan";
 
 interface LockedCasePanelProps {
   caseData: PracticeCase;
@@ -22,14 +22,19 @@ export function LockedCasePanel({ caseData, freeCaseCount }: LockedCasePanelProp
         <p className="fred-locked-copy">
           The first {freeCaseCount} cases are free to practise. Unlock the complete
           set of dispensing scenarios — Schedule 8 authorities, multi-item scripts,
-          repeat-timing traps and the full counselling library — with {PLAN.name} for{" "}
-          {PLAN.priceDisplay}/{PLAN.interval}.
+          repeat-timing traps and the full counselling library.
         </p>
-        <form action="/api/checkout" method="post" className="fred-locked-actions">
-          <button type="submit" className="fred-locked-upgrade">
-            Unlock the full library
-          </button>
-        </form>
+        <div className="fred-locked-actions">
+          {PLAN_OPTIONS.map((plan) => (
+            <form action="/api/checkout" method="post" key={plan.id}>
+              <input type="hidden" name="plan" value={plan.id} />
+              <button type="submit" className="fred-locked-upgrade">
+                {plan.priceDisplay}/{plan.interval}
+                {plan.badge ? ` · ${plan.badge}` : ""}
+              </button>
+            </form>
+          ))}
+        </div>
         <p className="fred-locked-footnote">
           Cancel anytime. Already subscribed? Your access appears here once payment
           is confirmed — refresh, or contact support if it hasn&rsquo;t.

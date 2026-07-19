@@ -4977,6 +4977,8 @@
 .fred-root .fred-locked-actions {
   display: flex;
   justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
   margin-bottom: 16px;
 }
 .fred-root .fred-locked-upgrade {

@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { STATIC_CASES } from "@/lib/cases/static-cases";
-import { PLAN } from "@/lib/billing/plan";
+import { PLAN_OPTIONS } from "@/lib/billing/plan";
 import type { Database } from "@/lib/types/database";
 
 const FREE_CASE_COUNT = STATIC_CASES.filter((c) => c.isFree).length;
@@ -159,13 +159,18 @@ export default async function DashboardPage({
           <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="text-sm text-slate-700">
               <strong>You&rsquo;re on the free demo</strong> — the first {FREE_CASE_COUNT} cases.
-              Unlock all {STATIC_CASES.length} cases with {PLAN.name} for {PLAN.priceDisplay}/{PLAN.interval}.
+              Unlock all {STATIC_CASES.length} cases with a subscription.
             </div>
-            <form action="/api/checkout" method="post">
-              <Button type="submit" size="sm" className="whitespace-nowrap">
-                Unlock full access
-              </Button>
-            </form>
+            <div className="flex gap-2">
+              {PLAN_OPTIONS.map((plan) => (
+                <form action="/api/checkout" method="post" key={plan.id}>
+                  <input type="hidden" name="plan" value={plan.id} />
+                  <Button type="submit" size="sm" className="whitespace-nowrap">
+                    {plan.priceDisplay}/{plan.interval}
+                  </Button>
+                </form>
+              ))}
+            </div>
           </CardContent>
         </Card>
       )}

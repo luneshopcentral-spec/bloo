@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { CheckCircle2, FlaskConical } from "lucide-react";
 import { STATIC_CASES } from "@/lib/cases/static-cases";
-import { PLAN } from "@/lib/billing/plan";
+import { PLAN_OPTIONS } from "@/lib/billing/plan";
 
 const FREE_CASE_COUNT = STATIC_CASES.filter((c) => c.isFree).length;
 
@@ -75,13 +75,20 @@ export function Pricing() {
 
             <CardHeader className="pb-4 pt-8 text-center">
               <p className="text-sm font-medium uppercase tracking-wider text-emerald-600">
-                {PLAN.name}
+                Full access
               </p>
-              <div className="mt-2 flex items-end justify-center gap-1">
-                <span className="text-5xl font-extrabold text-slate-900">
-                  {PLAN.priceDisplay}
-                </span>
-                <span className="mb-1 text-slate-500">/{PLAN.interval}</span>
+              <div className="mt-2 flex flex-col items-center gap-1">
+                {PLAN_OPTIONS.map((plan) => (
+                  <div key={plan.id} className="flex items-end justify-center gap-1">
+                    <span className="text-4xl font-extrabold text-slate-900">
+                      {plan.priceDisplay}
+                    </span>
+                    <span className="mb-1 text-slate-500">
+                      /{plan.interval}
+                      {plan.badge ? ` · ${plan.badge}` : ""}
+                    </span>
+                  </div>
+                ))}
               </div>
               <p className="text-sm text-slate-500">Cancel anytime</p>
             </CardHeader>

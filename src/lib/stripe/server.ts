@@ -1,4 +1,5 @@
 import Stripe from "stripe";
+import type { PlanId } from "@/lib/billing/plan";
 
 let cached: Stripe | null = null;
 
@@ -12,9 +13,15 @@ export function getStripe(): Stripe {
   return cached;
 }
 
-export function stripePriceId(): string {
-  const id = process.env.STRIPE_PRICE_ID;
-  if (!id) throw new Error("STRIPE_PRICE_ID is not set");
+const PRICE_ID_ENV_VAR: Record<PlanId, string> = {
+  monthly: "STRIPE_PRICE_ID_MONTHLY",
+  yearly: "STRIPE_PRICE_ID_YEARLY",
+};
+
+export function stripePriceId(plan: PlanId): string {
+  const envVar = PRICE_ID_ENV_VAR[plan];
+  const id = process.env[envVar];
+  if (!id) throw new Error(`${envVar} is not set`);
   return id;
 }
 
