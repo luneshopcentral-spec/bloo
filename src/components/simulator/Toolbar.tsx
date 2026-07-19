@@ -1,5 +1,6 @@
 import type { PracticeCase } from "@/lib/types/case";
 import { PRACTICE_MODE_COPY, type PracticeMode } from "@/lib/practice/modes";
+import { canPlayCase, type CaseEntitlement } from "@/lib/entitlement/entitlement";
 
 interface ToolbarProps {
   currentCase: number;
@@ -9,9 +10,10 @@ interface ToolbarProps {
   mode: PracticeMode;
   onModeChange: (mode: PracticeMode) => void;
   onOpenHelp: () => void;
+  entitlement: CaseEntitlement | null;
 }
 
-export function Toolbar({ currentCase, onCaseChange, cases, sessionScore, mode, onModeChange, onOpenHelp }: ToolbarProps) {
+export function Toolbar({ currentCase, onCaseChange, cases, sessionScore, mode, onModeChange, onOpenHelp, entitlement }: ToolbarProps) {
   return (
     <div className="fred-toolbar">
       <label htmlFor="practice-mode" className="fred-toolbar-label">Mode:</label>
@@ -45,11 +47,15 @@ export function Toolbar({ currentCase, onCaseChange, cases, sessionScore, mode, 
         value={currentCase}
         onChange={(e) => onCaseChange(parseInt(e.target.value, 10))}
       >
-        {cases.map((c, i) => (
-          <option key={c.id} value={i}>
-            Case {c.caseNumber} — {c.title.replace(/^Case \d+ — /, "")}
-          </option>
-        ))}
+        {cases.map((c, i) => {
+          const locked = !canPlayCase(c, entitlement);
+          return (
+            <option key={c.id} value={i}>
+              {locked ? "🔒 " : ""}Case {c.caseNumber} — {c.title.replace(/^Case \d+ — /, "")}
+              {locked ? " (locked)" : ""}
+            </option>
+          );
+        })}
       </select>
 
       <button

@@ -3,6 +3,7 @@ import type { PracticeMode } from "@/lib/practice/modes";
 import type { Json } from "@/lib/types/database";
 import type { Database } from "@/lib/types/database";
 import { createClient } from "@/lib/supabase/client";
+import { canPlayCase, type CaseEntitlement } from "@/lib/entitlement/entitlement";
 
 export interface PersistAttemptInput {
   caseId: string;
@@ -10,11 +11,13 @@ export interface PersistAttemptInput {
   mode: PracticeMode;
   result: AttemptResult;
   countsTowardProgress: boolean;
+  /** Whether this case is a free demo case (playable without payment). */
+  caseIsFree: boolean;
 }
 
 export interface PersistAttemptResult {
   saved: boolean;
-  reason?: "not_signed_in" | "schema_update_required" | "database_error";
+  reason?: "not_signed_in" | "locked" | "schema_update_required" | "database_error";
 }
 
 function competencyMap(result: AttemptResult): Record<string, { passed: number; total: number }> {
@@ -42,10 +45,26 @@ export async function persistCompletedAttempt({
   mode,
   result,
   countsTowardProgress,
+  caseIsFree,
 }: PersistAttemptInput): Promise<PersistAttemptResult> {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { saved: false, reason: "not_signed_in" };
+
+  // Entitlement gate: only free cases, paid users, or developers may record an
+  // attempt. This backs up the UI gate — a tampered client cannot save progress
+  // for a locked case.
+  if (!caseIsFree) {
+    const { data: rawProfile } = await supabase
+      .from("profiles")
+      .select("has_paid, role")
+      .eq("id", user.id)
+      .single();
+    const entitlement = rawProfile as CaseEntitlement | null;
+    if (!canPlayCase({ isFree: caseIsFree }, entitlement)) {
+      return { saved: false, reason: "locked" };
+    }
+  }
 
   const score = result.dispense.pointsEarned + result.counselling.pointsEarned;
   const maxScore = result.dispense.pointsTotal + result.counselling.pointsTotal;
@@ -83,24 +102,6 @@ export async function persistCompletedAttempt({
       saved: false,
       reason: schemaUpdateRequired ? "schema_update_required" : "database_error",
     };
-  }
-
-  if (countsTowardProgress) {
-    const { data: rawProfile } = await supabase
-      .from("profiles")
-      .select("trial_cases_used, has_paid")
-      .eq("id", user.id)
-      .single();
-    const profile = rawProfile as Pick<
-      Database["public"]["Tables"]["profiles"]["Row"],
-      "trial_cases_used" | "has_paid"
-    > | null;
-    if (profile && !profile.has_paid) {
-      await supabase
-        .from("profiles")
-        .update({ trial_cases_used: profile.trial_cases_used + 1 } as never)
-        .eq("id", user.id);
-    }
   }
 
   return { saved: true };

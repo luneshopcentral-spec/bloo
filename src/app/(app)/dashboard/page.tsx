@@ -2,7 +2,10 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { STATIC_CASES } from "@/lib/cases/static-cases";
+import { PLAN } from "@/lib/billing/plan";
 import type { Database } from "@/lib/types/database";
+
+const FREE_CASE_COUNT = STATIC_CASES.filter((c) => c.isFree).length;
 
 type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
 type AttemptRow = Database["public"]["Tables"]["attempts"]["Row"];
@@ -32,8 +35,13 @@ function readableCompetency(key: string): string {
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ checkout?: string; billing?: string }>;
+}) {
   const supabase = await createClient();
+  const { checkout } = await searchParams;
 
   const {
     data: { user },
@@ -50,6 +58,7 @@ export default async function DashboardPage() {
     .single()) as { data: ProfileRow | null; error: unknown };
 
   const firstName = profile?.full_name?.split(" ")[0] ?? "there";
+  const hasFullAccess = profile?.has_paid === true || profile?.role === "admin";
   const { data: attemptData, error: attemptError } = await supabase
     .from("attempts")
     .select("*")
@@ -102,6 +111,64 @@ export default async function DashboardPage() {
           Foundation beta · {STATIC_CASES.length} cases
         </Badge>
       </div>
+
+      {checkout === "success" && (
+        <Card className="mb-8 border-emerald-300 bg-emerald-50">
+          <CardContent className="p-5 text-sm text-emerald-900">
+            Payment confirmed — thank you! Full access unlocks as soon as Stripe
+            notifies us (usually within seconds). Refresh if a case still shows locked.
+          </CardContent>
+        </Card>
+      )}
+      {checkout === "cancelled" && (
+        <Card className="mb-8 border-slate-300 bg-slate-50">
+          <CardContent className="p-5 text-sm text-slate-700">
+            Checkout cancelled — no payment was taken. You can subscribe anytime.
+          </CardContent>
+        </Card>
+      )}
+      {checkout === "error" && (
+        <Card className="mb-8 border-red-300 bg-red-50">
+          <CardContent className="p-5 text-sm text-red-800">
+            Something went wrong starting checkout. Please try again, or contact support.
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Billing / entitlement */}
+      {hasFullAccess ? (
+        <Card className="mb-8 border-emerald-200 bg-emerald-50/60">
+          <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-sm text-emerald-900">
+              <strong>Full access active.</strong>{" "}
+              {profile?.role === "admin"
+                ? "Developer account — all cases unlocked."
+                : "All cases are unlocked. Thanks for subscribing."}
+            </div>
+            {profile?.role !== "admin" && (
+              <form action="/api/billing-portal" method="post">
+                <Button type="submit" variant="outline" size="sm">
+                  Manage subscription
+                </Button>
+              </form>
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="mb-8 border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50">
+          <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-sm text-slate-700">
+              <strong>You&rsquo;re on the free demo</strong> — the first {FREE_CASE_COUNT} cases.
+              Unlock all {STATIC_CASES.length} cases with {PLAN.name} for {PLAN.priceDisplay}/{PLAN.interval}.
+            </div>
+            <form action="/api/checkout" method="post">
+              <Button type="submit" size="sm" className="whitespace-nowrap">
+                Unlock full access
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      )}
 
       {attemptError && (
         <Card className="mb-8 border-amber-300 bg-amber-50">
