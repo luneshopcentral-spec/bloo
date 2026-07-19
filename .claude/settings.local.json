@@ -15,7 +15,11 @@
       "Bash(supabase --version)",
       "Bash(npx tsc *)",
       "Bash(git --no-pager diff HEAD -- src/hooks/useOutePatientVoice.ts src/hooks/useVoiceConversation.ts src/components/simulator/CounsellingStage.tsx src/lib/voice/outetts-config.ts src/lib/voice/outetts-config.test.ts package.json next.config.mjs)",
-      "Bash(npx vitest *)"
+      "Bash(npx vitest *)",
+      "Bash(grep -rn \"interface [A-Za-z]* extends [A-Za-z<>, ]* {}\" /Users/tanvisharma6445/Desktop/Blue/src/components/ui/)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d.get\\('exports', {}\\).get\\('.', {}\\), indent=2\\)\\)\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); exports = d.get\\('exports', {}\\); [print\\(k\\) for k in exports if 'types' in k or 'module' in k.lower\\(\\)]\")",
+      "Bash(python3 *)"
     ]
   }
 }
