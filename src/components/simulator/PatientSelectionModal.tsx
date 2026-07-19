@@ -46,12 +46,6 @@ export function PatientSelectionModal({
     }
     setLoading(true);
     setFetchError("");
-    if (process.env.NEXT_PUBLIC_CODEX_LOCAL_UI_AUDIT === "1") {
-      setPatients(searchLocalPatients(q));
-      setSelectedIndex(0);
-      setLoading(false);
-      return;
-    }
     const supabase = createClient();
     const { data, error } = await supabase
       .from("patients")

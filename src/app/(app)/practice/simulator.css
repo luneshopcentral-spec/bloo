@@ -1451,6 +1451,289 @@
 }
 .fred-root .fred-sticker-help strong { font-size: 9px; }
 .fred-root .fred-sticker-help p { margin: 3px 0 0; color: #607087; font-size: 8px; line-height: 1.35; }
+
+/* Reference-informed pack print and freely positioned labels. */
+.fred-root .fred-carton-print em { display: block; font-style: normal; }
+.fred-root .fred-carton-print.front-print { padding: 17px 18px 16px 46px; }
+.fred-root .fred-carton-print.front-print small {
+  color: #713936;
+  font-size: 7px;
+  letter-spacing: .015em;
+}
+.fred-root .fred-carton-print.front-print i {
+  position: static;
+  margin-top: 12px;
+  color: #5c6b7e;
+  font-size: 9px;
+  font-style: normal;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.fred-root .fred-carton-print.front-print strong { margin-top: 3px; font-size: 25px; }
+.fred-root .fred-carton-print.front-print b { margin-top: 4px; font-size: 21px; }
+.fred-root .fred-carton-print.front-print em {
+  position: absolute;
+  right: 17px;
+  bottom: 14px;
+  font-size: 10px;
+  font-weight: bold;
+}
+.fred-root .fred-carton-print.back-print {
+  padding: 0;
+  text-align: left;
+}
+.fred-root .fred-carton-fine-print {
+  position: absolute;
+  right: 37%;
+  bottom: 7px;
+  left: 38px;
+  border-top: 1px solid #aab2bd;
+  padding-top: 4px;
+}
+.fred-root .fred-carton-fine-print strong,
+.fred-root .fred-carton-fine-print span { display: block; margin: 0; color: #59677a; font-size: 6px; line-height: 1.25; }
+.fred-root .fred-carton-barcode {
+  width: 44px;
+  height: 35px;
+  background: repeating-linear-gradient(90deg, #202631 0 1px, transparent 1px 3px, #202631 3px 5px, transparent 5px 7px);
+}
+.fred-root .fred-carton-print.back-print > .fred-carton-barcode {
+  position: absolute;
+  right: 17px;
+  bottom: 7px;
+}
+.fred-root .fred-carton-print.side-print.clear {
+  justify-content: flex-start;
+  padding-top: 18px;
+  text-align: center;
+}
+.fred-root .fred-carton-print.side-print.clear small {
+  color: #8b98a9;
+  font-size: 7px;
+  letter-spacing: .09em;
+}
+.fred-root .fred-batch-strip {
+  position: absolute;
+  right: 7px;
+  bottom: 7px;
+  left: 34px;
+  border-top: 1px solid #7d8795;
+  padding-top: 3px;
+  color: #364153;
+  font-family: "Courier New", monospace;
+  font-size: 6px;
+  line-height: 1.25;
+}
+.fred-root .fred-batch-strip strong { display: inline; margin: 0 2px 0 0; font-size: 6px; }
+.fred-root .fred-carton-print.side-print.info-heavy {
+  justify-content: flex-start;
+  padding-top: 16px;
+  text-align: left;
+}
+.fred-root .fred-carton-print.side-print.info-heavy .fred-carton-barcode { margin: 10px 0 5px; }
+.fred-root .fred-carton-print.side-print.info-heavy strong { font-size: 8px; }
+.fred-root .fred-carton-print.side-print.info-heavy span { font-size: 7px; }
+
+.fred-root .fred-carton-face .fred-applied-main-label {
+  right: auto;
+  min-height: 0;
+  overflow: visible;
+  box-sizing: border-box;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: grab;
+}
+.fred-root .face-right .fred-applied-main-label,
+.fred-root .face-left .fred-applied-main-label {
+  right: auto;
+  padding: 0;
+}
+.fred-root .fred-dispensing-label-print {
+  display: grid;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  grid-template-rows: auto auto 1fr auto auto auto;
+  overflow: hidden;
+  border: 1px solid #68717d;
+  border-radius: 1px;
+  padding: 3px 4px 0;
+  background: #fffdf1;
+  color: #121820;
+  font-family: "Courier New", monospace;
+  text-align: left;
+  box-shadow: 0 1px 4px rgba(30, 40, 55, .22);
+}
+.fred-root .fred-dispensing-label-print i,
+.fred-root .fred-dispensing-label-print strong,
+.fred-root .fred-dispensing-label-print em,
+.fred-root .fred-dispensing-label-print b,
+.fred-root .fred-dispensing-label-print small,
+.fred-root .fred-dispensing-label-print > span { display: block; min-width: 0; }
+.fred-root .fred-dispensing-label-print i {
+  color: #a74a43;
+  font-size: 5px;
+  font-style: normal;
+  line-height: 1;
+  text-align: right;
+}
+.fred-root .fred-dispensing-label-print strong {
+  overflow: hidden;
+  margin-top: 2px;
+  font-size: 7px;
+  line-height: 1.05;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.fred-root .fred-dispensing-label-print em {
+  overflow: hidden;
+  margin-top: 2px;
+  font-size: 6px;
+  font-style: normal;
+  line-height: 1.1;
+}
+.fred-root .fred-dispensing-label-print b { align-self: end; font-size: 7px; }
+.fred-root .fred-dispensing-label-print small {
+  overflow: hidden;
+  color: #424b57;
+  font-size: 5px;
+  line-height: 1.1;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.fred-root .fred-dispensing-label-print > span {
+  margin: 2px -4px 0;
+  padding: 2px 3px;
+  background: linear-gradient(90deg, #203d68 0 25%, #d0ae4e 25% 100%);
+  color: #111827;
+  font-family: Arial, sans-serif;
+  font-size: 5px;
+  line-height: 1;
+  text-align: right;
+}
+.fred-root .fred-main-label-sticker .fred-dispensing-label-print {
+  min-height: 92px;
+  border: 0;
+  padding: 5px 6px 0;
+  box-shadow: none;
+}
+.fred-root .fred-main-label-sticker .fred-dispensing-label-print i { font-size: 7px; }
+.fred-root .fred-main-label-sticker .fred-dispensing-label-print strong { font-size: 9px; }
+.fred-root .fred-main-label-sticker .fred-dispensing-label-print em { font-size: 8px; }
+.fred-root .fred-main-label-sticker .fred-dispensing-label-print b { font-size: 9px; }
+.fred-root .fred-main-label-sticker .fred-dispensing-label-print small { font-size: 7px; }
+.fred-root .fred-main-label-sticker .fred-dispensing-label-print > span { margin-right: -6px; margin-left: -6px; font-size: 6px; }
+.fred-root .fred-remove-applied-sticker {
+  position: absolute;
+  z-index: 8;
+  top: -7px;
+  right: -7px;
+  display: flex;
+  width: 15px;
+  height: 15px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #fff;
+  border-radius: 50%;
+  padding: 0;
+  background: #b74842;
+  color: #fff;
+  font-family: Arial, sans-serif;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.fred-root .fred-applied-warning-label {
+  --warning-colour: #315d9a;
+  position: absolute;
+  z-index: 6;
+  display: grid;
+  box-sizing: border-box;
+  grid-template-columns: 15px minmax(0, 1fr) 13px;
+  align-items: center;
+  overflow: hidden;
+  border: 2px solid var(--warning-colour);
+  border-radius: 2px;
+  background: #fffef5;
+  color: #1d2633;
+  box-shadow: 0 1px 3px rgba(30, 40, 55, .18);
+  cursor: grab;
+}
+.fred-root .fred-applied-warning-label > b {
+  display: flex;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  background: var(--warning-colour);
+  color: #fff;
+  font-size: 6px;
+}
+.fred-root .fred-applied-warning-label > span {
+  overflow: hidden;
+  padding: 1px 3px;
+  font-size: 5.5px;
+  font-weight: bold;
+  line-height: 1.05;
+}
+.fred-root .fred-applied-warning-label > button {
+  align-self: stretch;
+  border: 0;
+  border-left: 1px solid color-mix(in srgb, var(--warning-colour) 45%, white);
+  padding: 0;
+  background: #fff;
+  color: #8f352f;
+  font-size: 8px;
+  cursor: pointer;
+}
+.fred-root .tone-blue { --warning-colour: #315d9a; }
+.fred-root .tone-red { --warning-colour: #b0443e; }
+.fred-root .tone-orange { --warning-colour: #cf7c33; }
+.fred-root .tone-green { --warning-colour: #46865e; }
+.fred-root .tone-purple { --warning-colour: #735b98; }
+
+.fred-root .fred-main-label-sticker { padding: 0; overflow: hidden; border-style: solid; background: #fffdf1; }
+.fred-root .fred-warning-sticker-roll button {
+  --warning-colour: #315d9a;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  gap: 0;
+  overflow: hidden;
+  border: 2px solid var(--warning-colour);
+  padding: 0;
+  background: #fffef5;
+  color: #1d2633;
+}
+.fred-root .fred-warning-sticker-roll button > b {
+  display: flex;
+  align-self: stretch;
+  align-items: center;
+  justify-content: center;
+  background: var(--warning-colour);
+  color: #fff;
+  font-size: 8px;
+}
+.fred-root .fred-warning-sticker-roll button > span {
+  padding: 6px;
+  font-weight: bold;
+  line-height: 1.15;
+}
+.fred-root .fred-warning-sticker-roll button > small {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  border-left: 1px solid color-mix(in srgb, var(--warning-colour) 38%, white);
+  padding: 0 5px;
+  color: #5f6874;
+  font-size: 7px;
+}
+.fred-root .fred-warning-sticker-roll button.placed {
+  border-color: var(--warning-colour);
+  background: #f5faef;
+}
+.fred-root .fred-warning-sticker-roll button.armed {
+  border-color: var(--warning-colour);
+  outline-color: color-mix(in srgb, var(--warning-colour) 28%, transparent);
+}
 .fred-root .fred-assembly-actions {
   display: flex;
   align-items: center;

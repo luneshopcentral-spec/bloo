@@ -176,11 +176,6 @@ export default function PracticePage() {
   // ── Load patient scripts when a patient is selected ───────────────
   useEffect(() => {
     if (!selectedPatient) { setPatientScripts([]); return; }
-    if (process.env.NEXT_PUBLIC_CODEX_LOCAL_UI_AUDIT === "1") {
-      setPatientScripts([]);
-      return;
-    }
-
     const supabase = createClient();
     supabase
       .from("patient_scripts")
@@ -249,14 +244,6 @@ export default function PracticePage() {
     showStatus(
       "Answers shown — this is now an assisted attempt and will not count in the session score."
     );
-
-    if (process.env.NEXT_PUBLIC_CODEX_LOCAL_UI_AUDIT === "1") {
-      setSelectedDrugs(current.items.map((item) => findLocalDrugBySeedId(item.correctDrugSeedId)));
-      setSelectedPrescriber(
-        findLocalPrescriberByNumber(current.expectedPrescriberNo ?? current.prescriberNo)
-      );
-      return;
-    }
 
     const supabase = createClient();
     const { data: drugData } = await supabase

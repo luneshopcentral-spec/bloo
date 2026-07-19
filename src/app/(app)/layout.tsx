@@ -7,10 +7,10 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
-  if (process.env.CODEX_LOCAL_UI_AUDIT === "1") {
+  if (process.env.NODE_ENV === "development" && process.env.CODEX_UI_CHECK === "1") {
     return (
       <div className="min-h-screen bg-slate-50">
-        <AppNav userEmail="local-ui-audit@example.com" />
+        <AppNav userEmail="local-ui-check@example.com" />
         <main>{children}</main>
       </div>
     );

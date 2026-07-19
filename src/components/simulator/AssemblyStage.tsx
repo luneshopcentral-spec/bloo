@@ -1,15 +1,18 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { DragEvent } from "react";
+import type { DragEvent, MouseEvent as ReactMouseEvent } from "react";
 import { expandAbbrevs } from "@/lib/scoring/abbreviations";
 import type { FormState } from "@/components/simulator/state";
 import type { DispenseDecision, PracticeCase } from "@/lib/types/case";
 import {
-  CASE1_CLEAR_LABEL_FACES,
   CASE1_PACK_OPTIONS,
+  STICKER_DIMENSIONS,
+  warningStickerTone,
   type Case1AssemblySubmission,
   type PackFace,
+  type StickerKind,
+  type StickerPlacement,
 } from "@/lib/assembly/case1";
 
 interface AssemblyStageProps {
@@ -36,11 +39,21 @@ const PROTOTYPE_WARNINGS = [
   "Keep refrigerated",
 ];
 
+const WARNING_CODES: Record<string, string> = {
+  "Take with food or milk": "5",
+  "Complete the full course": "3",
+  "May cause nausea": "12",
+  "May cause drowsiness": "15",
+  "Avoid alcohol": "2",
+  "Take with a full glass of water": "7",
+  "Keep refrigerated": "6",
+};
+
 const ROTATION: Record<PackFace, string> = {
-  front: "rotateX(0deg) rotateY(0deg)",
-  right: "rotateX(0deg) rotateY(-90deg)",
-  back: "rotateX(0deg) rotateY(-180deg)",
-  left: "rotateX(0deg) rotateY(90deg)",
+  front: "rotateX(-5deg) rotateY(-7deg)",
+  right: "rotateX(-5deg) rotateY(-90deg)",
+  back: "rotateX(-5deg) rotateY(-180deg)",
+  left: "rotateX(-5deg) rotateY(90deg)",
   top: "rotateX(-90deg) rotateY(0deg)",
   bottom: "rotateX(90deg) rotateY(0deg)",
 };
@@ -56,6 +69,51 @@ function faceLabel(face: PackFace): string {
   return `${face.charAt(0).toUpperCase()}${face.slice(1)}`;
 }
 
+function stickerKind(token: StickerToken): StickerKind {
+  return token === "main-label" ? "main" : "warning";
+}
+
+function centredPlacement(face: PackFace, kind: StickerKind): StickerPlacement {
+  const size = STICKER_DIMENSIONS[kind];
+  return {
+    face,
+    x: (100 - size.width) / 2,
+    y: (100 - size.height) / 2,
+  };
+}
+
+function pointerPlacement(
+  event: ReactMouseEvent<HTMLElement> | DragEvent<HTMLElement>,
+  face: PackFace,
+  kind: StickerKind
+): StickerPlacement {
+  const rect = event.currentTarget.getBoundingClientRect();
+  const size = STICKER_DIMENSIONS[kind];
+  const x = ((event.clientX - rect.left) / rect.width) * 100 - size.width / 2;
+  const y = ((event.clientY - rect.top) / rect.height) * 100 - size.height / 2;
+  return {
+    face,
+    x: Math.max(0, Math.min(100 - size.width, x)),
+    y: Math.max(0, Math.min(100 - size.height, y)),
+  };
+}
+
+function initialWarningPlacements(
+  initialWarnings: Set<string>,
+  answersRevealed: boolean
+): Record<string, StickerPlacement> {
+  if (!answersRevealed) return {};
+  const positions = [
+    { x: 4, y: 55 },
+    { x: 52, y: 55 },
+    { x: 4, y: 68 },
+  ];
+  return Object.fromEntries(Array.from(initialWarnings).map((warning, index) => [
+    warning,
+    { face: "back" as PackFace, ...(positions[index] ?? { x: 52, y: 68 }) },
+  ]));
+}
+
 export function AssemblyStage({
   caseData,
   formState,
@@ -69,18 +127,15 @@ export function AssemblyStage({
   const [selectedPackId, setSelectedPackId] = useState<string | null>(null);
   const [activeFace, setActiveFace] = useState<PackFace>("front");
   const [armedSticker, setArmedSticker] = useState<StickerToken | null>(null);
-  const [mainLabelFace, setMainLabelFace] = useState<PackFace | null>(null);
-  const [warningFaces, setWarningFaces] = useState<Record<string, PackFace>>(() =>
-    answersRevealed
-      ? Object.fromEntries(Array.from(initialWarnings).map((warning) => [warning, "back" as PackFace]))
-      : {}
+  const [mainLabelPlacement, setMainLabelPlacement] = useState<StickerPlacement | null>(null);
+  const [warningPlacements, setWarningPlacements] = useState<Record<string, StickerPlacement>>(() =>
+    initialWarningPlacements(initialWarnings, answersRevealed)
   );
 
   const selectedPack = CASE1_PACK_OPTIONS.find((pack) => pack.id === selectedPackId) ?? null;
   const item = formState.items[0];
-  const placedWarningCount = Object.keys(warningFaces).length;
-  const canComplete = Boolean(selectedPackId && mainLabelFace);
-  const mainLabelPlacementOkay = mainLabelFace !== null && CASE1_CLEAR_LABEL_FACES.includes(mainLabelFace);
+  const placedWarningCount = Object.keys(warningPlacements).length;
+  const canComplete = Boolean(selectedPackId && mainLabelPlacement);
 
   const warningOptions = useMemo(() => {
     const unique = new Set([...PROTOTYPE_WARNINGS, ...caseData.items[0].correctWarnings]);
@@ -92,31 +147,27 @@ export function AssemblyStage({
     setSelectedPackId(packId);
     setActiveFace("front");
     setArmedSticker(null);
-    setMainLabelFace(null);
-    setWarningFaces(
-      answersRevealed
-        ? Object.fromEntries(Array.from(initialWarnings).map((warning) => [warning, "back" as PackFace]))
-        : {}
-    );
+    setMainLabelPlacement(null);
+    setWarningPlacements(initialWarningPlacements(initialWarnings, answersRevealed));
   }
 
-  function applySticker(token: StickerToken, face: PackFace) {
+  function applySticker(token: StickerToken, placement: StickerPlacement) {
     if (token === "main-label") {
-      setMainLabelFace(face);
+      setMainLabelPlacement(placement);
     } else {
       const warning = token.slice("warning:".length);
-      setWarningFaces((previous) => ({ ...previous, [warning]: face }));
+      setWarningPlacements((previous) => ({ ...previous, [warning]: placement }));
     }
     setArmedSticker(null);
   }
 
   function removeMainLabel() {
-    setMainLabelFace(null);
+    setMainLabelPlacement(null);
     setArmedSticker(null);
   }
 
   function removeWarning(warning: string) {
-    setWarningFaces((previous) => {
+    setWarningPlacements((previous) => {
       const next = { ...previous };
       delete next[warning];
       return next;
@@ -125,6 +176,7 @@ export function AssemblyStage({
   }
 
   function handleDragStart(event: DragEvent<HTMLElement>, token: StickerToken) {
+    event.stopPropagation();
     event.dataTransfer.setData("text/plain", token);
     event.dataTransfer.effectAllowed = "move";
     setArmedSticker(token);
@@ -133,27 +185,28 @@ export function AssemblyStage({
   function handleDrop(event: DragEvent<HTMLElement>, face: PackFace) {
     event.preventDefault();
     const token = (event.dataTransfer.getData("text/plain") || armedSticker) as StickerToken | null;
-    if (token) applySticker(token, face);
+    if (token) applySticker(token, pointerPlacement(event, face, stickerKind(token)));
   }
 
-  function handleFaceClick(face: PackFace) {
-    if (armedSticker) applySticker(armedSticker, face);
+  function handleFaceClick(event: ReactMouseEvent<HTMLElement>, face: PackFace) {
+    if (armedSticker) applySticker(armedSticker, pointerPlacement(event, face, stickerKind(armedSticker)));
   }
 
   function resetBench() {
     setSelectedPackId(null);
     setActiveFace("front");
     setArmedSticker(null);
-    setMainLabelFace(null);
-    setWarningFaces({});
+    setMainLabelPlacement(null);
+    setWarningPlacements({});
   }
 
   function submitAssembly() {
-    if (!selectedPackId || !mainLabelFace) return;
+    if (!selectedPackId || !mainLabelPlacement) return;
     onComplete({
       packId: selectedPackId,
-      mainLabelFace,
-      warningLabels: Object.keys(warningFaces),
+      mainLabelPlacement,
+      warningLabels: Object.keys(warningPlacements),
+      warningPlacements,
     });
   }
 
@@ -163,7 +216,7 @@ export function AssemblyStage({
         <div>
           <div className="fred-stage-kicker">Stage 2 of 3 · Physical pack assembly · Case 1 prototype</div>
           <h1>Choose, check and label the medicine pack</h1>
-          <p>Match every product detail, rotate the carton, then apply the dispensing and warning labels yourself.</p>
+          <p>Match every product detail, rotate the carton, then place the dispensing and warning labels yourself.</p>
         </div>
         <div className="fred-assembly-decision">
           <span>Your recorded clinical decision</span>
@@ -225,7 +278,7 @@ export function AssemblyStage({
             <span>2</span>
             <div>
               <h2 id="carton-bench-title">Rotate and prepare the carton</h2>
-              <p>Select a sticker, then click a carton face—or drag it directly onto the face.</p>
+              <p>Drag a label anywhere on a face, or select it and click the exact position.</p>
             </div>
           </div>
 
@@ -238,7 +291,7 @@ export function AssemblyStage({
                       <div
                         key={face}
                         className={`fred-carton-face face-${face} colour-${selectedPack.colour}${activeFace === face ? " active" : ""}`}
-                        onClick={() => handleFaceClick(face)}
+                        onClick={(event) => handleFaceClick(event, face)}
                         onDragOver={(event) => event.preventDefault()}
                         onDrop={(event) => handleDrop(event, face)}
                         role={activeFace === face && armedSticker ? "button" : undefined}
@@ -246,54 +299,84 @@ export function AssemblyStage({
                         onKeyDown={(event) => {
                           if ((event.key === "Enter" || event.key === " ") && armedSticker) {
                             event.preventDefault();
-                            applySticker(armedSticker, face);
+                            applySticker(armedSticker, centredPlacement(face, stickerKind(armedSticker)));
                           }
                         }}
                         aria-label={`${faceLabel(face)} face${activeFace === face ? ", visible" : ""}`}
                       >
                         <CartonFaceContent face={face} pack={selectedPack} />
 
-                        {mainLabelFace === face && (
-                          <button
-                            type="button"
+                        {mainLabelPlacement?.face === face && (
+                          <div
                             className="fred-applied-main-label"
+                            style={placementStyle(mainLabelPlacement, "main")}
+                            draggable
+                            onDragStart={(event) => handleDragStart(event, "main-label")}
                             onClick={(event) => {
                               event.stopPropagation();
-                              removeMainLabel();
+                              setArmedSticker("main-label");
                             }}
-                            title="Remove dispensing label"
+                            role="button"
+                            tabIndex={0}
+                            aria-label="Move dispensing label"
                           >
-                            <strong>{item.drug || caseData.items[0].drug}</strong>
-                            <span>{expandAbbrevs(item.directions)}</span>
-                            <b>{patientName || caseData.patientLookup.prescriptionPatient.name}</b>
-                            <small>Qty {item.qty} · {item.repeats} Rpt · click to remove</small>
-                          </button>
+                            <DispensingLabelSticker
+                              item={item}
+                              patientName={patientName || caseData.patientLookup.prescriptionPatient.name}
+                              doctor={formState.doctor || caseData.doctor}
+                              date={formState.scriptDate || caseData.date}
+                            />
+                            <button
+                              type="button"
+                              className="fred-remove-applied-sticker"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                removeMainLabel();
+                              }}
+                              aria-label="Remove dispensing label"
+                            >×</button>
+                          </div>
                         )}
 
-                        <div className="fred-applied-warning-stack">
-                          {Object.entries(warningFaces)
-                            .filter(([, placedFace]) => placedFace === face)
-                            .map(([warning]) => (
-                              <button
+                        {Object.entries(warningPlacements)
+                          .filter(([, placement]) => placement.face === face)
+                          .map(([warning, placement]) => {
+                            const token: StickerToken = `warning:${warning}`;
+                            return (
+                              <div
                                 key={warning}
-                                type="button"
+                                className={`fred-applied-warning-label tone-${warningStickerTone(warning)}`}
+                                style={placementStyle(placement, "warning")}
+                                draggable
+                                onDragStart={(event) => handleDragStart(event, token)}
                                 onClick={(event) => {
                                   event.stopPropagation();
-                                  removeWarning(warning);
+                                  setArmedSticker(token);
                                 }}
-                                title={`Remove ${warning}`}
+                                role="button"
+                                tabIndex={0}
+                                aria-label={`Move warning label: ${warning}`}
                               >
-                                {warning} <b>×</b>
-                              </button>
-                            ))}
-                        </div>
+                                <b>{WARNING_CODES[warning] ?? "P"}</b>
+                                <span>{warning}</span>
+                                <button
+                                  type="button"
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    removeWarning(warning);
+                                  }}
+                                  aria-label={`Remove ${warning}`}
+                                >×</button>
+                              </div>
+                            );
+                          })}
                       </div>
                     ))}
                   </div>
                 </div>
                 {armedSticker && (
                   <div className="fred-sticker-armed" role="status">
-                    Sticker selected — choose the visible {faceLabel(activeFace).toLowerCase()} face to apply it.
+                    Label selected — click the exact position on the visible {faceLabel(activeFace).toLowerCase()} face.
                   </div>
                 )}
               </div>
@@ -313,15 +396,15 @@ export function AssemblyStage({
               </div>
 
               <div className="fred-carton-checks" aria-live="polite">
-                <span className={mainLabelFace ? "done" : ""}>
-                  {mainLabelFace ? "✓" : "1"} Main label applied
+                <span className={mainLabelPlacement ? "done" : ""}>
+                  {mainLabelPlacement ? "✓" : "1"} Main label applied
                 </span>
                 <span className={placedWarningCount > 0 ? "done" : ""}>
                   {placedWarningCount > 0 ? "✓" : "2"} {placedWarningCount} warning label{placedWarningCount === 1 ? "" : "s"} applied
                 </span>
-                {mainLabelFace && (
-                  <span className={mainLabelPlacementOkay ? "done" : "attention"}>
-                    {mainLabelPlacementOkay ? "✓ Clear label panel" : "Review label position"}
+                {mainLabelPlacement && (
+                  <span className="position-recorded">
+                    Position recorded on {faceLabel(mainLabelPlacement.face)} face
                   </span>
                 )}
               </div>
@@ -340,14 +423,14 @@ export function AssemblyStage({
             <span>3</span>
             <div>
               <h2 id="sticker-tray-title">Apply the labels</h2>
-              <p>The result is marked after you continue, so check before committing.</p>
+              <p>Label choice and placement are marked only after you continue.</p>
             </div>
           </div>
 
           <div className="fred-sticker-group">
             <div className="fred-sticker-group-title">
               <strong>Dispensing label</strong>
-              <span>{mainLabelFace ? `On ${faceLabel(mainLabelFace)}` : "Required"}</span>
+              <span>{mainLabelPlacement ? `On ${faceLabel(mainLabelPlacement.face)}` : "Required"}</span>
             </div>
             <button
               type="button"
@@ -357,10 +440,12 @@ export function AssemblyStage({
               className={`fred-main-label-sticker${armedSticker === "main-label" ? " armed" : ""}`}
               disabled={!selectedPack}
             >
-              <strong>{item.drug || "Dispensing label"}</strong>
-              <span>{item.directions ? expandAbbrevs(item.directions) : "Directions"}</span>
-              <b>{patientName || "Patient name"}</b>
-              <small>Qty {item.qty || "—"} · {item.repeats || "—"} Rpt</small>
+              <DispensingLabelSticker
+                item={item}
+                patientName={patientName || "Patient name"}
+                doctor={formState.doctor || caseData.doctor}
+                date={formState.scriptDate || caseData.date}
+              />
             </button>
           </div>
 
@@ -372,7 +457,7 @@ export function AssemblyStage({
             <div className="fred-warning-sticker-roll">
               {warningOptions.map((warning) => {
                 const token: StickerToken = `warning:${warning}`;
-                const placedFace = warningFaces[warning];
+                const placement = warningPlacements[warning];
                 return (
                   <button
                     key={warning}
@@ -380,11 +465,12 @@ export function AssemblyStage({
                     draggable={Boolean(selectedPack)}
                     onDragStart={(event) => handleDragStart(event, token)}
                     onClick={() => setArmedSticker(token)}
-                    className={`${armedSticker === token ? "armed" : ""}${placedFace ? " placed" : ""}`}
+                    className={`tone-${warningStickerTone(warning)}${armedSticker === token ? " armed" : ""}${placement ? " placed" : ""}`}
                     disabled={!selectedPack}
                   >
+                    <b>{WARNING_CODES[warning] ?? "P"}</b>
                     <span>{warning}</span>
-                    <small>{placedFace ? `On ${faceLabel(placedFace)}` : "Select"}</small>
+                    <small>{placement ? `On ${faceLabel(placement.face)}` : "Select"}</small>
                   </button>
                 );
               })}
@@ -392,9 +478,9 @@ export function AssemblyStage({
           </div>
 
           <div className="fred-sticker-help">
-            <strong>Placement check</strong>
-            <p>Use the broad clear panel. Keep closures, medicine identity, batch and expiry information readable.</p>
-            <p>Applied a sticker by mistake? Select it on the carton to remove it.</p>
+            <strong>Placement is part of the assessment</strong>
+            <p>Do not cover the medicine name, strength, dose form, barcode, batch, expiry or carton openings.</p>
+            <p>To move a label, select it on the carton and click a new position—or drag it again. Use × only to remove it.</p>
           </div>
         </aside>
       </div>
@@ -404,7 +490,7 @@ export function AssemblyStage({
         <button type="button" className="secondary" onClick={resetBench}>Reset bench</button>
         <div className="fred-assembly-ready">
           <strong>{canComplete ? "Ready for your final pack check" : "Choose a pack and apply the main label"}</strong>
-          <span>Warning-label selection is marked when you continue.</span>
+          <span>Warning-label selection and all label positions are marked when you continue.</span>
         </div>
         <button type="button" className="primary" disabled={!canComplete} onClick={submitAssembly}>
           Continue to patient consultation →
@@ -412,6 +498,39 @@ export function AssemblyStage({
       </footer>
     </main>
   );
+}
+
+function DispensingLabelSticker({
+  item,
+  patientName,
+  doctor,
+  date,
+}: {
+  item: FormState["items"][number];
+  patientName: string;
+  doctor: string;
+  date: string;
+}) {
+  return (
+    <span className="fred-dispensing-label-print">
+      <i>KEEP OUT OF REACH OF CHILDREN</i>
+      <strong>{item.drug || "Dispensing label"}</strong>
+      <em>{item.directions ? expandAbbrevs(item.directions) : "Directions"}</em>
+      <b>{patientName}</b>
+      <small>{date} · Dr {doctor} · Qty {item.qty || "—"} · {item.repeats || "—"} Rpt</small>
+      <span>TRAINING PHARMACY · DISPENSING PRACTICE</span>
+    </span>
+  );
+}
+
+function placementStyle(placement: StickerPlacement, kind: StickerKind) {
+  const size = STICKER_DIMENSIONS[kind];
+  return {
+    left: `${placement.x}%`,
+    top: `${placement.y}%`,
+    width: `${size.width}%`,
+    height: `${size.height}%`,
+  };
 }
 
 function CartonFaceContent({
@@ -424,31 +543,48 @@ function CartonFaceContent({
   if (face === "front") {
     return (
       <div className="fred-carton-print front-print">
-        <small>{pack.brand}</small>
+        <small>PRESCRIPTION ONLY MEDICINE · KEEP OUT OF REACH OF CHILDREN</small>
+        <i>{pack.brand}</i>
         <strong>{pack.generic}</strong>
         <b>{pack.strength}</b>
         <span>{pack.form}</span>
-        <i>{pack.packSize}</i>
+        <em>{pack.packSize}</em>
       </div>
     );
   }
   if (face === "back") {
     return (
       <div className="fred-carton-print back-print">
-        <strong>Clear dispensing label panel</strong>
-        <span>Apply the main label here without covering pack information.</span>
-        <i>Pharmacist use</i>
+        <div className="fred-carton-fine-print">
+          <strong>Storage and product information</strong>
+          <span>Store below 25°C. Protect from light and moisture.</span>
+          <span>Mayne Pharma Australia · AUST R 1404X</span>
+        </div>
+        <div className="fred-carton-barcode" aria-hidden="true" />
       </div>
     );
   }
   if (face === "right") {
-    return <div className="fred-carton-print side-print clear"><strong>Clear side panel</strong><span>Suitable for dispensing label</span></div>;
+    return (
+      <div className="fred-carton-print side-print clear">
+        <small>DISPENSING PANEL</small>
+        <div className="fred-batch-strip"><strong>Batch</strong> MP240619 <strong>EXP</strong> 06/2028</div>
+      </div>
+    );
   }
   if (face === "left") {
-    return <div className="fred-carton-print side-print"><strong>Batch</strong><span>MP240619</span><strong>Expiry</strong><span>06/2028</span></div>;
+    return (
+      <div className="fred-carton-print side-print info-heavy">
+        <strong>ERYTHROMYCIN</strong>
+        <span>250 mg capsules</span>
+        <div className="fred-carton-barcode" aria-hidden="true" />
+        <strong>Batch MP240619</strong>
+        <span>Expiry 06/2028</span>
+      </div>
+    );
   }
   if (face === "top") {
-    return <div className="fred-carton-print end-print"><strong>{pack.generic}</strong><span>{pack.strength} · {pack.form}</span><b>OPEN</b></div>;
+    return <div className="fred-carton-print end-print"><strong>{pack.generic}</strong><span>{pack.strength} · {pack.form}</span><b>OPEN HERE</b></div>;
   }
   return <div className="fred-carton-print end-print"><strong>{pack.brand}</strong><span>{pack.packSize}</span><b>SEALED END</b></div>;
 }
