@@ -104,6 +104,7 @@ export function PatientSelectionModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="patient-selection-title"
+        data-tour="patient-dialog"
       >
         <div className="fred-psel-title">
           <span id="patient-selection-title">Patient Selection</span>

@@ -170,7 +170,13 @@ export function PrescriberDirectoryModal({ open, query, onSelect, onClose }: Pro
 
   return (
     <div className="fred-prsel-backdrop" onClick={(event) => event.target === event.currentTarget && onClose()}>
-      <div className="fred-prsel-dialog" role="dialog" aria-modal="true" aria-labelledby="prescriber-directory-title">
+      <div
+        className="fred-prsel-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="prescriber-directory-title"
+        data-tour="prescriber-dialog"
+      >
         <div className="fred-prsel-title">
           <span id="prescriber-directory-title">{mode === "add" ? "Add New Prescriber" : "Prescriber Directory"}</span>
           <button type="button" onClick={onClose} aria-label="Close prescriber directory">×</button>

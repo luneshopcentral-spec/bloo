@@ -11,6 +11,14 @@ import {
 import { combineAttemptResults, scoreCounselling } from "./score";
 import { buildPatientReply } from "./reply";
 import type { DispenseResult } from "@/lib/scoring/types";
+import {
+  GUIDED_TUTORIAL_EXPLANATION_MESSAGE,
+  GUIDED_TUTORIAL_OPENING_MESSAGE,
+  GUIDED_TUTORIAL_SAFETY_MESSAGE,
+  matchesGuidedExplanationMessage,
+  matchesGuidedOpeningMessage,
+  matchesGuidedSafetyMessage,
+} from "@/lib/practice/guided-tutorial";
 
 const safeDispense: DispenseResult = {
   checks: [],
@@ -70,6 +78,39 @@ describe("conversation configuration", () => {
     expect(both.map((match) => match.topicId)).toEqual(
       expect.arrayContaining(["confirm_identity", "confirm_age"])
     );
+  });
+
+  it("keeps the guided tutorial conversation aligned with the complete case 1 rubric", () => {
+    const conversation = getConversationCase("case-1");
+    const tutorialMessages = [
+      GUIDED_TUTORIAL_OPENING_MESSAGE,
+      GUIDED_TUTORIAL_EXPLANATION_MESSAGE,
+      GUIDED_TUTORIAL_SAFETY_MESSAGE,
+    ];
+    const addressedTopics = new Set(
+      tutorialMessages.flatMap((message) =>
+        classifyWithRules(conversation, message).map((match) => match.topicId)
+      )
+    );
+
+    expect([...addressedTopics]).toEqual(expect.arrayContaining([
+      "introduction",
+      "confirm_identity",
+      "confirm_age",
+      "allergies",
+      "current_medicines",
+      "purpose",
+      "directions",
+      "complete_course",
+      "nausea_advice",
+      "allergic_reaction_safety",
+      "teach_back",
+      "invite_questions",
+    ]));
+    expect(matchesGuidedOpeningMessage(GUIDED_TUTORIAL_OPENING_MESSAGE)).toBe(true);
+    expect(matchesGuidedExplanationMessage(GUIDED_TUTORIAL_EXPLANATION_MESSAGE)).toBe(true);
+    expect(matchesGuidedSafetyMessage(GUIDED_TUTORIAL_SAFETY_MESSAGE)).toBe(true);
+    expect(tutorialMessages.flatMap((message) => findUnsafeAdvice(conversation, message))).toEqual([]);
   });
 
   it("keeps case 5 counselling facts consistent with Carol's stored clinical record", () => {

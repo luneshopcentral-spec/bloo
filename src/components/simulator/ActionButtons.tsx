@@ -12,6 +12,7 @@ interface ActionButtonsProps {
   readinessIssues: string[];
   hasProgress: boolean;
   submitLabelOverride?: string;
+  guidedTutorial?: boolean;
 }
 
 export function ActionButtons({
@@ -26,6 +27,7 @@ export function ActionButtons({
   readinessIssues,
   hasProgress,
   submitLabelOverride,
+  guidedTutorial = false,
 }: ActionButtonsProps) {
   const submitLabel = submitLabelOverride ?? (decision === "dispense"
     ? "Complete dispensing → Patient handover"
@@ -77,10 +79,11 @@ export function ActionButtons({
           className="fred-main-btn btn-green"
           onClick={onDispense}
           disabled={submitted}
+          data-tour="dispense-submit"
         >
           {submitted ? "Dispensing stage submitted" : submitLabel}
         </button>
-        {allowAnswerReveal && (
+        {allowAnswerReveal && !guidedTutorial && (
           <button
             type="button"
             className="fred-main-btn fred-answer-btn"
@@ -91,12 +94,16 @@ export function ActionButtons({
             {answersRevealed ? "Answers revealed · Assisted" : "Reveal answers"}
           </button>
         )}
-        <button type="button" className="fred-main-btn btn-red" onClick={handleReset}>
-          Reset case
-        </button>
-        <button type="button" className="fred-main-btn fred-main-btn-next" onClick={handleSkip}>
-          Skip case →
-        </button>
+        {!guidedTutorial && (
+          <>
+            <button type="button" className="fred-main-btn btn-red" onClick={handleReset}>
+              Reset case
+            </button>
+            <button type="button" className="fred-main-btn fred-main-btn-next" onClick={handleSkip}>
+              Skip case →
+            </button>
+          </>
+        )}
       </div>
     </>
   );

@@ -34,7 +34,7 @@ export function ClinicalDecisionPanel({
   disabled = false,
 }: ClinicalDecisionPanelProps) {
   return (
-    <fieldset className="fred-decision-panel" disabled={disabled}>
+    <fieldset className="fred-decision-panel" disabled={disabled} data-tour="clinical-decision">
       <legend>Final clinical decision</legend>
       <div className="fred-decision-options">
         {DECISIONS.map((decision) => (

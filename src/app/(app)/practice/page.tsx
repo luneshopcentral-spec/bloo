@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useReducer, useEffect, useMemo } from "react";
+import { useState, useReducer, useEffect, useMemo, useCallback } from "react";
 import "./simulator.css";
 
 import { STATIC_CASES, ALL_WARNINGS } from "@/lib/cases/static-cases";
@@ -45,8 +45,18 @@ import { PrescriberDirectoryModal } from "@/components/simulator/PrescriberDirec
 import { CounsellingStage }    from "@/components/simulator/CounsellingStage";
 import { ExamStopwatch }       from "@/components/simulator/ExamStopwatch";
 import { OnboardingModal }     from "@/components/simulator/OnboardingModal";
-import { AssemblyStage }       from "@/components/simulator/AssemblyStage";
+import { AssemblyStage, type AssemblyGuidedAction } from "@/components/simulator/AssemblyStage";
 import { LockedCasePanel }     from "@/components/simulator/LockedCasePanel";
+import {
+  GUIDED_TUTORIAL_STEPS,
+  GuidedTutorial,
+  type GuidedTutorialStep,
+} from "@/components/simulator/GuidedTutorial";
+import {
+  matchesGuidedExplanationMessage,
+  matchesGuidedOpeningMessage,
+  matchesGuidedSafetyMessage,
+} from "@/lib/practice/guided-tutorial";
 import type { StatusTone }     from "@/components/simulator/StatusBar";
 
 const FREE_CASE_COUNT = STATIC_CASES.filter((c) => c.isFree).length;
@@ -54,6 +64,10 @@ const FREE_CASE_COUNT = STATIC_CASES.filter((c) => c.isFree).length;
 const DEFAULT_STATUS =
   "Search for patient by surname, then enter drug details and complete the label.";
 const ONBOARDING_STORAGE_KEY = "dispenserx-onboarding-v1";
+
+function normaliseTutorialEntry(value: string): string {
+  return value.trim().toLowerCase().replace(/\s+/g, " ");
+}
 
 export default function PracticePage() {
   const [stage, setStage]                         = useState<"dispensing" | "assembly" | "counselling">("dispensing");
@@ -70,9 +84,9 @@ export default function PracticePage() {
   const [statusMessage, setStatusMessage]          = useState(DEFAULT_STATUS);
   const [statusTone, setStatusTone]                = useState<StatusTone>("info");
   const [statusFlash, setStatusFlash]              = useState(0);
-  // Every attempt gets its own variant of the case (date, authority number,
-  // rotated prescriber) so repeat practice cannot rely on memorised details.
-  const [attemptSeed, setAttemptSeed]              = useState(() => Date.now());
+  // Keep the first server/client render deterministic so prescription details
+  // hydrate identically. Every deliberate new attempt refreshes this seed.
+  const [attemptSeed, setAttemptSeed]              = useState(0);
   const [onboardingOpen, setOnboardingOpen]        = useState(false);
 
   const [sessionScore, setSessionScore]   = useState({ correct: 0, total: 0 });
@@ -84,6 +98,9 @@ export default function PracticePage() {
   const [answersRevealed, setAnswersRevealed] = useState(false);
   const [attemptSubmitted, setAttemptSubmitted] = useState(false);
   const [attemptResetCounter, setAttemptResetCounter] = useState(0);
+  const [guidedTutorialActive, setGuidedTutorialActive] = useState(false);
+  const [guidedTutorialStep, setGuidedTutorialStep] = useState<GuidedTutorialStep>("welcome");
+  const [guidedCounsellingMessages, setGuidedCounsellingMessages] = useState<string[]>([]);
 
   // Keep the prescription available without covering the core laptop workspace.
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -155,6 +172,46 @@ export default function PracticePage() {
     }
   }
 
+  const advanceGuidedTutorial = useCallback(() => {
+    setGuidedTutorialStep((currentStep) => {
+      const index = GUIDED_TUTORIAL_STEPS.indexOf(currentStep);
+      return GUIDED_TUTORIAL_STEPS[Math.min(index + 1, GUIDED_TUTORIAL_STEPS.length - 1)];
+    });
+  }, []);
+
+  function startGuidedTutorial() {
+    dismissOnboarding();
+    setGuidedTutorialActive(true);
+    setGuidedTutorialStep("welcome");
+    setGuidedCounsellingMessages([]);
+    setPracticeMode("learn");
+    setAttemptSeed(Date.now());
+    setAttemptResetCounter((value) => value + 1);
+
+    if (currentCaseIndex === 0) {
+      handleClear();
+    } else {
+      setCurrentCaseIndex(0);
+    }
+    showStatus("Guided tutorial started. Complete each highlighted action to continue.", "success");
+  }
+
+  function exitGuidedTutorial() {
+    setGuidedTutorialActive(false);
+    showStatus("Guided tutorial closed. Your current case work has been kept.");
+  }
+
+  function handleAssemblyGuidedAction(action: AssemblyGuidedAction) {
+    if (!guidedTutorialActive) return;
+    if (guidedTutorialStep === "pack" && action === "correct-pack-selected") {
+      advanceGuidedTutorial();
+    } else if (guidedTutorialStep === "main-label" && action === "main-label-safely-placed") {
+      advanceGuidedTutorial();
+    } else if (guidedTutorialStep === "warning-labels" && action === "warning-labels-ready") {
+      advanceGuidedTutorial();
+    }
+  }
+
   // ── Reset form + patient + drug whenever the case changes ─────────
   // Reads the current attempt's variant; the handlers that change the case
   // always refresh the seed in the same render.
@@ -218,19 +275,23 @@ export default function PracticePage() {
 
   // ── Handlers ──────────────────────────────────────────────────────
   function handleCaseChange(n: number) {
+    setGuidedTutorialActive(false);
     setAttemptSeed(Date.now());
     setCurrentCaseIndex(n);
   }
   function handleModeChange(mode: PracticeMode) {
+    setGuidedTutorialActive(false);
     setPracticeMode(mode);
     handleClear();
     showStatus(`${mode[0].toUpperCase()}${mode.slice(1)} mode selected. A fresh attempt has started.`);
   }
   function handleNext() {
+    setGuidedTutorialActive(false);
     setAttemptSeed(Date.now());
     setCurrentCaseIndex((i) => (i + 1) % STATIC_CASES.length);
   }
   function handleNextFromOverlay() {
+    setGuidedTutorialActive(false);
     setAttemptSeed(Date.now());
     setCurrentCaseIndex((i) => (i + 1) % STATIC_CASES.length);
   }
@@ -495,6 +556,83 @@ export default function PracticePage() {
     )
   );
 
+  useEffect(() => {
+    if (!guidedTutorialActive) return;
+
+    const item = formState.items[0];
+    const expectedItem = current.items[0];
+    let completed = false;
+
+    switch (guidedTutorialStep) {
+      case "prescription":
+        completed = drawerOpen;
+        break;
+      case "patient":
+        completed = selectedPatient?.seed_id === current.patientLookup.existingPatientSeedId;
+        break;
+      case "prescriber":
+        completed = selectedPrescriber?.prescriber_number
+          === (current.expectedPrescriberNo ?? current.prescriberNo);
+        break;
+      case "medicine":
+        completed = selectedDrugs[0]?.seed_id === expectedItem.correctDrugSeedId;
+        break;
+      case "label-entry":
+        completed = Boolean(item)
+          && normaliseTutorialEntry(item.directions) === normaliseTutorialEntry(expectedItem.directions)
+          && normaliseTutorialEntry(item.repeats) === normaliseTutorialEntry(expectedItem.repeats)
+          && normaliseTutorialEntry(item.qty) === normaliseTutorialEntry(String(expectedItem.qty))
+          && normaliseTutorialEntry(item.price.replace("$", ""))
+            === normaliseTutorialEntry(expectedItem.price2.replace("$", ""));
+        break;
+      case "initials":
+        completed = formState.pharmacistInitials.trim().length >= 2;
+        break;
+      case "decision":
+        completed = clinicalDecision === current.expectedDecision;
+        break;
+      case "dispense-submit":
+        completed = stage === "assembly";
+        break;
+      case "assembly-submit":
+        completed = stage === "counselling";
+        break;
+      case "patient-question":
+        completed = guidedCounsellingMessages.some(matchesGuidedOpeningMessage);
+        break;
+      case "patient-explanation":
+        completed = guidedCounsellingMessages.some(matchesGuidedExplanationMessage);
+        break;
+      case "patient-safety-close":
+        completed = guidedCounsellingMessages.some(matchesGuidedSafetyMessage);
+        break;
+      case "finish-consultation":
+        completed = overlayOpen && Boolean(lastResult);
+        break;
+      default:
+        break;
+    }
+
+    if (!completed) return;
+    const timer = window.setTimeout(advanceGuidedTutorial, 380);
+    return () => window.clearTimeout(timer);
+  }, [
+    clinicalDecision,
+    current,
+    drawerOpen,
+    advanceGuidedTutorial,
+    formState,
+    guidedCounsellingMessages,
+    guidedTutorialActive,
+    guidedTutorialStep,
+    lastResult,
+    overlayOpen,
+    selectedDrugs,
+    selectedPatient,
+    selectedPrescriber,
+    stage,
+  ]);
+
   return (
     <>
       <DraggableDialogManager />
@@ -525,6 +663,8 @@ export default function PracticePage() {
               mode={practiceMode}
               onModeChange={handleModeChange}
               onOpenHelp={() => setOnboardingOpen(true)}
+              onStartGuidedTutorial={startGuidedTutorial}
+              guidedTutorialActive={guidedTutorialActive}
               entitlement={entitlement}
             />
             <LockedCasePanel caseData={current} freeCaseCount={FREE_CASE_COUNT} />
@@ -539,6 +679,8 @@ export default function PracticePage() {
               mode={practiceMode}
               onModeChange={handleModeChange}
               onOpenHelp={() => setOnboardingOpen(true)}
+              onStartGuidedTutorial={startGuidedTutorial}
+              guidedTutorialActive={guidedTutorialActive}
               entitlement={entitlement}
             />
 
@@ -621,6 +763,7 @@ export default function PracticePage() {
                   allowAnswerReveal={practiceMode !== "exam"}
                   readinessIssues={readinessIssues}
                   hasProgress={hasAttemptProgress}
+                  guidedTutorial={guidedTutorialActive}
                   submitLabelOverride={isCase1AssemblyPrototype ? "Complete dispensing → Pack assembly" : undefined}
                 />
               </div>
@@ -648,6 +791,8 @@ export default function PracticePage() {
             answersRevealed={answersRevealed}
             onBack={handleAssemblyBack}
             onComplete={handleAssemblyComplete}
+            guidedTutorial={guidedTutorialActive}
+            onGuidedAction={handleAssemblyGuidedAction}
           />
         ) : (
           <CounsellingStage
@@ -657,6 +802,10 @@ export default function PracticePage() {
             onComplete={handleCounsellingComplete}
             onViewResults={() => setOverlayOpen(true)}
             mode={practiceMode}
+            guidedTutorial={guidedTutorialActive}
+            onGuidedMessageSent={(message) =>
+              setGuidedCounsellingMessages((previous) => [...previous, message])
+            }
             stageLabel={isCase1AssemblyPrototype
               ? "Stage 3 of 3 · Patient consultation"
               : "Stage 2 of 2 · Patient consultation"}
@@ -671,6 +820,15 @@ export default function PracticePage() {
           sessionScore={sessionScore}
           onClose={() => setOverlayOpen(false)}
           onNext={handleNextFromOverlay}
+          guidedTutorial={guidedTutorialActive}
+        />
+
+        <GuidedTutorial
+          active={guidedTutorialActive}
+          step={guidedTutorialStep}
+          caseData={current}
+          onNext={advanceGuidedTutorial}
+          onExit={exitGuidedTutorial}
         />
 
         {/* Patient details modal — INSIDE .fred-root so CSS selectors match */}

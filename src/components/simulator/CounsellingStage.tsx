@@ -30,6 +30,8 @@ interface CounsellingStageProps {
   onViewResults: () => void;
   mode: PracticeMode;
   stageLabel?: string;
+  guidedTutorial?: boolean;
+  onGuidedMessageSent?: (message: string) => void;
 }
 
 function decisionLabel(decision: DispenseDecision | null): string {
@@ -45,6 +47,8 @@ export function CounsellingStage({
   onComplete,
   onViewResults,
   mode,
+  guidedTutorial = false,
+  onGuidedMessageSent,
   stageLabel = "Stage 2 of 2 · Patient consultation",
 }: CounsellingStageProps) {
   const [messages, setMessages] = useState<ConversationMessage[]>([
@@ -210,6 +214,7 @@ export function CounsellingStage({
       ];
     });
     setPending(false);
+    onGuidedMessageSent?.(text);
     if (interactionMode === "voice" && patientAudioEnabled) {
       voice.speak(patientReply.audioSegments);
     }
@@ -290,7 +295,7 @@ export function CounsellingStage({
             </div>
           </div>
 
-          <div className="fred-chat-composer">
+          <div className="fred-chat-composer" data-tour="counselling-composer">
             <div className="fred-chat-composer-inner">
             <div className="fred-interaction-mode-row">
               <span>Interaction method</span>
@@ -308,6 +313,7 @@ export function CounsellingStage({
                   className={interactionMode === "voice" ? "active" : ""}
                   aria-pressed={interactionMode === "voice"}
                   onClick={selectVoiceMode}
+                  disabled={guidedTutorial}
                 >
                   Voice conversation
                 </button>
@@ -449,6 +455,7 @@ export function CounsellingStage({
                 className="fred-chat-finish"
                 onClick={complete ? onViewResults : finishConversation}
                 disabled={pending || (!complete && studentTurns < 1)}
+                data-tour="counselling-finish"
               >
                 {complete ? "View results" : "Finish consultation"}
               </button>

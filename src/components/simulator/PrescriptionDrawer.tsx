@@ -91,6 +91,7 @@ export function PrescriptionDrawer({
       <button
         ref={triggerRef}
         className="presc-trigger"
+        data-tour="prescription-trigger"
         onClick={() => onOpenChange(!open)}
         aria-label={open ? "Close simulated prescription" : "View simulated prescription"}
         aria-expanded={open}
@@ -108,6 +109,7 @@ export function PrescriptionDrawer({
         aria-hidden={!open}
         inert={!open}
         className="presc-panel"
+        data-tour="prescription-drawer"
       >
         {/* Header bar */}
         <div className="presc-header">

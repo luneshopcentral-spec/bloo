@@ -103,6 +103,7 @@ export function DrugSelectionModal({ open, query, onDrugSelected, onClose }: Pro
         role="dialog"
         aria-modal="true"
         aria-labelledby="drug-selection-title"
+        data-tour="drug-dialog"
       >
         <div className="fred-dsel-title">
           <span id="drug-selection-title">Drug Selection</span>

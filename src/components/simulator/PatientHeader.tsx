@@ -18,7 +18,7 @@ export function PatientHeader({
   onStatusUpdate,
 }: PatientHeaderProps) {
   return (
-    <div className="fred-patient-header">
+    <div className="fred-patient-header" data-tour="patient-field">
       <div style={{ display: "flex", alignItems: "center", gap: "8px", flex: 1 }}>
         <label
           className="fred-ph-label"

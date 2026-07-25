@@ -123,7 +123,7 @@ export function ScriptForm({
 
       {/* Row 2: Doctor / Prescriber No */}
       <div className="grid grid-cols-2 gap-1.5 mb-1 px-1">
-        <div>
+        <div data-tour="prescriber-field">
           <label className="fred-field-label" htmlFor="medical-doctor">Medical Doctor</label>
           <div className="fred-directory-field">
             <input id="medical-doctor" className="fred-field-input" placeholder="Doctor surname, first"
@@ -141,7 +141,7 @@ export function ScriptForm({
       </div>
 
       {/* Drug field */}
-      <div className="px-1 mb-1">
+      <div className="px-1 mb-1" data-tour="medicine-field">
         <label className="fred-field-label" htmlFor="drug-search">Brand / Product or Repeat No</label>
 
         {selectedDrug ? (
@@ -213,7 +213,11 @@ export function ScriptForm({
       </div>
 
       {/* Directions / Repeats / Qty / Price */}
-      <div className="grid gap-1.5 mb-1 px-1" style={{ gridTemplateColumns: "1fr auto auto auto" }}>
+      <div
+        className="grid gap-1.5 mb-1 px-1"
+        style={{ gridTemplateColumns: "1fr auto auto auto" }}
+        data-tour="label-entry-fields"
+      >
         <div className="flex flex-col gap-0.5">
           <label className="fred-field-label" htmlFor="directions">Directions</label>
           <textarea id="directions" className="fred-dir-textarea" placeholder="e.g. Take ONE capsule tds pc"
@@ -243,7 +247,7 @@ export function ScriptForm({
       </div>
 
       {/* Pharmacist initials */}
-      <div className="fred-pharmacist-row">
+      <div className="fred-pharmacist-row" data-tour="pharmacist-initials">
         <label htmlFor="pharmacist-initials">Pharmacist Initials</label>
         <div className={`fred-initials-box${initialsError ? " fred-initials-shake" : ""}`}>
           {initialsDisplay}

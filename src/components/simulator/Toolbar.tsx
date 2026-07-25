@@ -10,10 +10,23 @@ interface ToolbarProps {
   mode: PracticeMode;
   onModeChange: (mode: PracticeMode) => void;
   onOpenHelp: () => void;
+  onStartGuidedTutorial: () => void;
+  guidedTutorialActive: boolean;
   entitlement: CaseEntitlement | null;
 }
 
-export function Toolbar({ currentCase, onCaseChange, cases, sessionScore, mode, onModeChange, onOpenHelp, entitlement }: ToolbarProps) {
+export function Toolbar({
+  currentCase,
+  onCaseChange,
+  cases,
+  sessionScore,
+  mode,
+  onModeChange,
+  onOpenHelp,
+  onStartGuidedTutorial,
+  guidedTutorialActive,
+  entitlement,
+}: ToolbarProps) {
   return (
     <div className="fred-toolbar">
       <label htmlFor="practice-mode" className="fred-toolbar-label">Mode:</label>
@@ -23,6 +36,7 @@ export function Toolbar({ currentCase, onCaseChange, cases, sessionScore, mode, 
         value={mode}
         onChange={(event) => onModeChange(event.target.value as PracticeMode)}
         title={PRACTICE_MODE_COPY[mode].description}
+        disabled={guidedTutorialActive}
       >
         {(Object.keys(PRACTICE_MODE_COPY) as PracticeMode[]).map((value) => (
           <option key={value} value={value}>{PRACTICE_MODE_COPY[value].label}</option>
@@ -46,6 +60,7 @@ export function Toolbar({ currentCase, onCaseChange, cases, sessionScore, mode, 
         className="fred-case-select"
         value={currentCase}
         onChange={(e) => onCaseChange(parseInt(e.target.value, 10))}
+        disabled={guidedTutorialActive}
       >
         {cases.map((c, i) => {
           const locked = !canPlayCase(c, entitlement);
@@ -63,8 +78,20 @@ export function Toolbar({ currentCase, onCaseChange, cases, sessionScore, mode, 
         className="fred-toolbar-help"
         onClick={onOpenHelp}
         title="Reopen the case walkthrough"
+        disabled={guidedTutorialActive}
       >
         ? How it works
+      </button>
+
+      <button
+        type="button"
+        className={`fred-toolbar-tutorial${guidedTutorialActive ? " active" : ""}`}
+        onClick={onStartGuidedTutorial}
+        disabled={guidedTutorialActive}
+        data-tour="guided-tutorial-button"
+        title="Complete a guided version of Case 1 using the real simulator controls"
+      >
+        {guidedTutorialActive ? "Guided tutorial active" : "Guided tutorial"}
       </button>
     </div>
   );

@@ -5162,3 +5162,280 @@
   font-size: 11.5px;
   color: var(--ink-muted, #64748b);
 }
+
+/* Guided tutorial --------------------------------------------------------- */
+.fred-root .fred-toolbar-tutorial {
+  border: 1px solid #315ca8;
+  border-radius: 999px;
+  background: #315ca8;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  padding: 6px 11px;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(49, 92, 168, .18);
+}
+.fred-root .fred-toolbar-tutorial:hover {
+  background: #244985;
+  border-color: #244985;
+}
+.fred-root .fred-toolbar-tutorial.active,
+.fred-root .fred-toolbar-tutorial:disabled {
+  border-color: #8ea6ce;
+  background: #dce6f6;
+  color: #244985;
+  cursor: default;
+  box-shadow: none;
+}
+.fred-root .fred-toolbar select:disabled,
+.fred-root .fred-toolbar-help:disabled {
+  cursor: default;
+  opacity: .58;
+}
+
+.fred-root .fred-guided-tour-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 600;
+  pointer-events: none;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.fred-root .fred-tour-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(12, 23, 42, .65);
+}
+.fred-root .fred-tour-spotlight {
+  position: fixed;
+  z-index: 1;
+  border: 3px solid #fbbf24;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .06);
+  box-shadow:
+    0 0 0 9999px rgba(12, 23, 42, .66),
+    0 0 0 7px rgba(251, 191, 36, .22),
+    0 8px 28px rgba(12, 23, 42, .24);
+  pointer-events: none;
+  transition:
+    top 180ms ease,
+    left 180ms ease,
+    width 180ms ease,
+    height 180ms ease;
+}
+.fred-root .fred-tour-card {
+  position: fixed;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+  border: 1px solid #c9d7ee;
+  border-radius: 14px;
+  padding: 0;
+  background: #fff;
+  color: #15233b;
+  pointer-events: auto;
+  box-shadow: 0 22px 60px rgba(12, 23, 42, .34);
+}
+.fred-root .fred-tour-card::before {
+  display: none;
+}
+.fred-root .fred-tour-card.arrow-left::before {
+  top: 50%;
+  left: -9px;
+  border-bottom: 1px solid #c9d7ee;
+  border-left: 1px solid #c9d7ee;
+}
+.fred-root .fred-tour-card.arrow-right::before {
+  top: 50%;
+  right: -9px;
+  border-top: 1px solid #c9d7ee;
+  border-right: 1px solid #c9d7ee;
+}
+.fred-root .fred-tour-card.arrow-top::before {
+  top: -9px;
+  left: 50%;
+  border-top: 1px solid #c9d7ee;
+  border-left: 1px solid #c9d7ee;
+}
+.fred-root .fred-tour-card.arrow-bottom::before {
+  bottom: -9px;
+  left: 50%;
+  border-right: 1px solid #c9d7ee;
+  border-bottom: 1px solid #c9d7ee;
+}
+.fred-root .fred-tour-card-head {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px 10px;
+}
+.fred-root .fred-tour-card-head > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.fred-root .fred-tour-card-head span {
+  color: #315ca8;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.fred-root .fred-tour-card-head strong {
+  border-left: 1px solid #d9e1ec;
+  padding-left: 8px;
+  color: #68778d;
+  font-size: 10px;
+}
+.fred-root .fred-tour-card-head button {
+  border: 0;
+  border-radius: 6px;
+  padding: 5px 7px;
+  background: transparent;
+  color: #65748a;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.fred-root .fred-tour-card-head button:hover {
+  background: #f1f5f9;
+  color: #b42318;
+}
+.fred-root .fred-tour-progress {
+  height: 4px;
+  margin: 0 16px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e8eef7;
+}
+.fred-root .fred-tour-progress i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #315ca8, #5d82c2);
+  transition: width 240ms ease;
+}
+.fred-root .fred-tour-card h2 {
+  margin: 15px 16px 7px;
+  color: #14213a;
+  font-size: 19px;
+  font-weight: 850;
+  line-height: 1.2;
+}
+.fred-root .fred-tour-card > p {
+  margin: 0 16px;
+  color: #526177;
+  font-size: 12.5px;
+  line-height: 1.48;
+}
+.fred-root .fred-tour-instruction {
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  gap: 8px;
+  align-items: start;
+  margin: 14px 16px;
+  border: 1px solid #f0d88a;
+  border-radius: 9px;
+  padding: 10px;
+  background: #fff9df;
+  color: #6b4a04;
+}
+.fred-root .fred-tour-instruction span {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border-radius: 50%;
+  background: #fbbf24;
+  color: #3e2b04;
+  font-size: 14px;
+}
+.fred-root .fred-tour-instruction strong {
+  font-size: 12px;
+  line-height: 1.42;
+}
+.fred-root .fred-tour-card-footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  min-height: 50px;
+  border-top: 1px solid #e4eaf2;
+  padding: 10px 16px;
+  background: #f8fafc;
+}
+.fred-root .fred-tour-card-footer > span {
+  color: #68778d;
+  font-size: 10.5px;
+  font-weight: 750;
+}
+.fred-root .fred-tour-card-footer button.primary {
+  border: 1px solid #315ca8;
+  border-radius: 8px;
+  padding: 8px 13px;
+  background: #315ca8;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 850;
+  cursor: pointer;
+}
+.fred-root .fred-tour-card-footer button.primary:hover {
+  background: #244985;
+}
+.fred-root .fred-tour-card.compact-modal .fred-tour-card-head {
+  padding: 9px 14px 7px;
+}
+.fred-root .fred-tour-card.compact-modal .fred-tour-progress {
+  margin: 0 14px;
+}
+.fred-root .fred-tour-card.compact-modal h2 {
+  margin: 9px 14px 3px;
+  font-size: 16px;
+}
+.fred-root .fred-tour-card.compact-modal > p {
+  display: none;
+}
+.fred-root .fred-tour-card.compact-modal .fred-tour-instruction {
+  margin: 8px 14px;
+  padding: 8px;
+}
+.fred-root .fred-tour-card.compact-modal .fred-tour-card-footer {
+  min-height: 36px;
+  padding: 6px 14px;
+}
+.fred-root .fred-tour-target-arrow {
+  position: fixed;
+  z-index: 3;
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: #fbbf24;
+  color: #3e2b04;
+  font-size: 17px;
+  font-weight: 950;
+  line-height: 1;
+  pointer-events: none;
+  box-shadow: 0 4px 14px rgba(12, 23, 42, .3);
+}
+
+@media (max-width: 760px) {
+  .fred-root .fred-tour-card {
+    left: 16px !important;
+    right: 16px;
+    bottom: 16px;
+    top: auto !important;
+    width: auto !important;
+    max-height: 48vh;
+  }
+  .fred-root .fred-tour-card::before {
+    display: none;
+  }
+}

@@ -9,6 +9,7 @@ interface ResultOverlayProps {
   sessionScore: { correct: number; total: number };
   onClose: () => void;
   onNext: () => void;
+  guidedTutorial?: boolean;
 }
 interface ResultRowProps {
   label: string;
@@ -37,6 +38,7 @@ export function ResultOverlay({
   sessionScore,
   onClose,
   onNext,
+  guidedTutorial = false,
 }: ResultOverlayProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -94,6 +96,7 @@ export function ResultOverlay({
         role="dialog"
         aria-modal="true"
         aria-labelledby="attempt-results-title"
+        data-tour="result-dialog"
       >
         <div className="fred-result-title">
           <span id="attempt-results-title">Complete Attempt Results</span>
@@ -127,6 +130,12 @@ export function ResultOverlay({
           {result.assisted && (
             <div className="fred-result-assisted" role="status">
               Assisted practice: dispensing answers were revealed, so this complete attempt is not included in progress.
+            </div>
+          )}
+
+          {guidedTutorial && (
+            <div className="fred-result-assisted" role="status">
+              Guided tutorial: this result is for learning only and is not included in progress.
             </div>
           )}
 

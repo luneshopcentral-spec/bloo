@@ -325,7 +325,7 @@ function rectanglesOverlap(
     && first.y + first.height > second.y;
 }
 
-function stickerOverlapIssues(submission: Case1AssemblySubmission): string[] {
+export function stickerOverlapIssues(submission: Case1AssemblySubmission): string[] {
   const stickers: Array<{
     label: string;
     kind: StickerKind;
