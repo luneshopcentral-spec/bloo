@@ -18,6 +18,8 @@ export interface Database {
           year_of_study: number | null;
           has_paid: boolean;
           trial_cases_used: number;
+          role: string;
+          stripe_customer_id: string | null;
           created_at: string;
         };
         Insert: {
@@ -28,6 +30,8 @@ export interface Database {
           year_of_study?: number | null;
           has_paid?: boolean;
           trial_cases_used?: number;
+          role?: string;
+          stripe_customer_id?: string | null;
           created_at?: string;
         };
         Update: {
@@ -38,6 +42,8 @@ export interface Database {
           year_of_study?: number | null;
           has_paid?: boolean;
           trial_cases_used?: number;
+          role?: string;
+          stripe_customer_id?: string | null;
           created_at?: string;
         };
         Relationships: [];

@@ -23,6 +23,7 @@ import { getCaseEditorialRecord } from "@/lib/governance/editorial";
 import type { PracticeMode } from "@/lib/practice/modes";
 import { persistCompletedAttempt } from "@/lib/attempts/persist";
 import { addCase1AssemblyChecks, type Case1AssemblySubmission } from "@/lib/assembly/case1";
+import { canPlayCase, isFreeCase, type CaseEntitlement } from "@/lib/entitlement/entitlement";
 
 import { TitleBar }            from "@/components/simulator/TitleBar";
 import { Toolbar }             from "@/components/simulator/Toolbar";
@@ -45,7 +46,10 @@ import { CounsellingStage }    from "@/components/simulator/CounsellingStage";
 import { ExamStopwatch }       from "@/components/simulator/ExamStopwatch";
 import { OnboardingModal }     from "@/components/simulator/OnboardingModal";
 import { AssemblyStage }       from "@/components/simulator/AssemblyStage";
+import { LockedCasePanel }     from "@/components/simulator/LockedCasePanel";
 import type { StatusTone }     from "@/components/simulator/StatusBar";
+
+const FREE_CASE_COUNT = STATIC_CASES.filter((c) => c.isFree).length;
 
 const DEFAULT_STATUS =
   "Search for patient by surname, then enter drug details and complete the label.";
@@ -100,6 +104,10 @@ export default function PracticePage() {
   const [prescriberModalOpen, setPrescriberModalOpen] = useState(false);
   const [prescriberModalQuery, setPrescriberModalQuery] = useState("");
 
+  // Entitlement — which cases this user may play. null until the profile loads;
+  // free demo cases are playable regardless.
+  const [entitlement, setEntitlement] = useState<CaseEntitlement | null>(null);
+
   const current = useMemo(
     () => applyCaseVariant(STATIC_CASES[currentCaseIndex], attemptSeed),
     [currentCaseIndex, attemptSeed]
@@ -107,6 +115,7 @@ export default function PracticePage() {
   const currentConversation = getConversationCase(current.id);
   const editorialRecord = getCaseEditorialRecord(current.id);
   const isCase1AssemblyPrototype = current.id === "case-1";
+  const currentCaseLocked = !canPlayCase(current, entitlement);
 
   function showStatus(text: string, tone: StatusTone = "info") {
     setStatusMessage(text);
@@ -121,6 +130,20 @@ export default function PracticePage() {
     } catch {
       // Storage unavailable (private browsing) — skip auto-open.
     }
+  }, []);
+
+  // Load the user's entitlement (paid / developer) once, to gate paid cases.
+  useEffect(() => {
+    const supabase = createClient();
+    void supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      void supabase
+        .from("profiles")
+        .select("has_paid, role")
+        .eq("id", user.id)
+        .single()
+        .then(({ data }) => setEntitlement((data as CaseEntitlement | null) ?? null));
+    });
   }, []);
 
   function dismissOnboarding() {
@@ -375,6 +398,7 @@ export default function PracticePage() {
       mode: practiceMode,
       result: recordedResult,
       countsTowardProgress,
+      caseIsFree: isFreeCase(current),
     }).then((persistence) => {
       if (persistence.saved) return;
       if (persistence.reason === "schema_update_required") {
@@ -491,7 +515,7 @@ export default function PracticePage() {
         {practiceMode === "exam" && (
           <ExamStopwatch resetKey={`${current.id}-${attemptResetCounter}`} />
         )}
-        {stage === "dispensing" ? (
+        {currentCaseLocked ? (
           <>
             <Toolbar
               currentCase={currentCaseIndex}
@@ -501,6 +525,21 @@ export default function PracticePage() {
               mode={practiceMode}
               onModeChange={handleModeChange}
               onOpenHelp={() => setOnboardingOpen(true)}
+              entitlement={entitlement}
+            />
+            <LockedCasePanel caseData={current} freeCaseCount={FREE_CASE_COUNT} />
+          </>
+        ) : stage === "dispensing" ? (
+          <>
+            <Toolbar
+              currentCase={currentCaseIndex}
+              onCaseChange={handleCaseChange}
+              cases={STATIC_CASES}
+              sessionScore={sessionScore}
+              mode={practiceMode}
+              onModeChange={handleModeChange}
+              onOpenHelp={() => setOnboardingOpen(true)}
+              entitlement={entitlement}
             />
 
             <div className="fred-workspace">

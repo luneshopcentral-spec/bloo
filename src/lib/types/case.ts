@@ -64,6 +64,11 @@ export interface PracticeCase {
   id: string;
   caseNumber: number;
   title: string;
+  /**
+   * Free demo case, playable without payment. Every other case requires a paid
+   * entitlement (or a developer/admin account). Defaults to false when omitted.
+   */
+  isFree?: boolean;
   patientLookup: PatientLookupSpec;
   price: string;
   doctor: string;

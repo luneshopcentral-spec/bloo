@@ -26,6 +26,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
+import { STATIC_CASES } from "@/lib/cases/static-cases";
+
+const FREE_CASE_COUNT = STATIC_CASES.filter((c) => c.isFree).length;
 
 const UNIVERSITIES = [
   "Monash University",
@@ -56,6 +59,7 @@ export default function SignUpPage() {
   const router = useRouter();
   const [serverError, setServerError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [confirmationEmail, setConfirmationEmail] = useState<string | null>(null);
 
   const {
     register,
@@ -69,10 +73,11 @@ export default function SignUpPage() {
     setServerError(null);
 
     const supabase = createClient();
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email: values.email,
       password: values.password,
       options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
         data: {
           full_name: values.fullName,
           university: values.university ?? null,
@@ -89,7 +94,44 @@ export default function SignUpPage() {
       return;
     }
 
+    // With email confirmation on, Supabase returns no session — the user must
+    // confirm via email before signing in. Show the check-your-email screen
+    // instead of pushing to a dashboard they cannot yet reach.
+    if (!data.session) {
+      setConfirmationEmail(values.email);
+      setLoading(false);
+      return;
+    }
+
     router.push("/dashboard");
+  }
+
+  if (confirmationEmail) {
+    return (
+      <Card className="w-full max-w-md shadow-lg">
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-2xl font-bold">Check your email</CardTitle>
+          <CardDescription>
+            Confirm your address to activate your account
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-slate-600">
+            We&rsquo;ve sent a confirmation link to{" "}
+            <span className="font-medium text-slate-900">{confirmationEmail}</span>.
+            Click it to finish setting up your account, then sign in.
+          </p>
+          <p className="text-sm text-slate-500">
+            Didn&rsquo;t get it? Check your spam folder, or wait a minute and try again.
+          </p>
+        </CardContent>
+        <CardFooter>
+          <Button variant="outline" className="w-full" asChild>
+            <Link href="/sign-in">Go to sign in</Link>
+          </Button>
+        </CardFooter>
+      </Card>
+    );
   }
 
   return (
@@ -97,7 +139,7 @@ export default function SignUpPage() {
       <CardHeader className="space-y-1">
         <CardTitle className="text-2xl font-bold">Create your account</CardTitle>
         <CardDescription>
-          Access all 6 foundation beta cases — no credit card needed
+          Start with {FREE_CASE_COUNT} free practice cases — no card required
         </CardDescription>
       </CardHeader>
 

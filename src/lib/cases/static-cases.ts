@@ -5,6 +5,7 @@ export const STATIC_CASES: PracticeCase[] = [
     id: "case-1",
     caseNumber: 1,
     title: "Case 1 — Erythromycin 250mg",
+    isFree: true,
     patientLookup: {
       requiresNewPatient: false,
       existingPatientSeedId: "patient-john-smith-abbotsford",
@@ -60,6 +61,7 @@ export const STATIC_CASES: PracticeCase[] = [
     id: "case-2",
     caseNumber: 2,
     title: "Case 2 — Warfarin 5mg",
+    isFree: true,
     patientLookup: {
       requiresNewPatient: false,
       existingPatientSeedId: "patient-margaret-jones-fitzroy",

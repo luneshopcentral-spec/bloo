@@ -413,7 +413,7 @@ export function CounsellingStage({
               value={input}
               onChange={(event) => setInput(event.target.value)}
               onKeyDown={(event) => {
-                if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+                if (event.key === "Enter" && !event.shiftKey) {
                   event.preventDefault();
                   void sendMessage();
                 }
@@ -433,8 +433,8 @@ export function CounsellingStage({
                 {studentTurns < 1
                   ? "Send at least one response before finishing the consultation."
                   : interactionMode === "voice"
-                    ? "Check the transcript before sending · Ctrl/⌘ + Enter"
-                    : "Ctrl/⌘ + Enter to send"}
+                    ? "Check the transcript before sending · Enter to send, Shift+Enter for a new line"
+                    : "Enter to send, Shift+Enter for a new line"}
               </span>
               <button
                 type="button"

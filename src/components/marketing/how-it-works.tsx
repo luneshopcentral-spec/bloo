@@ -6,7 +6,7 @@ const steps = [
     step: "01",
     title: "Sign up free",
     description:
-      "Create an account with no credit card and access the current six-case foundation beta.",
+      "Create an account with no credit card and practise the first two cases free. Subscribe anytime to unlock the full library.",
   },
   {
     icon: ClipboardList,
