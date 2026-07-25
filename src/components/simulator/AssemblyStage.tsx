@@ -89,16 +89,48 @@ function placementFromPoint(
   rotation: number
 ): StickerPlacement {
   const size = stickerSizePercent(face, kind);
+  const stickerPx = stickerPixelSize(kind);
   const radians = (rotation * Math.PI) / 180;
-  const halfW = (Math.abs(size.width * Math.cos(radians)) + Math.abs(size.height * Math.sin(radians))) / 2;
-  const halfH = (Math.abs(size.width * Math.sin(radians)) + Math.abs(size.height * Math.cos(radians))) / 2;
-  const centreX = clamp(((clientX - faceRect.left) / faceRect.width) * 100, halfW, 100 - halfW);
-  const centreY = clamp(((clientY - faceRect.top) / faceRect.height) * 100, halfH, 100 - halfH);
+  const rotatedWidthPx = Math.abs(stickerPx.width * Math.cos(radians))
+    + Math.abs(stickerPx.height * Math.sin(radians));
+  const rotatedHeightPx = Math.abs(stickerPx.width * Math.sin(radians))
+    + Math.abs(stickerPx.height * Math.cos(radians));
+  const halfW = (rotatedWidthPx / faceRect.width) * 50;
+  const halfH = (rotatedHeightPx / faceRect.height) * 50;
+  const pointerX = ((clientX - faceRect.left) / faceRect.width) * 100;
+  const pointerY = ((clientY - faceRect.top) / faceRect.height) * 100;
+  const centreX = halfW > 50 ? 50 : clamp(pointerX, halfW, 100 - halfW);
+  const centreY = halfH > 50 ? 50 : clamp(pointerY, halfH, 100 - halfH);
   return {
     face,
     x: centreX - size.width / 2,
     y: centreY - size.height / 2,
     rotation,
+  };
+}
+
+function clampPlacementToFace(
+  placement: StickerPlacement,
+  kind: StickerKind
+): StickerPlacement {
+  const faceSize = FACE_PHYSICAL[placement.face];
+  const sticker = STICKER_PHYSICAL[kind];
+  const size = stickerSizePercent(placement.face, kind);
+  const radians = (placement.rotation * Math.PI) / 180;
+  const rotatedWidth = Math.abs(sticker.w * Math.cos(radians))
+    + Math.abs(sticker.h * Math.sin(radians));
+  const rotatedHeight = Math.abs(sticker.w * Math.sin(radians))
+    + Math.abs(sticker.h * Math.cos(radians));
+  const halfW = (rotatedWidth / faceSize.w) * 50;
+  const halfH = (rotatedHeight / faceSize.h) * 50;
+  const currentCentreX = placement.x + size.width / 2;
+  const currentCentreY = placement.y + size.height / 2;
+  const centreX = halfW > 50 ? 50 : clamp(currentCentreX, halfW, 100 - halfW);
+  const centreY = halfH > 50 ? 50 : clamp(currentCentreY, halfH, 100 - halfH);
+  return {
+    ...placement,
+    x: centreX - size.width / 2,
+    y: centreY - size.height / 2,
   };
 }
 
@@ -289,7 +321,11 @@ export function AssemblyStage({
     if (!armedSticker) return;
     const placement = placementOf(armedSticker);
     if (!placement) return;
-    applySticker(armedSticker, { ...placement, rotation: normaliseRotation(placement.rotation + delta) });
+    const rotated = {
+      ...placement,
+      rotation: normaliseRotation(placement.rotation + delta),
+    };
+    applySticker(armedSticker, clampPlacementToFace(rotated, stickerKind(armedSticker)));
   }
 
   function resetBench() {
@@ -395,44 +431,51 @@ export function AssemblyStage({
               <div className="fred-face-viewport">
                 <div
                   key={activeFace}
-                  ref={faceRef}
-                  className={`fred-face-panel colour-${selectedPack.colour}`}
+                  className={`fred-carton-model view-${activeFace} colour-${selectedPack.colour}`}
                   style={{ width: `${facePx.width}px`, height: `${facePx.height}px` }}
-                  onClick={handleFaceClick}
-                  aria-label={`${faceLabel(activeFace)} panel of the ${selectedPack.generic} carton`}
                 >
-                  <CartonFaceContent face={activeFace} pack={selectedPack} />
+                  <div
+                    ref={faceRef}
+                    className={`fred-face-panel colour-${selectedPack.colour}`}
+                    onClick={handleFaceClick}
+                    aria-label={`${faceLabel(activeFace)} panel of the ${selectedPack.generic} carton`}
+                  >
+                    <CartonFaceContent face={activeFace} pack={selectedPack} />
 
-                  {mainLabelPlacement?.face === activeFace && (
-                    <PlacedLabel
-                      token="main-label"
-                      placement={mainLabelPlacement}
-                      selected={armedSticker === "main-label"}
-                      onPointerDown={(event) => beginDrag(event, "main-label")}
-                      onRemove={removeMainLabel}
-                    >
-                      <DispensingLabelContent {...dispensingContext} />
-                    </PlacedLabel>
-                  )}
+                    {mainLabelPlacement?.face === activeFace && (
+                      <PlacedLabel
+                        token="main-label"
+                        placement={mainLabelPlacement}
+                        selected={armedSticker === "main-label"}
+                        onPointerDown={(event) => beginDrag(event, "main-label")}
+                        onRemove={removeMainLabel}
+                      >
+                        <DispensingLabelContent {...dispensingContext} />
+                      </PlacedLabel>
+                    )}
 
-                  {Object.entries(warningPlacements)
-                    .filter(([, placement]) => placement.face === activeFace)
-                    .map(([warning, placement]) => {
-                      const token: StickerToken = `warning:${warning}`;
-                      return (
-                        <PlacedLabel
-                          key={warning}
-                          token={token}
-                          placement={placement}
-                          selected={armedSticker === token}
-                          tone={warningStickerTone(warning)}
-                          onPointerDown={(event) => beginDrag(event, token)}
-                          onRemove={() => removeWarning(warning)}
-                        >
-                          <WarningLabelContent warning={warning} />
-                        </PlacedLabel>
-                      );
-                    })}
+                    {Object.entries(warningPlacements)
+                      .filter(([, placement]) => placement.face === activeFace)
+                      .map(([warning, placement]) => {
+                        const token: StickerToken = `warning:${warning}`;
+                        return (
+                          <PlacedLabel
+                            key={warning}
+                            token={token}
+                            placement={placement}
+                            selected={armedSticker === token}
+                            tone={warningStickerTone(warning)}
+                            onPointerDown={(event) => beginDrag(event, token)}
+                            onRemove={() => removeWarning(warning)}
+                          >
+                            <WarningLabelContent warning={warning} />
+                          </PlacedLabel>
+                        );
+                      })}
+                  </div>
+                  <span className="fred-carton-face-name" aria-hidden="true">
+                    {faceLabel(activeFace)} face
+                  </span>
                 </div>
               </div>
 

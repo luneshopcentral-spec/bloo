@@ -4962,7 +4962,149 @@
   filter: drop-shadow(0 8px 14px rgba(15,23,42,.35));
 }
 
-/* ── Locked (paid) case panel ──────────────────────────────────────
+/* 2.5D carton shell.
+   The face itself stays flat for exact pointer coordinates; the visible top
+   and return planes restore the physical-carton depth lost in the flat editor. */
+.fred-root .fred-face-viewport {
+  padding: 42px 58px 48px 34px;
+}
+.fred-root .fred-carton-model {
+  --carton-depth: 18px;
+  --carton-edge: #d6dde7;
+  --carton-edge-dark: #b8c3d1;
+  position: relative;
+  flex: 0 0 auto;
+  transform-style: preserve-3d;
+  filter: drop-shadow(18px 24px 22px rgba(36, 52, 77, 0.24));
+  animation: fred-carton-shell-turn 420ms cubic-bezier(.2, .8, .2, 1);
+}
+.fred-root .fred-carton-model.view-left,
+.fred-root .fred-carton-model.view-right {
+  --carton-depth: 15px;
+}
+.fred-root .fred-carton-model.view-top,
+.fred-root .fred-carton-model.view-bottom {
+  --carton-depth: 14px;
+}
+.fred-root .fred-carton-model::before,
+.fred-root .fred-carton-model::after {
+  position: absolute;
+  box-sizing: border-box;
+  content: "";
+  pointer-events: none;
+}
+.fred-root .fred-carton-model::before {
+  z-index: 0;
+  top: calc(-1 * var(--carton-depth));
+  left: 0;
+  width: calc(100% + var(--carton-depth));
+  height: var(--carton-depth);
+  clip-path: polygon(
+    var(--carton-depth) 0,
+    100% 0,
+    calc(100% - var(--carton-depth)) 100%,
+    0 100%
+  );
+  border-top: 1px solid #aab5c3;
+  background:
+    linear-gradient(90deg, rgba(255,255,255,.94), rgba(217,225,235,.98)),
+    var(--carton-edge);
+}
+.fred-root .fred-carton-model::after {
+  z-index: 0;
+  top: calc(-1 * var(--carton-depth));
+  right: calc(-1 * var(--carton-depth));
+  width: var(--carton-depth);
+  height: calc(100% + var(--carton-depth));
+  clip-path: polygon(
+    100% 0,
+    0 var(--carton-depth),
+    0 100%,
+    100% calc(100% - var(--carton-depth))
+  );
+  border-right: 1px solid #9ca8b7;
+  background: linear-gradient(180deg, var(--carton-edge), var(--carton-edge-dark));
+}
+.fred-root .fred-carton-model.colour-coral {
+  --carton-edge: #e7c0bc;
+  --carton-edge-dark: #c99089;
+}
+.fred-root .fred-carton-model.colour-green {
+  --carton-edge: #c5ddcd;
+  --carton-edge-dark: #91b69e;
+}
+.fred-root .fred-carton-model.colour-purple {
+  --carton-edge: #d4cce6;
+  --carton-edge-dark: #aa9bc8;
+}
+.fred-root .fred-carton-model.colour-amber {
+  --carton-edge: #ead5ad;
+  --carton-edge-dark: #c9a466;
+}
+.fred-root .fred-carton-model .fred-face-panel {
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  animation: none;
+  transform: none;
+  box-shadow:
+    inset 0 0 24px rgba(78, 94, 119, 0.05),
+    inset -7px -6px 12px rgba(78, 94, 119, .035);
+}
+.fred-root .fred-carton-face-name {
+  position: absolute;
+  z-index: 4;
+  right: 8px;
+  bottom: -28px;
+  border: 1px solid #c7d0dc;
+  border-radius: 999px;
+  padding: 3px 8px;
+  background: rgba(255, 255, 255, .94);
+  color: #526177;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  line-height: 1;
+  text-transform: uppercase;
+  box-shadow: 0 2px 7px rgba(36, 52, 77, .1);
+}
+@keyframes fred-carton-shell-turn {
+  from {
+    transform: perspective(1100px) rotateY(-34deg) rotateX(4deg) scale(.94);
+    opacity: .3;
+    filter: drop-shadow(5px 10px 10px rgba(36, 52, 77, .08));
+  }
+  62% { opacity: 1; }
+  to {
+    transform: none;
+    opacity: 1;
+    filter: drop-shadow(18px 24px 22px rgba(36, 52, 77, .24));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fred-root .fred-carton-model { animation: none; }
+}
+
+/* The reference book behaves like a movable desk window, so students can keep
+   the prescription and workbench visible while consulting it. */
+.fred-root .fred-reference-backdrop {
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding: 0;
+  background: transparent;
+  pointer-events: none;
+}
+.fred-root .fred-reference-dialog {
+  position: fixed;
+  top: 70px;
+  left: 50%;
+  width: min(1180px, calc(100vw - 40px));
+  height: min(820px, calc(100vh - 96px));
+  pointer-events: auto;
+  transform: translateX(-50%);
+}
+
+/* Locked (paid) case panel.
    Shown in place of the dispensing workspace when the selected case is
    not covered by the user's entitlement. */
 .fred-root .fred-locked-panel {

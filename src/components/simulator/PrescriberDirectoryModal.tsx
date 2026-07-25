@@ -59,7 +59,6 @@ export function PrescriberDirectoryModal({ open, query, onSelect, onClose }: Pro
   const [mode, setMode] = useState<"directory" | "add">("directory");
   const [form, setForm] = useState<PrescriberFormData>(EMPTY_FORM);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  const [saving, setSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -119,7 +118,7 @@ export function PrescriberDirectoryModal({ open, query, onSelect, onClose }: Pro
     setMode("add");
   }
 
-  async function savePrescriber() {
+  function savePrescriber() {
     const errors: Record<string, string> = {};
     if (!form.surname.trim()) errors.surname = "Required";
     if (!form.firstname.trim()) errors.firstname = "Required";
@@ -131,10 +130,9 @@ export function PrescriberDirectoryModal({ open, query, onSelect, onClose }: Pro
       return;
     }
 
-    setSaving(true);
     setError("");
-    const supabase = createClient();
-    const payload = {
+    const prescriber: Prescriber = {
+      id: `local-${prescriberNumber}-${Date.now()}`,
       seed_id: null,
       title: form.title.trim().toUpperCase() || null,
       surname: form.surname.trim().toUpperCase(),
@@ -146,24 +144,9 @@ export function PrescriberDirectoryModal({ open, query, onSelect, onClose }: Pro
       state: form.state.trim().toUpperCase() || null,
       postcode: form.postcode.trim() || null,
       phone: form.phone.trim() || null,
+      created_at: new Date().toISOString(),
     };
-    const { data, error: insertError } = await supabase
-      .from("prescribers")
-      // Supabase's hand-maintained schema currently resolves this insert
-      // overload to never even though payload matches Database.Insert.
-      .insert(payload as never)
-      .select("*")
-      .single();
-    setSaving(false);
-    if (insertError || !data) {
-      setError(
-        insertError?.code === "23505"
-          ? "That prescriber number is already in the directory. Return to the directory and search by number."
-          : insertError?.message ?? "The prescriber could not be saved."
-      );
-      return;
-    }
-    onSelect(data as Prescriber);
+    onSelect(prescriber);
   }
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
@@ -244,7 +227,7 @@ export function PrescriberDirectoryModal({ open, query, onSelect, onClose }: Pro
               })}
             </div>
             <div className="fred-prsel-footer">
-              <span>Enter or double-click selects · Add New stores the prescriber in the shared directory</span>
+              <span>Enter or double-click selects · Add New applies to this attempt only</span>
               <button type="button" onClick={() => selectedIndex > 0 && onSelect(prescribers[selectedIndex - 1])} disabled={selectedIndex === 0}>
                 Select prescriber
               </button>
@@ -266,8 +249,8 @@ export function PrescriberDirectoryModal({ open, query, onSelect, onClose }: Pro
             {error && <div className="fred-prsel-error">{error}</div>}
             <div className="fred-prsel-footer">
               <button type="button" onClick={() => setMode("directory")}>Back to directory</button>
-              <button type="button" onClick={() => void savePrescriber()} disabled={saving}>
-                {saving ? "Saving…" : "Save and select prescriber"}
+              <button type="button" onClick={savePrescriber}>
+                Save and select prescriber
               </button>
             </div>
           </>

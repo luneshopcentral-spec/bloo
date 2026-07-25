@@ -72,7 +72,7 @@ export function MedicinesReferenceDesk({ medicineName }: MedicinesReferenceDeskP
           <section
             className="fred-reference-dialog"
             role="dialog"
-            aria-modal="true"
+            aria-modal="false"
             aria-labelledby="medicines-reference-title"
           >
             <header className="fred-reference-titlebar">

@@ -360,12 +360,16 @@ function stickerOverlapIssues(submission: Case1AssemblySubmission): string[] {
 }
 
 function rotatedStickerBounds(placement: StickerPlacement, kind: StickerKind) {
+  const face = FACE_PHYSICAL[placement.face];
+  const sticker = STICKER_PHYSICAL[kind];
   const size = stickerSizePercent(placement.face, kind);
   const radians = (placement.rotation * Math.PI) / 180;
-  const rotatedWidth = Math.abs(size.width * Math.cos(radians))
-    + Math.abs(size.height * Math.sin(radians));
-  const rotatedHeight = Math.abs(size.width * Math.sin(radians))
-    + Math.abs(size.height * Math.cos(radians));
+  const rotatedWidthMm = Math.abs(sticker.w * Math.cos(radians))
+    + Math.abs(sticker.h * Math.sin(radians));
+  const rotatedHeightMm = Math.abs(sticker.w * Math.sin(radians))
+    + Math.abs(sticker.h * Math.cos(radians));
+  const rotatedWidth = (rotatedWidthMm / face.w) * 100;
+  const rotatedHeight = (rotatedHeightMm / face.h) * 100;
   const centreX = placement.x + size.width / 2;
   const centreY = placement.y + size.height / 2;
   return {
