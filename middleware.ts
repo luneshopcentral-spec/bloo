@@ -2,10 +2,6 @@ import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function middleware(request: NextRequest) {
-  if (process.env.NODE_ENV === "development" && process.env.CODEX_UI_CHECK === "1") {
-    return NextResponse.next({ request });
-  }
-
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   addCase1AssemblyChecks,
   CASE1_CORRECT_PACK_ID,
+  evaluateStickerPlacement,
 } from "./case1";
 import type { DispenseResult } from "@/lib/scoring/types";
 
@@ -71,5 +72,14 @@ describe("Case 1 pack assembly scoring", () => {
     expect(result.passed).toBe(false);
     expect(result.checks.find((check) => check.category === "label_placement")?.detail)
       .toContain("overlaps");
+  });
+
+  it("allows a physically rotated warning label on the narrow right panel", () => {
+    const result = evaluateStickerPlacement(
+      { face: "right", x: -5, y: 22.5, rotation: 90 },
+      "warning"
+    );
+
+    expect(result).toEqual({ safe: true });
   });
 });
