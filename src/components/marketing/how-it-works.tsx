@@ -4,9 +4,9 @@ const steps = [
   {
     icon: UserPlus,
     step: "01",
-    title: "Sign up free",
+    title: "Try two cases free",
     description:
-      "Create an account with no credit card and practise the first two cases free. Subscribe anytime to unlock the full library.",
+      "Create an account with no card and practise 2 of 13 cases. Free access never converts automatically.",
   },
   {
     icon: ClipboardList,
@@ -26,7 +26,7 @@ const steps = [
 
 export function HowItWorks() {
   return (
-    <section id="how-it-works" className="bg-slate-50 py-20">
+    <section id="how-it-works" className="bg-slate-50 py-12 sm:py-20">
       <div className="container">
         <div className="mx-auto mb-12 max-w-2xl text-center">
           <h2 className="text-3xl font-bold text-slate-900">

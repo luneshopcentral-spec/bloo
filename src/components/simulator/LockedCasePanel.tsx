@@ -36,8 +36,7 @@ export function LockedCasePanel({ caseData, freeCaseCount }: LockedCasePanelProp
           ))}
         </div>
         <p className="fred-locked-footnote">
-          Cancel anytime. Already subscribed? Your access appears here once payment
-          is confirmed — refresh, or contact support if it hasn&rsquo;t.
+          Subscriptions renew automatically. Cancel in the Stripe portal; access continues to the end of the paid period. Already subscribed? Refresh, or <a href="/support">contact support</a> if access has not appeared.
         </p>
       </div>
     </div>

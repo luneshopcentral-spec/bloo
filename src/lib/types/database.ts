@@ -20,6 +20,14 @@ export interface Database {
           trial_cases_used: number;
           role: string;
           stripe_customer_id: string | null;
+          stripe_subscription_id: string | null;
+          subscription_plan: string | null;
+          subscription_status: string | null;
+          subscription_current_period_start: string | null;
+          subscription_current_period_end: string | null;
+          subscription_cancel_at_period_end: boolean;
+          subscription_updated_at: string | null;
+          study_stage: string | null;
           created_at: string;
         };
         Insert: {
@@ -32,6 +40,14 @@ export interface Database {
           trial_cases_used?: number;
           role?: string;
           stripe_customer_id?: string | null;
+          stripe_subscription_id?: string | null;
+          subscription_plan?: string | null;
+          subscription_status?: string | null;
+          subscription_current_period_start?: string | null;
+          subscription_current_period_end?: string | null;
+          subscription_cancel_at_period_end?: boolean;
+          subscription_updated_at?: string | null;
+          study_stage?: string | null;
           created_at?: string;
         };
         Update: {
@@ -44,7 +60,49 @@ export interface Database {
           trial_cases_used?: number;
           role?: string;
           stripe_customer_id?: string | null;
+          stripe_subscription_id?: string | null;
+          subscription_plan?: string | null;
+          subscription_status?: string | null;
+          subscription_current_period_start?: string | null;
+          subscription_current_period_end?: string | null;
+          subscription_cancel_at_period_end?: boolean;
+          subscription_updated_at?: string | null;
+          study_stage?: string | null;
           created_at?: string;
+        };
+        Relationships: [];
+      };
+      stripe_webhook_events: {
+        Row: {
+          id: string;
+          event_type: string;
+          object_id: string | null;
+          status: "processing" | "processed" | "failed";
+          attempts: number;
+          error_message: string | null;
+          received_at: string;
+          last_attempt_at: string;
+          processed_at: string | null;
+        };
+        Insert: {
+          id: string;
+          event_type: string;
+          object_id?: string | null;
+          status: "processing" | "processed" | "failed";
+          attempts?: number;
+          error_message?: string | null;
+          received_at?: string;
+          last_attempt_at?: string;
+          processed_at?: string | null;
+        };
+        Update: {
+          event_type?: string;
+          object_id?: string | null;
+          status?: "processing" | "processed" | "failed";
+          attempts?: number;
+          error_message?: string | null;
+          last_attempt_at?: string;
+          processed_at?: string | null;
         };
         Relationships: [];
       };

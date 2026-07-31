@@ -18,9 +18,10 @@ export default async function AppLayout({
 
   return (
     <div className="min-h-screen bg-slate-50">
+      <a href="#main-content" className="skip-link">Skip to main content</a>
       <AppNav userEmail={user.email ?? ""} />
       {/* No container/padding here — each page owns its own layout */}
-      <main>{children}</main>
+      <main id="main-content">{children}</main>
     </div>
   );
 }

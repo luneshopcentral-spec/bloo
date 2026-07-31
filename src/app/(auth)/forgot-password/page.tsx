@@ -15,7 +15,6 @@ import {
   CardDescription,
   CardFooter,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import { Loader2, CheckCircle2 } from "lucide-react";
 
@@ -24,6 +23,13 @@ const schema = z.object({
 });
 
 type FormValues = z.infer<typeof schema>;
+
+function friendlyResetError(message: string): string {
+  const lower = message.toLowerCase();
+  if (lower.includes("rate") || lower.includes("too many")) return "Too many reset emails were requested. Wait a few minutes, then try again.";
+  if (lower.includes("email")) return "The reset email could not be sent. Check the address or try again shortly.";
+  return "Password reset is temporarily unavailable. Try again or contact support.";
+}
 
 export default function ForgotPasswordPage() {
   const [serverError, setServerError] = useState<string | null>(null);
@@ -46,7 +52,7 @@ export default function ForgotPasswordPage() {
     });
 
     if (error) {
-      setServerError(error.message);
+      setServerError(friendlyResetError(error.message));
       setLoading(false);
       return;
     }
@@ -81,17 +87,17 @@ export default function ForgotPasswordPage() {
   return (
     <Card className="w-full max-w-md shadow-lg">
       <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-bold">Reset your password</CardTitle>
+        <h1 className="text-2xl font-bold leading-none tracking-tight">Reset your password</h1>
         <CardDescription>
           Enter your email and we will send you a reset link
         </CardDescription>
       </CardHeader>
 
-      <form onSubmit={handleSubmit(onSubmit)}>
+      <form onSubmit={handleSubmit(onSubmit)} noValidate>
         <CardContent className="space-y-4">
           {serverError && (
-            <div className="rounded-md bg-red-50 px-4 py-3 text-sm text-red-700 border border-red-200">
-              {serverError}
+            <div role="alert" aria-live="assertive" className="rounded-md bg-red-50 px-4 py-3 text-sm text-red-800 border border-red-200">
+              {serverError} <Link href="/support" className="font-medium underline">Contact support</Link> if it continues.
             </div>
           )}
 
@@ -100,11 +106,15 @@ export default function ForgotPasswordPage() {
             <Input
               id="email"
               type="email"
+              autoComplete="email"
+              required
+              aria-invalid={!!errors.email}
+              aria-describedby={errors.email ? "reset-email-error" : undefined}
               placeholder="jane@example.com"
               {...register("email")}
             />
             {errors.email && (
-              <p className="text-xs text-red-600">{errors.email.message}</p>
+              <p id="reset-email-error" className="text-xs text-red-700">{errors.email.message}</p>
             )}
           </div>
         </CardContent>
@@ -123,6 +133,7 @@ export default function ForgotPasswordPage() {
               Back to sign in
             </Link>
           </p>
+          <Link href="/support" className="text-sm font-medium text-emerald-800 underline">Contact support</Link>
         </CardFooter>
       </form>
     </Card>

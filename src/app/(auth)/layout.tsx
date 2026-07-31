@@ -8,7 +8,8 @@ export default function AuthLayout({
 }) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50">
-      <div className="flex min-h-screen flex-col items-center justify-center px-4 py-12">
+      <a href="#main-content" className="skip-link">Skip to main content</a>
+      <main id="main-content" className="flex min-h-screen flex-col items-center justify-center px-4 py-12">
         <Link
           href="/"
           className="mb-8 flex items-center gap-2 text-slate-900 hover:opacity-80"
@@ -19,7 +20,7 @@ export default function AuthLayout({
           </span>
         </Link>
         {children}
-      </div>
+      </main>
     </div>
   );
 }

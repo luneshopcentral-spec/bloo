@@ -27,6 +27,7 @@ export function stripePriceId(plan: PlanId): string {
 
 /** Absolute base URL for Stripe success/cancel redirects. Set NEXT_PUBLIC_SITE_URL
  * in production; falls back to localhost for development. */
-export function siteUrl(): string {
-  return (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000").replace(/\/$/, "");
+export function siteUrl(requestUrl?: string): string {
+  const requestOrigin = requestUrl ? new URL(requestUrl).origin : null;
+  return (process.env.NEXT_PUBLIC_SITE_URL ?? requestOrigin ?? "http://localhost:3000").replace(/\/$/, "");
 }

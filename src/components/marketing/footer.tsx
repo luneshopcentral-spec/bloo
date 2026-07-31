@@ -15,7 +15,7 @@ export function Footer() {
                 DispenseRx Practice
               </span>
             </Link>
-            <p className="mt-3 text-sm text-slate-500">
+            <p className="mt-3 text-sm text-slate-600">
               An independent study tool for Australian pharmacy students. Not
               affiliated with Fred IT Group Pty Ltd.
             </p>
@@ -24,29 +24,29 @@ export function Footer() {
           {/* Links */}
           <div className="grid grid-cols-2 gap-8 sm:grid-cols-3">
             <div>
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-600">
                 Product
               </p>
               <ul className="space-y-2 text-sm text-slate-600">
                 <li>
-                  <a href="#features" className="hover:text-slate-900">
+                  <Link href="/#features" className="hover:text-slate-900">
                     Features
-                  </a>
+                  </Link>
                 </li>
                 <li>
-                  <a href="#pricing" className="hover:text-slate-900">
+                  <Link href="/#pricing" className="hover:text-slate-900">
                     Pricing
-                  </a>
+                  </Link>
                 </li>
                 <li>
-                  <a href="#faq" className="hover:text-slate-900">
+                  <Link href="/#faq" className="hover:text-slate-900">
                     FAQ
-                  </a>
+                  </Link>
                 </li>
               </ul>
             </div>
             <div>
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-600">
                 Account
               </p>
               <ul className="space-y-2 text-sm text-slate-600">
@@ -55,27 +55,29 @@ export function Footer() {
                     Sign up
                   </Link>
                 </li>
-                <li>
-                  <Link href="/sign-in" className="hover:text-slate-900">
-                    Sign in
-                  </Link>
-                </li>
+                <li><Link href="/sign-in" className="hover:text-slate-900">Sign in</Link></li>
+                <li><Link href="/support" className="hover:text-slate-900">Support</Link></li>
               </ul>
             </div>
             <div>
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-600">
                 Legal
               </p>
               <ul className="space-y-2 text-sm text-slate-600">
                 <li>
-                  <span className="cursor-default text-slate-400">
+                  <Link href="/privacy" className="hover:text-slate-900">
                     Privacy Policy
-                  </span>
+                  </Link>
                 </li>
                 <li>
-                  <span className="cursor-default text-slate-400">
+                  <Link href="/terms" className="hover:text-slate-900">
                     Terms of Service
-                  </span>
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/refund-policy" className="hover:text-slate-900">
+                    Refund and Cancellation Policy
+                  </Link>
                 </li>
               </ul>
             </div>
@@ -84,7 +86,7 @@ export function Footer() {
 
         <Separator className="my-8" />
 
-        <div className="flex flex-col items-center justify-between gap-2 text-xs text-slate-400 sm:flex-row">
+        <div className="flex flex-col items-center justify-between gap-2 text-xs text-slate-600 sm:flex-row">
           <p>
             &copy; {new Date().getFullYear()} DispenseRx Practice. All rights
             reserved.

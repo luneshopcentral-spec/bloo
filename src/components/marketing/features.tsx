@@ -1,79 +1,28 @@
-import {
-  Monitor,
-  Zap,
-  FileText,
-  CircleAlert,
-  ShieldCheck,
-  Laptop,
-} from "lucide-react";
+import { FileText, Laptop, MessageSquareText, ShieldAlert } from "lucide-react";
 import { STATIC_CASES } from "@/lib/cases/static-cases";
 
-const features = [
-  {
-    icon: Monitor,
-    title: "Realistic Fred-style interface",
-    description:
-      "Build familiarity with a laptop-first, Fred-style dispensing layout. This independent training tool is not an official Fred product.",
-  },
-  {
-    icon: Zap,
-    title: "Instant, detailed feedback",
-    description:
-      "Each dispensing-stage check is scored on submission, with mandatory safety gates for the patient, prescriber, medicine, directions, quantity, repeats and final decision.",
-  },
-  {
-    icon: FileText,
-    title: "Case library — foundation to Schedule 8",
-    description:
-      `${STATIC_CASES.length} training scenarios cover patient entry, product selection, labels, warnings, authority prescriptions and clinically unsafe scripts. Live PBS details still require a current reference.`,
-  },
-  {
-    icon: CircleAlert,
-    title: "Critical-error feedback",
-    description:
-      "Unsafe choices cannot be rescued by easier points. Feedback identifies the failed safety gate and explains the expected disposition.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Clinical decision practice",
-    description:
-      "Choose whether to dispense, hold and contact the prescriber, or not supply — then explain your decision to a simulated patient before final marking.",
-  },
-  {
-    icon: Laptop,
-    title: "Designed for laptops",
-    description:
-      "The simulator is intentionally optimised for laptop and desktop study. No download or local installation is required.",
-  },
+const coverage = [
+  { icon: FileText, title: "Foundation dispensing", copy: "Patient and prescriber entry, product selection, directions, quantities, repeats, labels and warning statements." },
+  { icon: ShieldAlert, title: "Higher-risk scenarios", copy: "Authority, Schedule 8, high-risk medicine, repeat-timing and prescription-authentication decisions." },
+  { icon: MessageSquareText, title: "Patient counselling", copy: "A simulated conversation follows every case, with topic-level feedback and unsafe-advice checks." },
+  { icon: Laptop, title: "Laptop-first practice", copy: "No download is required. The detailed simulator is intentionally optimised for laptop and desktop browsers." },
 ];
 
 export function Features() {
   return (
-    <section id="features" className="py-20">
+    <section id="features" aria-labelledby="coverage-title" className="py-12 sm:py-20">
       <div className="container">
-        <div className="mx-auto mb-12 max-w-2xl text-center">
-          <h2 className="text-3xl font-bold text-slate-900">
-            Everything you need to practise with confidence
-          </h2>
-          <p className="mt-4 text-slate-600">
-            Built specifically for Australian pharmacy students, with the
-            workflows and scenarios you will actually encounter.
-          </p>
+        <div className="mx-auto max-w-2xl text-center">
+          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-emerald-700">Representative coverage</p>
+          <h2 id="coverage-title" className="mt-3 text-3xl font-bold text-slate-900">{STATIC_CASES.length} fictional cases from foundations to safety gates</h2>
+          <p className="mt-4 text-slate-600">The library combines workflow transcription, explicit clinical decisions, immediate feedback and counselling practice.</p>
         </div>
-
-        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-          {features.map(({ icon: Icon, title, description }) => (
-            <div key={title} className="group flex gap-4">
-              <div className="flex-shrink-0">
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-100 transition-colors group-hover:bg-emerald-600">
-                  <Icon className="h-5 w-5 text-emerald-600 transition-colors group-hover:text-white" />
-                </div>
-              </div>
-              <div>
-                <h3 className="mb-1.5 font-semibold text-slate-900">{title}</h3>
-                <p className="text-sm text-slate-600">{description}</p>
-              </div>
-            </div>
+        <div className="mx-auto mt-10 grid max-w-5xl gap-4 sm:grid-cols-2">
+          {coverage.map(({ icon: Icon, title, copy }) => (
+            <article key={title} className="flex gap-4 rounded-2xl border border-slate-200 bg-white p-5">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100"><Icon className="h-5 w-5 text-emerald-700" aria-hidden="true" /></span>
+              <div><h3 className="font-semibold text-slate-900">{title}</h3><p className="mt-1 text-sm leading-6 text-slate-600">{copy}</p></div>
+            </article>
           ))}
         </div>
       </div>

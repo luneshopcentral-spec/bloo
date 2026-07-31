@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { STATIC_CASES } from "@/lib/cases/static-cases";
-import { PLAN_OPTIONS } from "@/lib/billing/plan";
+import { isPlanId, PLAN_OPTIONS } from "@/lib/billing/plan";
 import type { Database } from "@/lib/types/database";
 
 const FREE_CASE_COUNT = STATIC_CASES.filter((c) => c.isFree).length;
@@ -38,10 +38,11 @@ function readableCompetency(key: string): string {
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ checkout?: string; billing?: string }>;
+  searchParams: Promise<{ checkout?: string; billing?: string; plan?: string; session_id?: string }>;
 }) {
   const supabase = await createClient();
-  const { checkout } = await searchParams;
+  const { checkout, billing, plan } = await searchParams;
+  const selectedPlan = isPlanId(plan) ? plan : null;
 
   const {
     data: { user },
@@ -116,7 +117,8 @@ export default async function DashboardPage({
         <Card className="mb-8 border-emerald-300 bg-emerald-50">
           <CardContent className="p-5 text-sm text-emerald-900">
             Payment confirmed — thank you! Full access unlocks as soon as Stripe
-            notifies us (usually within seconds). Refresh if a case still shows locked.
+            notifies us (usually within seconds). Refresh if a case still shows locked, or{" "}
+            <Link href="/support" className="font-medium underline">contact support</Link>.
           </CardContent>
         </Card>
       )}
@@ -130,7 +132,39 @@ export default async function DashboardPage({
       {checkout === "error" && (
         <Card className="mb-8 border-red-300 bg-red-50">
           <CardContent className="p-5 text-sm text-red-800">
-            Something went wrong starting checkout. Please try again, or contact support.
+            Something went wrong starting checkout. Please try again, or{" "}
+            <Link href="/support" className="font-medium underline">contact support</Link>.
+          </CardContent>
+        </Card>
+      )}
+      {checkout === "profile" && (
+        <Card className="mb-8 border-red-300 bg-red-50">
+          <CardContent className="p-5 text-sm text-red-900">
+            Your customer profile could not be found, so no checkout was created. Please{" "}
+            <Link href="/support" className="font-medium underline">contact support</Link>.
+          </CardContent>
+        </Card>
+      )}
+      {checkout === "price" && (
+        <Card className="mb-8 border-red-300 bg-red-50">
+          <CardContent className="p-5 text-sm text-red-900">
+            Checkout is unavailable because the live Stripe price does not match the published plan. No payment was taken. Please{" "}
+            <Link href="/support" className="font-medium underline">contact support</Link>.
+          </CardContent>
+        </Card>
+      )}
+      {checkout === "unavailable" && (
+        <Card className="mb-8 border-amber-300 bg-amber-50">
+          <CardContent className="p-5 text-sm text-amber-950">
+            Paid beta access is not open yet. Clinical, legal and support readiness checks must be completed before production payments are accepted. You can keep practising the free cases.
+          </CardContent>
+        </Card>
+      )}
+      {billing === "error" && (
+        <Card className="mb-8 border-red-300 bg-red-50">
+          <CardContent className="p-5 text-sm text-red-800">
+            Something went wrong opening the subscription management page. Please try again, or{" "}
+            <Link href="/support" className="font-medium underline">contact support</Link>.
           </CardContent>
         </Card>
       )}
@@ -144,6 +178,16 @@ export default async function DashboardPage({
               {profile?.role === "admin"
                 ? "Developer account — all cases unlocked."
                 : "All cases are unlocked. Thanks for subscribing."}
+              {profile?.role !== "admin" && profile?.subscription_plan && (
+                <span className="mt-1 block text-xs text-emerald-800">
+                  {profile.subscription_plan === "yearly" ? "Annual" : "Monthly"} plan
+                  {profile.subscription_status ? ` · ${profile.subscription_status.replaceAll("_", " ")}` : ""}
+                  {profile.subscription_current_period_end
+                    ? ` · current period ends ${new Intl.DateTimeFormat("en-AU", { dateStyle: "medium" }).format(new Date(profile.subscription_current_period_end))}`
+                    : ""}
+                  {profile.subscription_cancel_at_period_end ? " · cancellation scheduled" : ""}
+                </span>
+              )}
             </div>
             {profile?.role !== "admin" && (
               <form action="/api/billing-portal" method="post">
@@ -162,15 +206,16 @@ export default async function DashboardPage({
               Unlock all {STATIC_CASES.length} cases with a subscription.
             </div>
             <div className="flex gap-2">
-              {PLAN_OPTIONS.map((plan) => (
-                <form action="/api/checkout" method="post" key={plan.id}>
-                  <input type="hidden" name="plan" value={plan.id} />
-                  <Button type="submit" size="sm" className="whitespace-nowrap">
-                    {plan.priceDisplay}/{plan.interval}
+              {PLAN_OPTIONS.map((option) => (
+                <form action="/api/checkout" method="post" key={option.id}>
+                  <input type="hidden" name="plan" value={option.id} />
+                  <Button type="submit" size="sm" variant={selectedPlan && selectedPlan !== option.id ? "outline" : "default"} className="whitespace-nowrap">
+                    {option.priceDisplay}/{option.interval}
                   </Button>
                 </form>
               ))}
             </div>
+            {selectedPlan && <p className="text-xs text-slate-600">Your {selectedPlan === "yearly" ? "annual" : "monthly"} choice from sign-up is selected.</p>}
           </CardContent>
         </Card>
       )}
