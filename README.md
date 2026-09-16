@@ -62,6 +62,8 @@ node scripts/test-database.mjs
 
 ## Voice and content
 
+The text patient uses one shared conversation engine for replies, draft recovery and server assessment. It distinguishes history questions from advice, combines partial instructions across turns, remembers disclosed facts and includes student quotations in feedback. It runs without a language-model download or external model API. See [the conversation rework report](docs/conversation-rework-2026-09-16.md) for validation and limitations.
+
 Text consultation is the default. Voice is experimental: browser speech recognition can send audio to the browser provider. Local Kokoro speech generation requires a sizeable first download, and a system voice is the fallback. Do not enter real patient details.
 
 Recorded speech is disabled by default because reviewed recordings have not been installed. `npm run voice:manifest` lists the required assets; `npm run voice:check` detects missing files. Enable `NEXT_PUBLIC_RECORDED_VOICE_ENABLED` only after licensed, reviewed recordings pass that check. The clinical and legal review register in `src/lib/governance/editorial.ts` must contain genuine approvals before paid release.

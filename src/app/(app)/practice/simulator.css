@@ -4518,6 +4518,45 @@
   margin-bottom: 0;
 }
 
+.fred-root .fred-conversation-limit {
+  margin: 4px 0 6px;
+  color: #475569;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.fred-root:has(.fred-counselling-stage) {
+  min-height: 560px;
+}
+
+.fred-root .fred-chat-transcript:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: -2px;
+}
+
+.fred-root .fred-counselling-stage .fred-interaction-mode-switch button:not(.active) {
+  color: #475569;
+}
+
+.fred-root .fred-counselling-stage .fred-chat-message p,
+.fred-root .fred-counselling-stage textarea {
+  font-size: 14px;
+}
+
+.fred-root .fred-counselling-sidebar p,
+.fred-root .fred-counselling-sidebar summary {
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.fred-root .fred-result-row blockquote {
+  margin: 6px 0;
+  padding: 6px 10px;
+  border-left: 3px solid #94a3b8;
+  background: #f8fafc;
+  white-space: pre-wrap;
+}
+
 .fred-root .fred-stage-note {
   margin-top: 0;
 }

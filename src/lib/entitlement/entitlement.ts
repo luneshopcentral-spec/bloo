@@ -8,6 +8,17 @@ import type { PracticeCase } from "@/lib/types/case";
 export interface CaseEntitlement {
   has_paid: boolean;
   role: string | null;
+  /** ISO timestamp of a live trial/comp grant (from an access code or admin
+   * grant). Treated as paid access until it passes; null/past means no grant. */
+  comp_access_until?: string | null;
+}
+
+/** A trial/comp code grant is live when its expiry is still in the future. */
+export function hasCompAccess(entitlement: CaseEntitlement | null): boolean {
+  const until = entitlement?.comp_access_until;
+  if (!until) return false;
+  const ts = Date.parse(until);
+  return Number.isFinite(ts) && ts > Date.now();
 }
 
 /** Developer/admin accounts get full access in every environment. Set the role
@@ -28,5 +39,8 @@ export function canPlayCase(
   caseData: Pick<PracticeCase, "isFree">,
   entitlement: CaseEntitlement | null
 ): boolean {
-  return isFreeCase(caseData) || entitlement?.has_paid === true || isDeveloper(entitlement);
+  return isFreeCase(caseData)
+    || entitlement?.has_paid === true
+    || hasCompAccess(entitlement)
+    || isDeveloper(entitlement);
 }

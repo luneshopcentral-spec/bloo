@@ -46,6 +46,7 @@ export interface Database {
           subscription_cancel_at_period_end: boolean;
           subscription_updated_at: string | null;
           study_stage: string | null;
+          comp_access_until: string | null;
           created_at: string;
         };
         Insert: {
@@ -86,8 +87,39 @@ export interface Database {
           subscription_cancel_at_period_end?: boolean;
           subscription_updated_at?: string | null;
           study_stage?: string | null;
+          comp_access_until?: string | null;
           created_at?: string;
         };
+        Relationships: [];
+      };
+      admin_settings: {
+        Row: { key: string; value: Json; updated_by: string | null; updated_at: string };
+        Insert: { key: string; value: Json; updated_by?: string | null; updated_at?: string };
+        Update: { value?: Json; updated_by?: string | null; updated_at?: string };
+        Relationships: [];
+      };
+      announcements: {
+        Row: { id: string; title: string; body: string; level: "info" | "success" | "warning" | "critical"; active: boolean; starts_at: string; ends_at: string | null; created_by: string | null; created_at: string };
+        Insert: { id?: string; title: string; body: string; level?: "info" | "success" | "warning" | "critical"; active?: boolean; starts_at?: string; ends_at?: string | null; created_by?: string | null };
+        Update: { title?: string; body?: string; level?: "info" | "success" | "warning" | "critical"; active?: boolean; starts_at?: string; ends_at?: string | null };
+        Relationships: [];
+      };
+      access_codes: {
+        Row: { code: string; description: string | null; grants_days: number; max_redemptions: number | null; redemptions: number; active: boolean; expires_at: string | null; created_by: string | null; created_at: string };
+        Insert: { code: string; description?: string | null; grants_days: number; max_redemptions?: number | null; active?: boolean; expires_at?: string | null; created_by?: string | null };
+        Update: { description?: string | null; active?: boolean; max_redemptions?: number | null; expires_at?: string | null };
+        Relationships: [];
+      };
+      access_code_redemptions: {
+        Row: { id: string; code: string; user_id: string; granted_until: string; redeemed_at: string };
+        Insert: { code: string; user_id: string; granted_until: string };
+        Update: never;
+        Relationships: [];
+      };
+      admin_audit_log: {
+        Row: { id: string; actor_id: string | null; actor_email: string | null; action: string; target_type: string | null; target_id: string | null; detail: Json; created_at: string };
+        Insert: { actor_id?: string | null; actor_email?: string | null; action: string; target_type?: string | null; target_id?: string | null; detail?: Json };
+        Update: never;
         Relationships: [];
       };
       stripe_webhook_events: {
@@ -436,6 +468,7 @@ export interface Database {
       consume_request_limit: { Args: { request_key: string; maximum: number }; Returns: boolean };
       acquire_operation_lock: { Args: { lock_key: string; lock_owner: string }; Returns: boolean };
       release_operation_lock: { Args: { lock_key: string; lock_owner: string }; Returns: undefined };
+      redeem_access_code: { Args: { input_code: string }; Returns: string };
     };
     Enums: {
       [_ in never]: never;

@@ -11,6 +11,7 @@ import {
   teachBackNotReadyAudioSegment,
   topicAudioSegment,
   topicRepeatAudioSegment,
+  topicTeachBackAudioSegment,
   unknownAudioSegment,
 } from "@/lib/voice/patient-audio-library";
 
@@ -28,13 +29,15 @@ function buildTeachBackSegments(
 ): PatientAudioSegment[] {
   const covered = conversation.topics.filter(
     (topic) =>
-      (topic.category === "clinical_counselling" || topic.category === "safety_netting") &&
+      (topic.category === "clinical_counselling" || topic.category === "safety_netting" || topic.teachBackReply) &&
       addressedTopicIds.has(topic.id)
   );
   if (covered.length === 0) {
     return [teachBackNotReadyAudioSegment()];
   }
-  return covered.map((topic) => topicAudioSegment(topic, 0));
+  return covered.map((topic) => topic.teachBackReply
+    ? topicTeachBackAudioSegment(topic)
+    : topicAudioSegment(topic, 0));
 }
 
 export function buildPatientReply(
@@ -46,8 +49,7 @@ export function buildPatientReply(
   responseIntent: ConversationResponseIntent | null
 ): PatientReplyResult {
   const topicById = new Map(conversation.topics.map((topic) => [topic.id, topic]));
-  const newTopicIds = matchedTopicIds.filter((id) => !previouslyAddressed.has(id));
-  const selectedIds = newTopicIds.length > 0 ? newTopicIds : matchedTopicIds.slice(0, 1);
+  const selectedIds = matchedTopicIds;
 
   let responseSegments: PatientAudioSegment[];
   if (selectedIds.length > 0) {

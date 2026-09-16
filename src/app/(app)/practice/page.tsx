@@ -177,7 +177,7 @@ export default function PracticePage() {
       setUserId(user.id);
       void supabase
         .from("profiles")
-        .select("has_paid, role")
+        .select("has_paid, role, comp_access_until")
         .eq("id", user.id)
         .single()
         .then(({ data }) => setEntitlement((data as CaseEntitlement | null) ?? null));
@@ -329,6 +329,11 @@ export default function PracticePage() {
   // ── Load patient scripts when a patient is selected ───────────────
   useEffect(() => {
     if (!selectedPatient) { setPatientScripts([]); return; }
+    let cancelled = false;
+    const bundled = (PATIENT_SCRIPTS[selectedPatient.seed_id ?? ""] ?? []).map((row, index) => ({ ...row, id: "local-history-" + index, patient_id: selectedPatient.id }));
+    setPatientScripts(bundled);
+    // Bundled directory rows have local IDs, not database UUIDs.
+    if (selectedPatient.id.startsWith("local-")) return;
     const supabase = createClient();
     supabase
       .from("patient_scripts")
@@ -337,11 +342,12 @@ export default function PracticePage() {
       .order("script_date", { ascending: false })
       .limit(20)
       .then(({ data }) => {
-        const bundled = (PATIENT_SCRIPTS[selectedPatient.seed_id ?? ""] ?? []).map((row, index) => ({ ...row, id: "local-history-" + index, patient_id: selectedPatient.id }));
+        if (cancelled) return;
         const rows = new Map([...bundled, ...((data as PatientScript[]) ?? [])].map((row) => [row.script_date + row.drug, row]));
         const dateKey = (value: string) => { const [d,m,y] = value.split("/").map(Number); return (y < 100 ? 2000 + y : y) * 10000 + m * 100 + d; };
         setPatientScripts([...rows.values()].sort((a,b) => dateKey(b.script_date) - dateKey(a.script_date)).slice(0,20));
       });
+    return () => { cancelled = true; };
   }, [selectedPatient]);
 
   // ── Status nudge when pharmacist initials reach ≥2 chars ─────────

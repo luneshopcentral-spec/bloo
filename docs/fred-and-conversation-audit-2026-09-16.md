@@ -1,5 +1,7 @@
 # Fred workflow and patient conversation audit
 
+Implementation follow-up: the [text conversation rework](conversation-rework-2026-09-16.md) addresses the conversation findings below. This audit records the earlier behaviour; refer to the follow-up for current changes, verification and remaining limits.
+
 16 September 2026 · current local `codex/launch-hardening` working tree
 
 ## Conclusion

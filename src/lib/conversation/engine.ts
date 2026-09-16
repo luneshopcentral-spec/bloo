@@ -16,10 +16,11 @@ export interface DialogueState {
   concernShown: boolean;
   pendingTopicId: string | null;
   lastFactTopicId: string | null;
+  fragments: Record<string, string[]>;
 }
 
 export function createDialogueState(): DialogueState {
-  return { turns: 0, addressed: new Set(), evidence: {}, unsafeAdvice: [], concernShown: false, pendingTopicId: null, lastFactTopicId: null };
+  return { turns: 0, addressed: new Set(), evidence: {}, fragments: {}, unsafeAdvice: [], concernShown: false, pendingTopicId: null, lastFactTopicId: null };
 }
 
 function dynamicSegment(text: string): PatientAudioSegment {
@@ -46,14 +47,19 @@ function contextText(c: ConversationCase, state: DialogueState, raw: string): st
   return raw;
 }
 
-function additionalSafety(c: ConversationCase, raw: string, matchedIds: string[]): UnsafeAdviceFinding[] {
+function additionalSafety(c: ConversationCase, raw: string): UnsafeAdviceFinding[] {
   const findings: UnsafeAdviceFinding[] = [];
   for (const clause of conversationClauses(raw)) {
     const text = normalizeLanguage(clause);
     if (isQuestion(clause) || isMetaStatement(clause)) continue;
-    const dose = /\b(?:take|give|use)\s+(?:one|two|three|four|five|six|seven|eight|nine|ten|half|\d+(?:\.\d+)?)\s+(?:capsules?|tablets?|ml)\b/.exec(text);
-    if (dose && !negatedAction(text, dose.index)
-      && !matchedIds.some(id => /directions|dose|metformin_xr_admin/.test(id))) {
+    const amounts = [...text.matchAll(/\b(?:one|two|three|four|five|six|seven|eight|nine|ten|half|\d+(?:\.\d+)?)\s+(?:\d+ (?:mg|milligram) )?(?:capsules?|tablets?|ml)\b/g)];
+    const frequencies = [...text.matchAll(/\b(?:(?:once|twice|\w+ times) (?:a |per )?(?:day|daily)|every (?:\d+|six|eight|twelve) hours|[qt]ds|qid|bd)\b/g)];
+    const wrongDose = c.doseRules?.some(rule =>
+      (!rule.medicinePattern || new RegExp(rule.medicinePattern).test(text)) && (
+        amounts.some(amount => !negatedAction(text, amount.index) && !new RegExp(rule.amountPattern).test(amount[0]))
+        || frequencies.some(frequency => !negatedAction(text, frequency.index) && !new RegExp(rule.frequencyPattern).test(frequency[0]))
+      ));
+    if (wrongDose) {
       findings.push({ id: "unverified_dose", label: "Dose does not match the case plan", detail: "A specific dose was given without matching the case's dose and frequency. Clarify the instruction before the patient follows it.", excerpt: raw });
     }
     if (c.disposition === "hold_contact_prescriber") {
@@ -66,12 +72,42 @@ function additionalSafety(c: ConversationCase, raw: string, matchedIds: string[]
   return findings;
 }
 
+function clarifyPartial(c: ConversationCase, state: DialogueState, id: string): string {
+  const topic = c.topics.find(t => t.id === id)!;
+  const evidence = normalizeLanguage((state.fragments[id] ?? []).join(". "));
+  const missing = (topic.requiredPatternGroups ?? []).map(group => !group.some(p => new RegExp(p, "i").test(evidence)));
+  if (id === "directions") {
+    if (missing[0]) return "How much should I use each time?";
+    if (missing[1] && missing[2]) return "How often should I give it, and how long should the course last?";
+    if (missing[1]) return "How often should it be taken?";
+    if (missing[2]) return "How many days should I give it for?";
+  }
+  if (id === "water_upright") return missing[0]
+    ? "How much water should I take it with?"
+    : "Is there anything I need to do after swallowing it?";
+  return "Could you explain the rest of that for me? I want to be clear about the whole plan.";
+}
+
 /** One pure transition shared by live dialogue, resumed drafts and server grading. */
 export function advanceConversation(c: ConversationCase, previous: DialogueState, raw: string) {
-  const state: DialogueState = { ...previous, turns: previous.turns + 1, addressed: new Set(previous.addressed), evidence: { ...previous.evidence }, unsafeAdvice: [...previous.unsafeAdvice] };
+  const state: DialogueState = { ...previous, turns: previous.turns + 1, addressed: new Set(previous.addressed), evidence: { ...previous.evidence }, fragments: { ...previous.fragments }, unsafeAdvice: [...previous.unsafeAdvice] };
   const text = contextText(c, previous, raw);
   let matchedTopicIds = classifyWithRules(c, text).map(m => m.topicId);
-  const findings = [...findUnsafeAdvice(c, raw), ...additionalSafety(c, raw, matchedTopicIds)];
+  const findings = [...findUnsafeAdvice(c, raw), ...additionalSafety(c, raw)];
+  const partialIds: string[] = [];
+  if (!findings.length && !isMetaStatement(text)) {
+    for (const topic of c.topics.filter(t => t.requiredPatternGroups?.length && !matchedTopicIds.includes(t.id))) {
+      const partialCase = { ...c, topics: [{ ...topic, requiredPatternGroups: [] }] };
+      const normal = normalizeLanguage(text);
+      const answersPending = state.pendingTopicId === topic.id && topic.requiredPatternGroups!.some(group => group.some(p => new RegExp(p, "i").test(normal)));
+      if (!answersPending && !classifyWithRules(partialCase, text).length) continue;
+      state.fragments[topic.id] = [...(state.fragments[topic.id] ?? []), raw].slice(-5);
+      const combined = state.fragments[topic.id].join(". ");
+      if (classifyWithRules({ ...c, topics: [topic] }, combined).length) {
+        matchedTopicIds.push(topic.id);
+      } else if (!state.addressed.has(topic.id)) partialIds.push(topic.id);
+    }
+  }
   if (findings.length) {
     // Never praise a recognised instruction in the same turn as a conflicting
     // dose or dangerous recommendation. Keep the original evidence for review.
@@ -79,16 +115,27 @@ export function advanceConversation(c: ConversationCase, previous: DialogueState
     for (const finding of findings) {
       if (!state.unsafeAdvice.some(f => f.id === finding.id && f.excerpt === finding.excerpt)) state.unsafeAdvice.push(finding);
     }
+    if (findings.some(f => f.id === "unverified_dose" || f.id === "double_dose")) {
+      for (const topic of c.topics.filter(t => /directions|dose|admin/.test(t.id))) {
+        state.addressed.delete(topic.id);
+        delete state.fragments[topic.id];
+      }
+    }
   }
   for (const id of matchedTopicIds) {
     state.addressed.add(id);
-    state.evidence[id] = [...(state.evidence[id] ?? []), raw].slice(-3);
+    state.evidence[id] = [...new Set([...(state.evidence[id] ?? []), ...(state.fragments[id] ?? []), raw])].slice(-5);
   }
 
   const responses: PatientAudioSegment[] = [];
   const push = (reply: string) => {
     if (!responses.some(s => s.text === reply)) responses.push(dynamicSegment(reply));
   };
+  if (!findings.length && partialIds.length && !matchedTopicIds.length) {
+    const id = partialIds[0];
+    state.pendingTopicId = id;
+    push(clarifyPartial(c, state, id));
+  }
   const facts = matchedTopicIds.filter(id => c.topics.find(t => t.id === id)?.category === "information_gathering");
   state.lastFactTopicId = facts.at(-1) ?? null;
   if (findings.length) {
@@ -98,8 +145,10 @@ export function advanceConversation(c: ConversationCase, previous: DialogueState
   }
   const safeTopicIds = findings.length ? facts : matchedTopicIds;
   if (safeTopicIds.length) {
-    const result = buildPatientReply(c, safeTopicIds, previous.addressed, state.turns, true, null);
-    responses.push(...result.audioSegments);
+    const unresolvedAdvice = state.unsafeAdvice.length > 0 && safeTopicIds.includes("teach_back");
+    if (unresolvedAdvice) push("Before I repeat the plan, I still need you to clear up the conflicting advice. What exactly should I follow?");
+    const result = buildPatientReply(c, safeTopicIds.filter(id => !(unresolvedAdvice && id === "teach_back")), previous.addressed, state.turns, true, null);
+    if (safeTopicIds.some(id => !(unresolvedAdvice && id === "teach_back"))) responses.push(...result.audioSegments);
     if (safeTopicIds.includes("invite_questions")) {
       const questionTopic = c.patientQuestionTopicId ?? c.concernTopicId;
       if (!state.addressed.has(questionTopic)) state.pendingTopicId = questionTopic;

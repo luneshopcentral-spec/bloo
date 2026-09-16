@@ -179,9 +179,16 @@ export function CounsellingStage({
   }
 
   useEffect(() => { onTranscriptChange?.(messages); }, [messages, onTranscriptChange]);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      const transcript = transcriptRef.current;
+      if (transcript) transcript.scrollTop = transcript.scrollHeight;
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [messages]);
 
   function finishConversation() {
-    if (complete || pending || studentTurns < 1) return;
+    if (complete || pending || studentTurns < 1 || input.trim()) return;
     voice.abortListening();
     voice.cancelSpeech();
     const result = evaluateConversation(conversation, messages);
@@ -216,6 +223,9 @@ export function CounsellingStage({
           <div
             ref={transcriptRef}
             className={`fred-chat-transcript ${hideCompletedTranscript ? "voice-exam" : ""}`}
+            role="log"
+            aria-label="Conversation messages"
+            tabIndex={0}
             aria-live="polite"
             aria-relevant="additions"
           >
@@ -411,7 +421,8 @@ export function CounsellingStage({
                 type="button"
                 className="fred-chat-finish"
                 onClick={complete ? onViewResults : finishConversation}
-                disabled={pending || (!complete && studentTurns < 1)}
+                disabled={pending || (!complete && (studentTurns < 1 || Boolean(input.trim())))}
+                title={input.trim() ? "Send or clear your draft response before finishing." : undefined}
                 data-tour="counselling-finish"
               >
                 {complete ? "View results" : "Finish consultation"}
@@ -421,7 +432,7 @@ export function CounsellingStage({
           </div>
         </section>
 
-        <aside className="fred-counselling-sidebar" aria-label="Conversation assessment information">
+        <div className="fred-counselling-sidebar" role="group" aria-label="Conversation assessment information">
           <section className="fred-assessment-card">
             <span className={`fred-mode-badge ${mode}`}>{mode} mode</span>
             <h2>Consultation approach</h2>
@@ -475,7 +486,7 @@ export function CounsellingStage({
               Your dispensing accuracy and patient communication will be combined after this consultation.
             </p>
           </section>
-        </aside>
+        </div>
       </div>
     </section>
   );

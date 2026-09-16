@@ -25,7 +25,7 @@ export async function POST(req: Request) {
   const { data: session, error } = await admin.from("practice_sessions").select("*").eq("id", parsed.data.sessionId).eq("user_id", user.id).single();
   if (error || !session) return NextResponse.json({ error: "Start a new practice session" }, { status: 409 });
   const c = STATIC_CASES.find((item) => item.id === session.case_id);
-  const { data: profile } = await admin.from("profiles").select("has_paid, role").eq("id", user.id).single();
+  const { data: profile } = await admin.from("profiles").select("has_paid, role, comp_access_until").eq("id", user.id).single();
   if (!c || !canPlayCase(c, profile)) return NextResponse.json({ error: "Case unavailable" }, { status: 403 });
   if (getCaseEditorialRecord(c.id).version !== session.case_version) return NextResponse.json({ error: "Case updated. Start a new session." }, { status: 409 });
   const { data: previous } = await admin.from("attempts").select("details").eq("id", session.id).eq("user_id", user.id).maybeSingle();

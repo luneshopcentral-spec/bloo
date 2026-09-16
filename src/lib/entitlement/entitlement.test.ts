@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { canPlayCase, isDeveloper, isFreeCase } from "./entitlement";
+import { canPlayCase, hasCompAccess, isDeveloper, isFreeCase } from "./entitlement";
+
+const future = new Date(Date.now() + 86_400_000).toISOString();
+const past = new Date(Date.now() - 86_400_000).toISOString();
 
 const freeCase = { isFree: true };
 const paidCase = { isFree: false };
@@ -33,5 +36,18 @@ describe("entitlement", () => {
   it("unlocks paid cases for paid users and developers", () => {
     expect(canPlayCase(paidCase, { has_paid: true, role: "student" })).toBe(true);
     expect(canPlayCase(paidCase, { has_paid: false, role: "admin" })).toBe(true);
+  });
+
+  it("treats a live comp/trial window as access, and an expired one as none", () => {
+    expect(hasCompAccess({ has_paid: false, role: null, comp_access_until: future })).toBe(true);
+    expect(hasCompAccess({ has_paid: false, role: null, comp_access_until: past })).toBe(false);
+    expect(hasCompAccess({ has_paid: false, role: null, comp_access_until: null })).toBe(false);
+    expect(hasCompAccess({ has_paid: false, role: null })).toBe(false);
+    expect(hasCompAccess(null)).toBe(false);
+  });
+
+  it("unlocks paid cases during a live trial grant but not after it lapses", () => {
+    expect(canPlayCase(paidCase, { has_paid: false, role: "student", comp_access_until: future })).toBe(true);
+    expect(canPlayCase(paidCase, { has_paid: false, role: "student", comp_access_until: past })).toBe(false);
   });
 });

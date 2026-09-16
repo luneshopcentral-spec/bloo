@@ -101,6 +101,10 @@ export function topicRepeatAudioSegment(topic: ConversationTopic): PatientAudioS
   };
 }
 
+export function topicTeachBackAudioSegment(topic: ConversationTopic): PatientAudioSegment {
+  return { cueId: `recap-${topic.id}`, text: normalisePatientUtterance(topic.teachBackReply ?? "") };
+}
+
 export function patientAudioPublicPath(caseId: string, cueId: string): string {
   return `${PATIENT_AUDIO_ROOT}/${safeId(caseId)}/${safeId(cueId)}.mp3`;
 }
@@ -131,6 +135,9 @@ export function buildConversationAudioManifest(
       })),
       ...(topic.repeatReply
         ? [{ ...topicRepeatAudioSegment(topic), source: "topic_repeat" as const }]
+        : []),
+      ...(topic.teachBackReply
+        ? [{ ...topicTeachBackAudioSegment(topic), source: "dynamic" as const }]
         : []),
     ]),
   ];

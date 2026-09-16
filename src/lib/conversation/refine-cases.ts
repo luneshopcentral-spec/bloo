@@ -7,13 +7,18 @@ export function refineConversationCases(cases: Record<string, ConversationCase>)
       ? "hold_contact_prescriber" : "dispense";
     const topic = (id: string) => c.topics.find(t => t.id === id)!;
     topic("confirm_identity").fallbackPatterns.push(String.raw`\b(?:what (?:you are|you re|you'?re|are you) called|who am i (?:speaking|talking) (?:to|with)|name (?:please|for the prescription))\b`);
+    topic("confirm_identity").fallbackPatterns.push(String.raw`\b(?:what should i call you|may i have your name|who is (?:the prescription|the medicine|this) for)\b`);
     topic("confirm_age").fallbackPatterns.push(String.raw`\b(?:when were you born|birthdate|born on)\b`);
-    topic("allergies").fallbackPatterns.push(String.raw`\b(?:bad|unusual|unwanted) reaction\b.*\b(?:medicine|tablet|antibiotic)\b`, String.raw`\b(?:medicine|tablet|antibiotic)\b.*\b(?:disagreed with|made you (?:ill|unwell)|reaction)\b`);
+    topic("allergies").fallbackPatterns.push(String.raw`\b(?:bad|unusual|unwanted) reaction\b.*\b(?:medicine|tablets?|antibiotics?)\b`, String.raw`\b(?:medicine|tablets?|antibiotics?)\b.*\b(?:disagreed with|made you (?:ill|unwell)|reaction)\b`);
     topic("current_medicines").fallbackPatterns.push(String.raw`\b(?:what|which)\b.*\b(?:medicine|tablets?|pills?|treatments?)\b.*\b(?:taking|take|using|use|on)\b`);
+    topic("current_medicines").fallbackPatterns.push(String.raw`\bwhat else\b.*\b(?:take|taking|using|use|on)\b`, String.raw`\bare you on any (?:tablets?|pills?|treatments?)\b`, String.raw`\banything\b.*\b(?:chemist|supermarket|over the counter)\b`);
+    c.responseIntents.find(i => i.id === "previous_use")?.fallbackPatterns.push(String.raw`\bis this (?:the|your) first time\b`);
+    c.responseIntents.find(i => i.id === "medical_conditions")?.fallbackPatterns.push(String.raw`\b(?:health|medical) (?:issues?|problems?)\b`);
     const symptoms = c.responseIntents.find(i => i.id === "current_symptoms");
     symptoms?.fallbackPatterns.push(String.raw`\b(?:are you|have you|do you|any)\b.*\b(?:nauseous|queasy|feeling sick|unwell)\b`);
     c.unsafeAdviceRules.find(r => r.id === "double_dose")?.patterns.push(
       String.raw`\bdouble (?:your|the|a|next) dose\b`,
+      String.raw`\btake (?:a |the )?double dose\b`,
       String.raw`\btake (?:twice|double) (?:your|the) (?:usual |normal )?(?:amount|dose)\b`
     );
     // These old expressions could cross an entire risk explanation and match
@@ -36,10 +41,13 @@ export function refineConversationCases(cases: Record<string, ConversationCase>)
       topic("current_medicines").repeatReply = topic("current_medicines").patientReplies[0];
       c.responseIntents.find(i => i.id === "previous_use")!.patientReplies = ["Yes, I collected erythromycin here recently. I'm here about the repeat.", "Yes, I have had a recent supply of this antibiotic from this pharmacy."];
       c.responseIntents.find(i => i.id === "medical_conditions")!.patientReplies = ["I have high blood pressure and take amlodipine for it.", "High blood pressure is on my pharmacy record."];
+      c.responseIntents.find(i => i.id === "current_symptoms")!.patientReplies = ["I'm not feeling nauseous at the moment. I still have the symptoms I saw the doctor about, but no chest pain or breathing trouble."];
+      c.doseRules = [{ topicId: "directions", amountPattern: String.raw`\b(?:one|1) capsule`, frequencyPattern: String.raw`\b(?:four times (?:a|per) day|four times daily|every (?:six|6) hours|qid)\b` }];
       for (const id of ["directions", "complete_course", "nausea_advice"]) {
         topic(id).assessed = false;
         topic(id).critical = false;
       }
+      topic("purpose").teachBackReply = "The antibiotic is for the infection my doctor diagnosed.";
       // Optional dose discussion must still match the actual prescribed dose.
       topic("directions").forbiddenPatterns?.push(String.raw`\b(?:four|five|six|seven|eight|nine|[4-9]) capsules?\b`);
       c.topics.splice(c.topics.length - 2, 0, {
@@ -49,6 +57,7 @@ export function refineConversationCases(cases: Record<string, ConversationCase>)
         fallbackPatterns: [String.raw`\b(?:early|recent|four days|4 days)\b`],
         requiredPatternGroups: [[String.raw`\b(?:early|recent|four days|4 days)\b`], [String.raw`\b(?:hold|cannot supply|not supply|before.{0,20}supply)\b`], [String.raw`\b(?:contact|speak|call|check|clarify)\b.*\b(?:doctor|prescriber)\b`]],
         patientReplies: ["I didn't realise the repeat was too early. I understand you need to check with my doctor before supplying it.", "Okay, please check the recent supply with my doctor first."],
+        teachBackReply: "The repeat is too early, so you are holding it while you check with my doctor.",
       }, {
         id: "next_steps", label: "Explain the follow-up and how the patient will be updated",
         category: "communication",
@@ -56,6 +65,7 @@ export function refineConversationCases(cases: Record<string, ConversationCase>)
         fallbackPatterns: [String.raw`\b(?:update you|let you know|get back to you|call you)\b`],
         requiredPatternGroups: [[String.raw`\b(?:doctor|prescriber|outcome|after|before)\b`]],
         patientReplies: ["Thank you. I'll wait to hear the outcome before collecting the repeat.", "Okay, please let me know once you have spoken to the doctor."],
+        teachBackReply: "You will update me after speaking with the doctor, before anything is supplied.",
       });
     }
     if (c.caseId === "case-4") {
@@ -63,6 +73,8 @@ export function refineConversationCases(cases: Record<string, ConversationCase>)
       topic("current_medicines").repeatReply = topic("current_medicines").patientReplies[0];
       topic("sedative_alcohol_history").patientReplies = ["My record says I had stopped drinking, but I've started again recently. I have a few drinks most nights when I can't sleep.", "I was in remission, but recently I've been drinking most evenings again. I haven't updated the pharmacy about that yet."];
       c.patientQuestionTopicId = "next_steps_empathy";
+      topic("explain_hold").teachBackReply = "You need to hold this prescription and clarify the treatment plan with my doctor before supplying it.";
+      topic("next_steps_empathy").teachBackReply = "You will let me know the outcome after speaking with my doctor.";
     }
     if (c.caseId === "case-2") {
       topic("interactions").requiredPatternGroups![0].push(String.raw`\b(?:starting|stopping|start|stop) medicine\b`);
@@ -72,6 +84,9 @@ export function refineConversationCases(cases: Record<string, ConversationCase>)
       // Keep the water requirement; correct the incomplete example instead of
       // giving full credit for only half of this safety-critical instruction.
       topic("water_upright").examples[1] = "Use a full glass of water and do not lie down for 30 minutes after taking doxycycline.";
+      c.doseRules = [{ topicId: "directions", amountPattern: String.raw`\b(?:one|1) tablet`, frequencyPattern: String.raw`\b(?:twice (?:a|per) day|twice daily|every (?:twelve|12) hours|bd|morning and (?:night|evening))\b` }];
     }
+    if (c.caseId === "case-3") c.doseRules = [{ topicId: "directions", amountPattern: String.raw`\b(?:ten|10)\s*ml\b`, frequencyPattern: String.raw`\b(?:three times (?:a|per) day|three times daily|every (?:eight|8) hours|tds)\b` }];
+    if (c.caseId === "case-7") c.doseRules = [{ topicId: "directions_mr", amountPattern: String.raw`\b(?:one|1) (?:20 (?:mg|milligram) )?tablet`, frequencyPattern: String.raw`\b(?:twice (?:a|per) day|twice daily|every (?:twelve|12) hours|bd)\b` }];
   }
 }

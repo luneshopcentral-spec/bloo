@@ -18,7 +18,7 @@ export async function POST(req: Request) {
   if (!parsed.success) return NextResponse.json({ error: "Invalid session" }, { status: 400 });
   const c = STATIC_CASES.find((item) => item.id === parsed.data.caseId);
   const admin = createAdminClient();
-  const { data: profile, error } = await admin.from("profiles").select("has_paid, role").eq("id", user.id).single();
+  const { data: profile, error } = await admin.from("profiles").select("has_paid, role, comp_access_until").eq("id", user.id).single();
   if (error) return NextResponse.json({ error: "Practice service needs a database update" }, { status: 503 });
   if (!c || !canPlayCase(c, profile)) return NextResponse.json({ error: "Case unavailable" }, { status: 403 });
   const { data, error: insertError } = await admin.from("practice_sessions").insert({ user_id: user.id, case_id: c.id, case_version: getCaseEditorialRecord(c.id).version, seed: parsed.data.seed, mode: parsed.data.mode, assisted: parsed.data.mode === "learn" }).select("id").single();

@@ -95,7 +95,7 @@ const CASE_REFERENCES: Record<string, CaseEditorialRecord["references"]> = {
 
 export const CASE_EDITORIAL_RECORDS: CaseEditorialRecord[] = STATIC_CASES.map((caseData) => ({
   caseId: caseData.id,
-  version: "0.4.0-draft",
+  version: "0.5.0-draft",
   jurisdiction: "Victoria, Australia",
   contentUpdatedAt: CONTENT_DATE,
   nextReviewDue: "Before paid release or any source change",

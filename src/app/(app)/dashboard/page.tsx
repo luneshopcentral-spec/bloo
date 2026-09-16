@@ -4,6 +4,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { STATIC_CASES } from "@/lib/cases/static-cases";
 import { isPlanId, PLAN_OPTIONS } from "@/lib/billing/plan";
+import { hasCompAccess } from "@/lib/entitlement/entitlement";
 import type { Database } from "@/lib/types/database";
 
 const FREE_CASE_COUNT = STATIC_CASES.filter((c) => c.isFree).length;
@@ -60,7 +61,10 @@ export default async function DashboardPage({
     .single()) as { data: ProfileRow | null; error: unknown };
 
   const firstName = profile?.full_name?.split(" ")[0] ?? "there";
-  const hasFullAccess = profile?.has_paid === true || profile?.role === "admin";
+  const hasFullAccess =
+    profile?.has_paid === true
+    || profile?.role === "admin"
+    || hasCompAccess(profile ? { has_paid: profile.has_paid, role: profile.role, comp_access_until: profile.comp_access_until } : null);
   const { data: attemptData, error: attemptError } = await supabase
     .from("attempts")
     .select("*")

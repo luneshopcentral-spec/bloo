@@ -41,6 +41,9 @@ function patternMatches(text: string, source: string): boolean {
 export function topicEvidenceIsValid(topic: ConversationTopic, text: string): boolean {
   const normalized = normalizeConversationText(text);
   if (isMetaStatement(text)) return false;
+  if (/directions|dose|admin/.test(topic.id)
+    && /\b(?:do not|never|should not|must not) (?:take|give|use) (?:one|two|three|four|\d+)\b/.test(normalized)) return false;
+  if (topic.id === "complete_course" && /\b(?:do not|never|should not) (?:finish|complete|continue|keep)\b/.test(normalized)) return false;
   if (topic.category === "information_gathering" && !isQuestion(text)) return false;
   if ((topic.category === "clinical_counselling" || topic.category === "safety_netting")
     && /^(?:(?:please|so|and) )?(?:are you|have you|do you|did you|does |is there|any |what (?!this does)|how (?:are|do|did|have)|when (?:did|do|was)|which )/.test(normalized)) return false;

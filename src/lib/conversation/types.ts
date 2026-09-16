@@ -23,6 +23,8 @@ export interface ConversationTopic {
   feedback?: string;
   /** Optional discussion topics do not become requirements for this disposition. */
   assessed?: boolean;
+  /** A recap of this point only, used after the student has explained it. */
+  teachBackReply?: string;
 }
 
 export interface ConversationResponseIntent {
@@ -60,6 +62,7 @@ export interface ConversationCase {
   unsafeAdviceRules: UnsafeAdviceRule[];
   disposition?: "dispense" | "hold_contact_prescriber" | "do_not_supply";
   patientQuestionTopicId?: string;
+  doseRules?: Array<{ topicId: string; amountPattern: string; frequencyPattern: string; medicinePattern?: string }>;
 }
 
 export interface SemanticCandidate {

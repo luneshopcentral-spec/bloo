@@ -4,6 +4,7 @@ import { STATIC_CASES } from "@/lib/cases/static-cases";
 import { applyCaseVariant } from "@/lib/cases/variants";
 import { ALL_PATIENTS } from "../../../supabase/seeds/patient-library";
 import { getConversationCase } from "@/lib/conversation/cases";
+import { evaluateConversation, MAX_CONVERSATION_TURNS, MAX_CONVERSATION_CHARACTERS } from "@/lib/conversation/engine";
 import { formReducer, emptyFormStateFor } from "@/components/simulator/state";
 
 function fixture(caseId = "case-2") {
@@ -19,6 +20,18 @@ function fixture(caseId = "case-2") {
   return { session, input };
 }
 describe("authoritative attempt grading", () => {
+  it("produces the same dialogue assessment on the server as the browser", () => {
+    const { input, session } = fixture("case-3");
+    input.transcript = ["Give Liam 10 mL.", "Three times a day.", "For ten days.", "Can you repeat that back to me in your own words?"].map((text, i) => ({ id: String(i), role: "student", text }));
+    expect(gradeSubmission(input, session).counselling).toEqual(evaluateConversation(getConversationCase("case-3"), input.transcript));
+  });
+  it("rejects transcripts beyond the same turn and total length limits shown by the composer", () => {
+    const { input } = fixture();
+    input.transcript = Array.from({ length: MAX_CONVERSATION_TURNS + 1 }, (_, i) => ({ id: String(i), role: "student", text: "Hello" }));
+    expect(submissionSchema.safeParse(input).success).toBe(false);
+    input.transcript = Array.from({ length: 10 }, (_, i) => ({ id: String(i), role: "student", text: "x".repeat(MAX_CONVERSATION_CHARACTERS / 10 + 1) }));
+    expect(submissionSchema.safeParse(input).success).toBe(false);
+  });
   it("ignores forged numeric scores and passed flags", () => {
     const { input, session } = fixture();
     const parsed = submissionSchema.parse({ ...input, score: 999, passed: true, countsTowardProgress: true });
