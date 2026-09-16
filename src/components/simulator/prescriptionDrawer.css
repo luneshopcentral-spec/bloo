@@ -34,7 +34,8 @@
 
 .presc-trigger-label {
   color: #fff;
-  font: 700 8px/1 Helvetica, Arial, sans-serif;
+  background: inherit;
+  font: 700 10px/1 Helvetica, Arial, sans-serif;
   letter-spacing: 1.5px;
   writing-mode: vertical-rl;
   transform: rotate(180deg);

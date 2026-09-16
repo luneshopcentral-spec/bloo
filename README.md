@@ -1,184 +1,75 @@
 # DispenseRx Practice
 
-A web app that lets Australian pharmacy university students practise Fred Dispense-style dispensing workflows from home.
+An independent study app for Australian pharmacy students, with dispensing, pack assembly, consultation practice, quizzes and progress tracking. Not affiliated with Fred IT Group Pty Ltd. Training examples are fictional and are not clinical instructions for real patients.
 
-> **Independent study tool — not affiliated with Fred IT Group Pty Ltd.**
+## Release status
 
----
+Launch fixes are implemented locally. Production database upgrades, clinical and jurisdiction review, operator details and live billing/email checks remain required. Read [the implementation report](docs/launch-fixes-2026-09-16.md), [the original audit](docs/launch-audit-2026-09-15.md) and [the paid launch checklist](docs/launch-readiness.md).
 
-## Setup
+Keep `PAID_LAUNCH_APPROVED=false` until the checklist is complete. The server also checks content approval, billing configuration and database readiness before accepting checkout.
 
-### Prerequisites
+## Local setup
 
-- Node.js 18.18+ (use [nvm](https://github.com/nvm-sh/nvm) or install from [nodejs.org](https://nodejs.org))
-- A [Supabase](https://supabase.com) account (free tier is fine)
+Use Node.js 22 and npm. On Windows PowerShell, use `npm.cmd` if the script execution policy blocks `npm`.
 
----
-
-### 1. Clone and install
-
-```bash
-git clone <your-repo-url>
-cd dispense-rx-practice
-npm install
+```sh
+npm ci
 ```
 
----
+Copy `.env.example` to `.env.local`. Configure the Supabase project URL, public anon key and server-only service role key. Never commit credentials or expose the service role key through a `NEXT_PUBLIC_` variable. The remaining operator and Stripe variables are documented in the template.
 
-### 2. Create a Supabase project
+### Database
 
-1. Go to [app.supabase.com](https://app.supabase.com) and create a new project.
-2. Wait for the project to finish provisioning (~1 minute).
+- **New database:** apply every SQL file in `supabase/migrations/` in filename order, once. Then seed the patient and medicine directories with the commands below.
+- **Existing database with 0001–0005:** back up first, then apply `supabase/setup_release_hardening.sql` as one transaction in the Supabase SQL Editor. This bundle includes the later migrations and can be reapplied.
+- The former duplicate `0011_remove_anon_directory_access.sql` is now `0015_remove_anon_directory_access.sql`. Check the remote migration ledger before using `supabase db push`; the manual upgrade bundle does not reconcile that ledger.
+- Confirm `select public.launch_schema_ready();` returns `true` as an administrator. The application health route must return HTTP 200 after deployment.
 
----
-
-### 3. Set up environment variables
-
-```bash
-cp .env.local.example .env.local
-```
-
-Open `.env.local` and fill in the values from your Supabase project:
-
-- **`NEXT_PUBLIC_SUPABASE_URL`** → Settings → API → Project URL
-- **`NEXT_PUBLIC_SUPABASE_ANON_KEY`** → Settings → API → anon public key
-
----
-
-### 4. Run the database migration
-
-Open your Supabase project → **SQL Editor** → **New query**.
-
-Run every file in `supabase/migrations/` in numeric order and click **Run** after each file.
-For an existing project already on migration 0007, run only
-`supabase/migrations/0008_complex_cases.sql` for the six new patients,
-prescribers, medicine products and patient histories.
-
-This creates:
-- `profiles` table (auto-populated on sign-up via trigger)
-- `cases` table
-- `attempts` table
-- Row Level Security policies on all tables
-- A trigger that creates a profile row whenever a new user signs up
-
-The migrations are idempotent — safe to run multiple times.
-
-#### Alternative: Supabase CLI
-
-If you have the [Supabase CLI](https://supabase.com/docs/guides/cli) installed and the project linked:
-
-```bash
-supabase db push
-```
-
----
-
-### 5. Configure Supabase Auth redirect URL
-
-In Supabase → **Authentication → URL Configuration**, add the following to **Redirect URLs**:
-
-```
-http://localhost:3000/auth/callback
-```
-
-When you deploy, also add your production URL (e.g. `https://yourdomain.com/auth/callback`).
-
----
-
-### 6. Run the development server
-
-```bash
+```sh
+npm run seed:patients
+npm run seed:drugs
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) — you should see the landing page.
+In Supabase Auth, configure the production site URL and permitted callback URLs for local and production hosts, including `http://localhost:3000/auth/callback`. Test confirmation and password-reset email delivery using real mailboxes.
 
-### Local patient voice
+## Verification
 
-Voice-mode patient replies use an asset-first, zero-runtime-API architecture:
-
-1. The simulator looks for the clinically approved MP3 named by the patient
-   conversation state in `public/audio/patients/<case-id>/`.
-2. If that exact recording has not been installed, Apache-2.0
-   [Kokoro-82M](https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX)
-   generates a q8 safety voice locally in the browser (about 93 MB plus its
-   voice and runtime files on first use).
-3. If local generation cannot run, the simulator uses the best installed
-   operating-system English voice. Text mode remains available.
-
-No TTS API key or per-conversation TTS service is used. Generate the complete
-recording list and two-column CSV with `npm run voice:manifest`, then place each
-commercially licensed recording at the listed path. Run `npm run voice:check`
-before release to identify missing files. In exam voice mode, completed patient
-and student transcript turns are hidden; the current speech-recognition draft is
-shown only long enough to correct recognition errors before marking.
-
-### Consultation quizzes
-
-The protected `/quiz` route is separate from the dispensing simulator. It
-contains 10 advanced prescription-based case sets (40 questions) in two modes:
-
-- **Guided practice** reveals the answer rationale after each response.
-- **Challenge mode** keeps answers hidden until the final result.
-
-Every case includes a realistic prescription, patient-specific consultation
-information and access to the searchable medicines learning book. A pass needs
-at least 75% and every safety-critical answer. Best results are cached in the
-browser for study continuity; quiz attempts are not currently written to
-Supabase or included in simulator competency analytics.
-
----
-
-## Project structure
-
-```
-src/
-  app/
-    (marketing)/        # Landing page, pricing, about
-    (auth)/             # Sign-in, sign-up, forgot-password
-    (app)/              # Protected app routes (dashboard, practice, quiz)
-    auth/callback/      # Supabase auth callback handler
-  components/
-    ui/                 # shadcn/ui primitives
-    marketing/          # Landing page sections
-    app/                # App shell (nav bar)
-  lib/
-    supabase/           # Browser + server Supabase clients
-    types/              # TypeScript types (database schema)
-    utils.ts            # cn() helper
-middleware.ts           # Session refresh + route protection
-supabase/migrations/    # SQL migration files
+```sh
+npm run lint
+npm test -- --run
+npm audit --audit-level=moderate
+npm run build
+npm run start
 ```
 
----
+Database tests require `psql` and a **new, isolated PostgreSQL database named `launch_audit`**, with an administrator connection in `TEST_DATABASE_URL`. They emulate Supabase roles/auth and apply the entire migration chain, then check the access boundaries. Never target a customer database. Set `PSQL_PATH` if `psql` is outside PATH.
 
-## Acceptance checklist
+```sh
+node scripts/test-database.mjs
+```
 
-- [ ] `npm run dev` shows the landing page at http://localhost:3000
-- [ ] Sign up with email/password → lands on `/dashboard`
-- [ ] A row appears in `profiles` automatically on sign-up
-- [ ] Sign out → sign back in → dashboard visible
-- [ ] Visiting `/dashboard` while logged out redirects to `/sign-in`
-- [ ] `/quiz` opens the consultation quiz library and medicines book
-- [ ] SQL migration runs cleanly on a fresh Supabase project
+`.github/workflows/verify.yml` runs application checks and an isolated PostgreSQL test job on pushes and pull requests.
 
----
+## How progress is stored
 
-## Phase roadmap
+- The server creates a practice session and grades raw submissions. Client-provided numeric scores are not trusted. One session produces one idempotent saved attempt.
+- Learn/reveal attempts are assisted. Existing unverified attempts remain stored but are excluded from verified dashboard progress. Dashboard summaries explicitly cover the latest 100 verified attempts.
+- Device drafts and failed submissions are scoped to the signed-in account. A student can resume a practice draft or retry a queued save. Local storage is a convenience, not a backup.
+- Quiz answers are graded by the server and persisted per account/content version. Offline results are queued on that device. Quiz progress is separate from simulator competency summaries.
+- `/account` supports profile edits, password-reset requests, JSON data export, billing portal access and support/deletion requests. Deletion requests require operator handling; they do not immediately delete an account.
+- `/admin` is restricted to a server-checked `profiles.role='admin'` and lists feedback plus content-review status. Assign that role only using a trusted administrative connection.
 
-| Phase | Description |
-|-------|-------------|
-| **1** | **Foundation, Auth & Landing Page** ← you are here |
-| 2 | Fred Dispense simulator UI |
-| 3 | First 10 practice cases |
-| 4 | Scoring engine |
-| 5 | Progress tracking & analytics |
-| 6 | Case library expansion (50+ cases) |
-| 7 | Stripe paywall integration |
-| 8 | Polish, SEO & launch |
+## Voice and content
 
----
+Text consultation is the default. Voice is experimental: browser speech recognition can send audio to the browser provider. Local Kokoro speech generation requires a sizeable first download, and a system voice is the fallback. Do not enter real patient details.
 
-## Disclaimer
+Recorded speech is disabled by default because reviewed recordings have not been installed. `npm run voice:manifest` lists the required assets; `npm run voice:check` detects missing files. Enable `NEXT_PUBLIC_RECORDED_VOICE_ENABLED` only after licensed, reviewed recordings pass that check. The clinical and legal review register in `src/lib/governance/editorial.ts` must contain genuine approvals before paid release.
 
-DispenseRx Practice is an independent study tool created to help pharmacy students practise dispensing skills. It is **not affiliated with, endorsed by, or connected to Fred IT Group Pty Ltd**. "Fred Dispense" is a trademark of Fred IT Group Pty Ltd.
+The browser receives training case content. This is a practice tool, not a secure proctored examination system. Automated rule-based consultation grading does not replace educator judgement.
+
+## Operations
+
+`/api/health` checks database schema and selected access boundaries. Attach an external monitor and alerts before launch. Server request failures emit structured route/error references without submission text; configure retention and an appropriate monitoring destination. Rebuild after changing public environment values.
+
+See the implementation report for deployment order, rollback precautions and outstanding live verification.

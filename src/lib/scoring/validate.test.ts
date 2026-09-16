@@ -25,7 +25,7 @@ function form(
   overrides: Partial<FormState> & Partial<ItemFormState> = {}
 ): FormState {
   const { drug, directions, repeats, qty, price, ...scriptOverrides } = overrides;
-  const base = emptyFormStateFor(1);
+  const base = { ...emptyFormStateFor(1), scriptDate: case1.date, scriptType: case1.scriptType };
   return {
     ...base,
     ...scriptOverrides,
@@ -143,6 +143,7 @@ function correctInput(
   const item = caseData.items[0];
   return {
     formState: form({
+      scriptDate: caseData.date, scriptType: caseData.scriptType,
       drug: selectedDrug.full_display_name,
       directions: item.directions,
       repeats: item.repeats,
@@ -191,8 +192,8 @@ describe("validateDispense", () => {
   it("passes an accurate, independently completed case", () => {
     const result = validateDispense(correctInput(case1, case1Patient, case1Drug));
 
-    expect(result.pointsEarned).toBe(9);
-    expect(result.pointsTotal).toBe(9);
+    expect(result.pointsEarned).toBe(10);
+    expect(result.pointsTotal).toBe(10);
     expect(result.passed).toBe(true);
     expect(result.criticalFailures).toEqual([]);
     expect(result.countsTowardProgress).toBe(true);
@@ -241,7 +242,7 @@ describe("validateDispense", () => {
       })
     );
 
-    expect(result.pointsEarned).toBe(7);
+    expect(result.pointsEarned).toBe(8);
     expect(result.passed).toBe(false);
     expect(result.criticalFailures).toEqual(
       expect.arrayContaining(["drug", "drug_variant"])
@@ -279,7 +280,7 @@ describe("validateDispense", () => {
       correctInput(case1, case1Patient, case1Drug, { selectedWarnings: [warnings] })
     );
 
-    expect(result.pointsEarned).toBe(8);
+    expect(result.pointsEarned).toBe(9);
     expect(result.passed).toBe(true);
     expect(result.checks.find((check) => check.category === "warnings")?.passed).toBe(false);
   });
@@ -289,7 +290,7 @@ describe("validateDispense", () => {
       correctInput(case4, case4Patient, case4Drug, { decision: "dispense" })
     );
 
-    expect(result.pointsEarned).toBe(8);
+    expect(result.pointsEarned).toBe(9);
     expect(result.passed).toBe(false);
     expect(result.criticalFailures).toContain("errors");
   });
@@ -297,7 +298,7 @@ describe("validateDispense", () => {
   it("passes a problem case when the student holds and contacts the prescriber", () => {
     const result = validateDispense(correctInput(case4, case4Patient, case4Drug));
 
-    expect(result.pointsEarned).toBe(9);
+    expect(result.pointsEarned).toBe(10);
     expect(result.passed).toBe(true);
     expect(result.checks.find((check) => check.category === "errors")?.detail).toContain(
       "Hold and contact"
@@ -309,7 +310,7 @@ describe("validateDispense", () => {
       correctInput(case1, case1Patient, case1Drug, { decision: null })
     );
 
-    expect(result.pointsEarned).toBe(8);
+    expect(result.pointsEarned).toBe(9);
     expect(result.passed).toBe(false);
     expect(result.criticalFailures).toContain("errors");
   });
@@ -317,7 +318,7 @@ describe("validateDispense", () => {
   it("accepts complete standard abbreviations", () => {
     const result = validateDispense(
       correctInput(case1, case1Patient, case1Drug, {
-        formState: form({ directions: "1 cap tds", repeats: "1", qty: "25" }),
+        formState: form({ directions: "1 cap qid", repeats: "1", qty: "25" }),
       })
     );
 
@@ -328,7 +329,7 @@ describe("validateDispense", () => {
     const result = validateDispense(
       correctInput(case1, case1Patient, case1Drug, {
         formState: form({
-          directions: "Do not take 1 capsule tds",
+          directions: "Do not take 1 capsule qid",
           repeats: "1",
           qty: "25",
         }),
@@ -396,12 +397,12 @@ describe("validateDispense", () => {
     );
   });
 
-  it("allows date of birth to be omitted when adding a new patient", () => {
+  it("requires the authored date of birth when adding a new patient", () => {
     const withoutDob = validateDispense(
       correctInput(case3, { ...case3Patient, date_of_birth: null }, case3Drug)
     );
 
-    expect(withoutDob.checks.find((check) => check.category === "patient")?.passed).toBe(true);
+    expect(withoutDob.checks.find((check) => check.category === "patient")?.passed).toBe(false);
   });
 
   it("rejects the wrong existing patient", () => {
@@ -461,6 +462,7 @@ describe("prescriptions ordering more than one medicine", () => {
     return {
       formState: {
         ...emptyFormStateFor(multiItemCase.items.length),
+        scriptDate: multiItemCase.date, scriptType: multiItemCase.scriptType,
         pharmacistInitials: "AB",
         authorityNumber: multiItemCase.authority?.number ?? "",
         items: multiItemCase.items.map((item) => ({
@@ -487,7 +489,7 @@ describe("prescriptions ordering more than one medicine", () => {
     expect(result.passed).toBe(true);
     expect(result.criticalFailures).toEqual([]);
     // Six checks per item, plus patient, prescriber, authority and decision.
-    expect(result.pointsTotal).toBe(multiItemCase.items.length * 6 + 4);
+    expect(result.pointsTotal).toBe(multiItemCase.items.length * 6 + 5);
     expect(result.checks.filter((check) => check.category === "drug")).toHaveLength(2);
     expect(result.checks.some((check) => check.label.startsWith("Item 1: "))).toBe(true);
     expect(result.checks.some((check) => check.label.startsWith("Item 2: "))).toBe(true);

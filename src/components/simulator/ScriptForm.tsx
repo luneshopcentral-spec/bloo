@@ -240,7 +240,7 @@ export function ScriptForm({
             value={itemForm.qty} onChange={onItemChangeField(dispatch, currentItem, "qty")} disabled={disabled} />
         </div>
         <div className="flex flex-col gap-0.5">
-          <label className="fred-field-label" htmlFor="price">Price</label>
+          <label className="fred-field-label" htmlFor="price" title="Practice field only; price is not scored">Price (unmarked)</label>
           <input id="price" className="fred-dir-col-input" placeholder="0.00" inputMode="decimal"
             value={itemForm.price} onChange={onItemChangeField(dispatch, currentItem, "price")} disabled={disabled} />
         </div>

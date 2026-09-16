@@ -1,108 +1,11 @@
+import type { AttemptSubmission } from "./grade";
 import type { AttemptResult } from "@/lib/conversation/types";
-import type { PracticeMode } from "@/lib/practice/modes";
-import type { Json } from "@/lib/types/database";
-import type { Database } from "@/lib/types/database";
-import { createClient } from "@/lib/supabase/client";
-import { canPlayCase, type CaseEntitlement } from "@/lib/entitlement/entitlement";
-
-export interface PersistAttemptInput {
-  caseId: string;
-  caseVersion: string;
-  mode: PracticeMode;
-  result: AttemptResult;
-  countsTowardProgress: boolean;
-  /** Whether this case is a free demo case (playable without payment). */
-  caseIsFree: boolean;
-}
-
-export interface PersistAttemptResult {
-  saved: boolean;
-  reason?: "not_signed_in" | "locked" | "schema_update_required" | "database_error";
-}
-
-function competencyMap(result: AttemptResult): Record<string, { passed: number; total: number }> {
-  const competencies: Record<string, { passed: number; total: number }> = {};
-  for (const check of result.dispense.checks) {
-    competencies[`dispensing:${check.category}`] = {
-      passed: check.passed ? 1 : 0,
-      total: 1,
-    };
+export async function persistCompletedAttempt(input: AttemptSubmission): Promise<{ saved: boolean; result?: AttemptResult; message?: string }> {
+  try {
+    const response = await fetch("/api/attempts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) });
+    const data = await response.json();
+    return response.ok ? data : { saved: false, message: data.error ?? "Progress could not be saved." };
+  } catch {
+    return { saved: false, message: "You appear to be offline. Your attempt is queued on this device." };
   }
-  for (const check of result.counselling.checks) {
-    const key = `counselling:${check.category}`;
-    const current = competencies[key] ?? { passed: 0, total: 0 };
-    competencies[key] = {
-      passed: current.passed + (check.passed ? 1 : 0),
-      total: current.total + 1,
-    };
-  }
-  return competencies;
-}
-
-export async function persistCompletedAttempt({
-  caseId,
-  caseVersion,
-  mode,
-  result,
-  countsTowardProgress,
-  caseIsFree,
-}: PersistAttemptInput): Promise<PersistAttemptResult> {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { saved: false, reason: "not_signed_in" };
-
-  // Entitlement gate: only free cases, paid users, or developers may record an
-  // attempt. This backs up the UI gate — a tampered client cannot save progress
-  // for a locked case.
-  if (!caseIsFree) {
-    const { data: rawProfile } = await supabase
-      .from("profiles")
-      .select("has_paid, role")
-      .eq("id", user.id)
-      .single();
-    const entitlement = rawProfile as CaseEntitlement | null;
-    if (!canPlayCase({ isFree: caseIsFree }, entitlement)) {
-      return { saved: false, reason: "locked" };
-    }
-  }
-
-  const score = result.dispense.pointsEarned + result.counselling.pointsEarned;
-  const maxScore = result.dispense.pointsTotal + result.counselling.pointsTotal;
-  const criticalFailures = [
-    ...result.dispense.criticalFailures.map((failure) => `dispensing:${failure}`),
-    ...result.counselling.criticalFailures.map((failure) => `counselling:${failure}`),
-  ];
-  const details = JSON.parse(JSON.stringify({
-    dispense: result.dispense,
-    counselling: result.counselling,
-  })) as Json;
-
-  const attemptRow: Database["public"]["Tables"]["attempts"]["Insert"] = {
-    user_id: user.id,
-    case_id: caseId,
-    case_version: caseVersion,
-    mode,
-    score,
-    max_score: maxScore,
-    passed: result.passed,
-    assisted: result.assisted,
-    counts_toward_progress: countsTowardProgress,
-    critical_failures: criticalFailures,
-    competencies: competencyMap(result) as unknown as Json,
-    details,
-  };
-  // The installed Supabase client resolves the hand-maintained schema's insert
-  // overload to never[]. The runtime API accepts an array and the payload is
-  // still checked against Database above.
-  const { error } = await supabase.from("attempts").insert([attemptRow] as never[]);
-
-  if (error) {
-    const schemaUpdateRequired = /case_id|case_version|counts_toward_progress|mode|uuid/i.test(error.message);
-    return {
-      saved: false,
-      reason: schemaUpdateRequired ? "schema_update_required" : "database_error",
-    };
-  }
-
-  return { saved: true };
 }

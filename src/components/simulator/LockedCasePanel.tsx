@@ -1,3 +1,5 @@
+"use client";
+import { usePaidAvailability } from "@/hooks/usePaidAvailability";
 import type { PracticeCase } from "@/lib/types/case";
 import { PLAN_OPTIONS } from "@/lib/billing/plan";
 
@@ -12,6 +14,7 @@ interface LockedCasePanelProps {
  * this is the upgrade prompt for the rest of the library.
  */
 export function LockedCasePanel({ caseData, freeCaseCount }: LockedCasePanelProps) {
+  const paidAvailable = usePaidAvailability();
   const title = caseData.title.replace(/^Case \d+ — /, "");
 
   return (
@@ -25,7 +28,7 @@ export function LockedCasePanel({ caseData, freeCaseCount }: LockedCasePanelProp
           repeat-timing traps and the full counselling library.
         </p>
         <div className="fred-locked-actions">
-          {PLAN_OPTIONS.map((plan) => (
+          {paidAvailable ? PLAN_OPTIONS.map((plan) => (
             <form action="/api/checkout" method="post" key={plan.id}>
               <input type="hidden" name="plan" value={plan.id} />
               <button type="submit" className="fred-locked-upgrade">
@@ -33,7 +36,7 @@ export function LockedCasePanel({ caseData, freeCaseCount }: LockedCasePanelProp
                 {plan.badge ? ` · ${plan.badge}` : ""}
               </button>
             </form>
-          ))}
+          )) : <p>Paid access is not open yet. Continue with the free cases while clinical and launch reviews are completed.</p>}
         </div>
         <p className="fred-locked-footnote">
           Subscriptions renew automatically. Cancel in the Stripe portal; access continues to the end of the paid period. Already subscribed? Refresh, or <a href="/support">contact support</a> if access has not appeared.

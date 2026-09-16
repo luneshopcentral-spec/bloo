@@ -9,7 +9,7 @@ export function getStripe(): Stripe {
   if (cached) return cached;
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) throw new Error("STRIPE_SECRET_KEY is not set");
-  cached = new Stripe(key);
+  cached = new Stripe(key, { timeout: 10_000, maxNetworkRetries: 1 });
   return cached;
 }
 

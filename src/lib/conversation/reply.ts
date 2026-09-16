@@ -52,7 +52,6 @@ export function buildPatientReply(
   let responseSegments: PatientAudioSegment[];
   if (selectedIds.length > 0) {
     responseSegments = selectedIds
-      .slice(0, 3)
       .flatMap((selectedId, index) => {
         const selectedTopic = topicById.get(selectedId);
         if (!selectedTopic) return [];
@@ -66,8 +65,8 @@ export function buildPatientReply(
         }
         if (selectedId === "invite_questions") {
           const concernAlreadyResolved =
-            previouslyAddressed.has(conversation.concernTopicId) ||
-            matchedTopicIds.includes(conversation.concernTopicId);
+            previouslyAddressed.has(conversation.patientQuestionTopicId ?? conversation.concernTopicId) ||
+            matchedTopicIds.includes(conversation.patientQuestionTopicId ?? conversation.concernTopicId);
           return [
             concernAlreadyResolved
               ? noFurtherQuestionsAudioSegment()

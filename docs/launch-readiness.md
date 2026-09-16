@@ -45,8 +45,12 @@ case-review records. Leave it false until every item below is evidenced.
 
 ## Supabase and Stripe live-mode test
 
-- [ ] Apply `supabase/migrations/0013_launch_billing_and_profile_hardening.sql`
-  before sending any live checkout traffic.
+- [ ] Back up the database and apply all migrations through `0017_launch_health.sql`.
+  Existing databases with 0001–0005 can use `supabase/setup_release_hardening.sql`.
+  Reconcile the former duplicate 0011 migration with the remote ledger before CLI pushes.
+- [ ] Confirm `launch_schema_ready()` is true, `/api/health` returns 200, ordinary
+  students cannot edit entitlements or insert attempts, and a real authenticated
+  practice and quiz completion can be saved and reloaded.
 - [ ] Confirm `STRIPE_PRICE_ID_MONTHLY` is A$13/month and
   `STRIPE_PRICE_ID_YEARLY` is A$130/year (plus the configured tax treatment).
 - [ ] Configure the production webhook for `/api/stripe/webhook` and subscribe
@@ -63,6 +67,8 @@ case-review records. Leave it false until every item below is evidenced.
   according to the documented policy.
 - [ ] Verify portal cancellation, payment-method updates, receipts, billing
   emails and accepted payment methods in the live Stripe account.
+- [ ] Test simultaneous checkout clicks, repeated webhook delivery, out-of-order
+  subscription events and replacement subscriptions against the actual Stripe account.
 
 ## Email, support and operations
 

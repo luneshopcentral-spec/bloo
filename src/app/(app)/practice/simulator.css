@@ -5439,3 +5439,32 @@
     display: none;
   }
 }
+
+/* Launch accessibility refinements. The dispensing form retains its original layout. */
+.fred-root .fred-assembly-stage,
+.fred-root .fred-counselling-stage { font-family: Arial, Helvetica, sans-serif; }
+.fred-root .fred-assembly-header h1 { font-size: 23px; font-weight: 700; }
+.fred-root .fred-assembly-stage .fred-stage-kicker,
+.fred-root .fred-assembly-header p,
+.fred-root .fred-assembly-section-heading p,
+.fred-root .fred-assembly-safety-note,
+.fred-root .fred-assembly-order,
+.fred-root .fred-pack-option-copy small,
+.fred-root .fred-pack-option-copy span,
+.fred-root .fred-assembly-reference-row span,
+.fred-root .fred-sticker-group-title span { font-size: 12px; line-height: 1.45; color: #475569; }
+.fred-root .fred-pack-option-copy strong,
+.fred-root .fred-assembly-section-heading h2,
+.fred-root .fred-assembly-reference-row strong,
+.fred-root .fred-sticker-group-title strong { font-size: 14px; line-height: 1.4; }
+.fred-root .fred-assembly-stage .fred-carton-controls button,
+.fred-root .fred-assembly-stage .fred-label-transform-controls button { min-height: 34px; font-size: 12px; }
+.fred-root .fred-assembly-stage [tabindex="0"]:focus-visible { outline: 3px solid #1d4ed8; outline-offset: 3px; }
+.fred-root .fred-label-chip.placed:not(.placed-on-face) { opacity: 1; }
+.fred-root .fred-chip-placed-flag { background: #166534; font-size: 10px; }
+.fred-root .tone-orange .fred-label-render.warning,
+.fred-root .fred-label-render.warning.tone-orange { --tone: #945b12; }
+.fred-root .fred-warning-chip-roll .fred-label-chip { min-width: 150px; min-height: 100px; }
+.fred-root .fred-warning-chip-roll .fred-label-render.warning .fred-warning-text { font: 11px/1.35 Arial, Helvetica, sans-serif; padding-bottom: 14px; }
+.fred-root .fred-warning-chip-roll .fred-label-render.warning .fred-warning-code { font-size: 10px; }
+.fred-root .fred-assembly-stage .fred-sticker-help { font-size: 12px; line-height: 1.4; }

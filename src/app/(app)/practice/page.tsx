@@ -1,7 +1,11 @@
 "use client";
 
-import { useState, useReducer, useEffect, useMemo, useCallback } from "react";
+import { useState, useRef, useReducer, useEffect, useMemo, useCallback } from "react";
 import "./simulator.css";
+import { useLocalDraft } from "@/hooks/useLocalDraft";
+import type { PracticeDraft } from "@/lib/practice/draft";
+import { PATIENT_SCRIPTS } from "../../../../supabase/seeds/patient-history";
+import type { ConversationMessage } from "@/lib/conversation/types";
 
 import { STATIC_CASES, ALL_WARNINGS } from "@/lib/cases/static-cases";
 import { applyCaseVariant } from "@/lib/cases/variants";
@@ -21,9 +25,10 @@ import { createClient } from "@/lib/supabase/client";
 import { findLocalDrugBySeedId, findLocalPrescriberByNumber } from "@/lib/directory/local-fallback";
 import { getCaseEditorialRecord } from "@/lib/governance/editorial";
 import type { PracticeMode } from "@/lib/practice/modes";
+import type { AttemptSubmission } from "@/lib/attempts/grade";
 import { persistCompletedAttempt } from "@/lib/attempts/persist";
 import { addCase1AssemblyChecks, type Case1AssemblySubmission } from "@/lib/assembly/case1";
-import { canPlayCase, isFreeCase, type CaseEntitlement } from "@/lib/entitlement/entitlement";
+import { canPlayCase, type CaseEntitlement } from "@/lib/entitlement/entitlement";
 
 import { TitleBar }            from "@/components/simulator/TitleBar";
 import { Toolbar }             from "@/components/simulator/Toolbar";
@@ -70,6 +75,18 @@ function normaliseTutorialEntry(value: string): string {
 }
 
 export default function PracticePage() {
+  const [userId, setUserId] = useState<string | null>(null);
+  const sessionRef = useRef<{ key: string; promise: Promise<string | null> } | null>(null);
+  const assemblyRef = useRef<Case1AssemblySubmission | null>(null);
+  const [assemblyDraft, setAssemblyDraft] = useState<Case1AssemblySubmission | null>(null);
+  const updateAssemblyDraft = useCallback((value: Case1AssemblySubmission) => { assemblyRef.current = value; setAssemblyDraft(value); }, []);
+  const [queuedAttempt, setQueuedAttempt] = useState<AttemptSubmission | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [restoring, setRestoring] = useState<PracticeDraft | null>(null);
+  const [transcript, setTranscript] = useState<ConversationMessage[]>([]);
+  const [initialTranscript, setInitialTranscript] = useState<ConversationMessage[]>([]);
+  const countedSessions = useRef(new Set<string>());
   const [stage, setStage]                         = useState<"dispensing" | "assembly" | "counselling">("dispensing");
   const [currentCaseIndex, setCurrentCaseIndex]   = useState(0);
   const [practiceMode, setPracticeMode]           = useState<PracticeMode>("practice");
@@ -133,6 +150,9 @@ export default function PracticePage() {
   const editorialRecord = getCaseEditorialRecord(current.id);
   const isCase1AssemblyPrototype = current.id === "case-1";
   const currentCaseLocked = !canPlayCase(current, entitlement);
+  const activeSessionKey = JSON.stringify([current.id, attemptSeed, practiceMode]);
+  const activeSessionKeyRef = useRef(activeSessionKey);
+  activeSessionKeyRef.current = activeSessionKey;
 
   function showStatus(text: string, tone: StatusTone = "info") {
     setStatusMessage(text);
@@ -143,17 +163,18 @@ export default function PracticePage() {
   // First visit: open the walkthrough until the student dismisses it.
   useEffect(() => {
     try {
-      if (!window.localStorage.getItem(ONBOARDING_STORAGE_KEY)) setOnboardingOpen(true);
+      if (userId && !window.localStorage.getItem(ONBOARDING_STORAGE_KEY + ":" + userId)) setOnboardingOpen(true);
     } catch {
       // Storage unavailable (private browsing) — skip auto-open.
     }
-  }, []);
+  }, [userId]);
 
   // Load the user's entitlement (paid / developer) once, to gate paid cases.
   useEffect(() => {
     const supabase = createClient();
     void supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) return;
+      setUserId(user.id);
       void supabase
         .from("profiles")
         .select("has_paid, role")
@@ -163,10 +184,58 @@ export default function PracticePage() {
     });
   }, []);
 
+  async function ensureSession(): Promise<string | null> {
+    const key = activeSessionKey;
+    if (sessionRef.current?.key === key) return sessionRef.current.promise;
+    const promise = fetch("/api/practice-session", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ caseId: current.id, seed: attemptSeed, mode: practiceMode }),
+    }).then(async (response) => response.ok ? (await response.json()).id as string : null).catch(() => null);
+    sessionRef.current = { key, promise };
+    const id = await promise;
+    // A case switch or draft restore may supersede this request while it is in flight.
+    if (sessionRef.current?.promise !== promise || activeSessionKeyRef.current !== key) return null;
+    setSessionId(id);
+    if (!id && sessionRef.current?.key === key) sessionRef.current = null;
+    return id;
+  }
+
+  useEffect(() => {
+    if (!userId) return;
+    try {
+      const raw = localStorage.getItem("dispenserx-pending-v2:" + userId);
+      if (raw) setQueuedAttempt(JSON.parse(raw));
+    } catch { /* Storage is optional. */ }
+  }, [userId]);
+
+  async function saveAttempt(input: AttemptSubmission) {
+    if (saving) return;
+    setSaving(true);
+    setQueuedAttempt(input);
+    try { localStorage.setItem("dispenserx-pending-v2:" + userId, JSON.stringify(input)); } catch {}
+    const persistence = await persistCompletedAttempt(input);
+    setSaving(false);
+    if (persistence.saved && persistence.result) {
+      setLastResult(persistence.result);
+      if (persistence.result.countsTowardProgress && !countedSessions.current.has(input.sessionId)) {
+        countedSessions.current.add(input.sessionId);
+        setSessionScore((previous) => ({ total: previous.total + 1, correct: previous.correct + Number(persistence.result!.passed) }));
+      }
+      draft.clear();
+      setQueuedAttempt(null);
+      try { localStorage.removeItem("dispenserx-pending-v2:" + userId); } catch {}
+      showStatus("Server-checked result saved. Review the feedback below.", persistence.result.passed ? "success" : "info");
+    } else {
+      setQueuedAttempt(input);
+      try { localStorage.setItem("dispenserx-pending-v2:" + userId, JSON.stringify(input)); } catch {}
+      showStatus(persistence.message ?? "Attempt queued. Retry saving when connected.", "error");
+    }
+  }
+
   function dismissOnboarding() {
     setOnboardingOpen(false);
     try {
-      window.localStorage.setItem(ONBOARDING_STORAGE_KEY, "seen");
+      if (userId) window.localStorage.setItem(ONBOARDING_STORAGE_KEY + ":" + userId, "seen");
     } catch {
       // Storage unavailable — the walkthrough will offer itself again next visit.
     }
@@ -235,6 +304,10 @@ export default function PracticePage() {
     setStage("dispensing");
     setPendingDispenseResult(null);
     setLastResult(null);
+    setSessionId(null);
+    setTranscript([]);
+    setInitialTranscript([]);
+    assemblyRef.current = null; setAssemblyDraft(null);
 
     setSelectedPatient(null);
     setPatientScripts([]);
@@ -263,7 +336,12 @@ export default function PracticePage() {
       .eq("patient_id", selectedPatient.id)
       .order("script_date", { ascending: false })
       .limit(20)
-      .then(({ data }) => setPatientScripts((data as PatientScript[]) ?? []));
+      .then(({ data }) => {
+        const bundled = (PATIENT_SCRIPTS[selectedPatient.seed_id ?? ""] ?? []).map((row, index) => ({ ...row, id: "local-history-" + index, patient_id: selectedPatient.id }));
+        const rows = new Map([...bundled, ...((data as PatientScript[]) ?? [])].map((row) => [row.script_date + row.drug, row]));
+        const dateKey = (value: string) => { const [d,m,y] = value.split("/").map(Number); return (y < 100 ? 2000 + y : y) * 10000 + m * 100 + d; };
+        setPatientScripts([...rows.values()].sort((a,b) => dateKey(b.script_date) - dateKey(a.script_date)).slice(0,20));
+      });
   }, [selectedPatient]);
 
   // ── Status nudge when pharmacist initials reach ≥2 chars ─────────
@@ -275,28 +353,33 @@ export default function PracticePage() {
 
   // ── Handlers ──────────────────────────────────────────────────────
   function handleCaseChange(n: number) {
+    if (saving || queuedAttempt) { showStatus("Save or discard the pending attempt before leaving this case.", "error"); return; }
     setGuidedTutorialActive(false);
     setAttemptSeed(Date.now());
     setCurrentCaseIndex(n);
   }
   function handleModeChange(mode: PracticeMode) {
+    if (saving || queuedAttempt) { showStatus("Save or discard the pending attempt before leaving this case.", "error"); return; }
     setGuidedTutorialActive(false);
     setPracticeMode(mode);
     handleClear();
     showStatus(`${mode[0].toUpperCase()}${mode.slice(1)} mode selected. A fresh attempt has started.`);
   }
   function handleNext() {
+    if (saving || queuedAttempt) { showStatus("Save or discard the pending attempt before leaving this case.", "error"); return; }
     setGuidedTutorialActive(false);
     setAttemptSeed(Date.now());
     setCurrentCaseIndex((i) => (i + 1) % STATIC_CASES.length);
   }
   function handleNextFromOverlay() {
+    if (saving || queuedAttempt) { showStatus("Save or discard the pending attempt before leaving this case.", "error"); return; }
     setGuidedTutorialActive(false);
     setAttemptSeed(Date.now());
     setCurrentCaseIndex((i) => (i + 1) % STATIC_CASES.length);
   }
 
   function handleClear() {
+    if (saving || queuedAttempt) { showStatus("Save or discard the pending attempt before leaving this case.", "error"); return; }
     // A cleared attempt is a fresh attempt: derive a new variant so the script
     // details differ, and pre-fill the form from that variant.
     const seed = Date.now();
@@ -308,6 +391,9 @@ export default function PracticePage() {
     dispatch({ type: "SET_FIELD", field: "scriptType", value: variant.scriptType });
     setSelectedWarnings(variant.items.map(() => new Set()));
     setCurrentItem(0);
+    setSelectedPatient(null);
+    setPatientScripts([]);
+    assemblyRef.current = null; setAssemblyDraft(null);
     setSelectedDrugs(variant.items.map(() => null));
     setSelectedPrescriber(null);
     setClinicalDecision(null);
@@ -317,10 +403,19 @@ export default function PracticePage() {
     setStage("dispensing");
     setPendingDispenseResult(null);
     setLastResult(null);
+    draft.clear();
+    setSessionId(null);
+    setTranscript([]);
+    setInitialTranscript([]);
     showStatus("Form cleared. A fresh attempt with new script details has started.");
   }
 
   async function handleShowAnswers() {
+    if (practiceMode === "exam") return;
+    const sessionId = await ensureSession();
+    if (!sessionId) { showStatus("Cannot start a tracked session. Please retry when the practice service is available.", "error"); return; }
+    const response = await fetch("/api/practice-session", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId }) }).catch(() => null);
+    if (!response?.ok) { showStatus("Could not record assisted mode. Please retry.", "error"); return; }
     dispatch({ type: "FILL_FROM_CASE", case: current });
     setSelectedWarnings(current.items.map((item) => new Set(item.correctWarnings)));
     setClinicalDecision(current.expectedDecision);
@@ -350,7 +445,9 @@ export default function PracticePage() {
     );
   }
 
-  function handleDispense() {
+  async function handleDispense() {
+    if (queuedAttempt) { showStatus("Save the pending attempt before starting another.", "error"); return; }
+    if (!await ensureSession()) { showStatus("Practice tracking is unavailable. Your form is kept; retry shortly.", "error"); return; }
     if (formState.pharmacistInitials.trim().length < 2) {
       setInitialsError(true);
       showStatus("Pharmacist initials required before dispensing.", "error");
@@ -408,6 +505,7 @@ export default function PracticePage() {
   }
 
   function handleAssemblyComplete(submission: Case1AssemblySubmission) {
+    assemblyRef.current = submission;
     const assembledWarnings = current.items.map((_, index) =>
       index === 0 ? new Set(submission.warningLabels) : selectedWarnings[index] ?? new Set<string>()
     );
@@ -438,12 +536,7 @@ export default function PracticePage() {
     const countsTowardProgress = completeResult.countsTowardProgress && practiceMode !== "learn";
     const recordedResult = { ...completeResult, countsTowardProgress };
     setLastResult(recordedResult);
-    if (countsTowardProgress) {
-      setSessionScore((prev) => ({
-        correct: prev.correct + (completeResult.passed ? 1 : 0),
-        total: prev.total + 1,
-      }));
-    }
+
     if (completeResult.assisted) {
       showStatus("Assisted dispensing and counselling review complete — not counted in the session score.");
     } else if (completeResult.passed) {
@@ -453,20 +546,15 @@ export default function PracticePage() {
     }
     setOverlayOpen(true);
 
-    void persistCompletedAttempt({
-      caseId: current.id,
-      caseVersion: editorialRecord.version,
-      mode: practiceMode,
-      result: recordedResult,
-      countsTowardProgress,
-      caseIsFree: isFreeCase(current),
-    }).then((persistence) => {
-      if (persistence.saved) return;
-      if (persistence.reason === "schema_update_required") {
-        showStatus("Attempt completed, but cloud progress needs the latest Supabase migration (0007_attempt_progress.sql). Results remain available in this session.", "error");
-      } else if (persistence.reason === "database_error") {
-        showStatus("Attempt completed, but cloud progress could not be saved. Results remain available in this session.", "error");
-      }
+    void ensureSession().then((sessionId) => {
+      if (!sessionId) { showStatus("Result is provisional. A tracked session could not be created.", "error"); return; }
+      void saveAttempt({
+        sessionId, formState, selectedWarnings: selectedWarnings.map((set) => [...set]),
+        drugSeedIds: selectedDrugs.map((drug) => drug?.seed_id ?? null),
+        prescriberNumber: selectedPrescriber?.prescriber_number ?? null,
+        patient: selectedPatient, decision: clinicalDecision, assembly: assemblyRef.current,
+        transcript: counsellingResult.transcript.map(({ id, role, text }) => ({ id, role, text })),
+      });
     });
   }
 
@@ -556,6 +644,40 @@ export default function PracticePage() {
     )
   );
 
+  const draft = useLocalDraft<PracticeDraft>({
+    storageKey: userId ? "dispenserx-draft-v3:" + userId : null,
+    enabled: hasAttemptProgress && !lastResult && !restoring,
+    value: { caseIndex: currentCaseIndex, caseVersion: editorialRecord.version, seed: attemptSeed, mode: practiceMode, stage, assisted: answersRevealed, sessionId, formState, patient: selectedPatient, drugSeedIds: selectedDrugs.map((drug) => drug?.seed_id ?? null), prescriberNumber: selectedPrescriber?.prescriber_number ?? null, warnings: selectedWarnings.map((w) => [...w]), decision: clinicalDecision, assembly: assemblyDraft, transcript },
+  });
+
+  function resumeDraft() {
+    const saved = draft.candidate;
+    if (!saved || !STATIC_CASES[saved.caseIndex] || saved.caseVersion !== getCaseEditorialRecord(STATIC_CASES[saved.caseIndex].id).version || !Array.isArray(saved.formState?.items) || !Array.isArray(saved.drugSeedIds) || !Array.isArray(saved.warnings) || !Array.isArray(saved.transcript)) {
+      draft.clear(); showStatus("This draft is outdated or unreadable. Please start a fresh attempt.", "error"); return;
+    }
+    setOnboardingOpen(false); setGuidedTutorialActive(false);
+    setCurrentCaseIndex(saved.caseIndex); setAttemptSeed(saved.seed); setPracticeMode(saved.mode); setRestoring(saved); draft.clear();
+  }
+  useEffect(() => {
+    if (!restoring) return;
+    const saved = restoring;
+    const c = applyCaseVariant(STATIC_CASES[saved.caseIndex], saved.seed);
+    const drugs = saved.drugSeedIds.map((id) => id ? findLocalDrugBySeedId(id) : null);
+    const prescriber = saved.prescriberNumber ? findLocalPrescriberByNumber(saved.prescriberNumber) : null;
+    dispatch({ type: "RESTORE", state: saved.formState });
+    setSelectedPatient(saved.patient); setSelectedDrugs(drugs); setSelectedPrescriber(prescriber);
+    setSelectedWarnings(saved.warnings.map((w) => new Set(w))); setClinicalDecision(saved.decision); setAnswersRevealed(saved.assisted);
+    assemblyRef.current = saved.assembly; setAssemblyDraft(saved.assembly); setSessionId(saved.sessionId);
+    sessionRef.current = saved.sessionId ? { key: JSON.stringify([c.id, saved.seed, saved.mode]), promise: Promise.resolve(saved.sessionId) } : null;
+    setTranscript(saved.transcript); setInitialTranscript(saved.transcript);
+    if (saved.stage === "counselling") {
+      let result = validateDispense({ caseData: c, formState: saved.formState, selectedPatient: saved.patient, selectedDrugs: drugs, selectedPrescriber: prescriber, selectedWarnings: saved.warnings.map((w) => new Set(w)), decision: saved.decision, assisted: saved.assisted });
+      if (c.id === "case-1" && saved.assembly) result = addCase1AssemblyChecks(result, saved.assembly);
+      setPendingDispenseResult(result); setAttemptSubmitted(true);
+    }
+    setStage(saved.stage); setRestoring(null); showStatus("Draft restored on this device.", "success");
+  }, [restoring]);
+
   useEffect(() => {
     if (!guidedTutorialActive) return;
 
@@ -643,12 +765,14 @@ export default function PracticePage() {
         </div>
 
         <div className="fred-training-banner" role="note">
-          <span>Training simulation — use current PBS, product information and jurisdictional references in practice.</span>
+          <span>Simulated encounter: {current.date}. Dates and history belong to this fictional case. Use current references in practice.</span>
           <span className="fred-editorial-status">
-            Case {editorialRecord.version} · pharmacist and jurisdiction review required before paid release
+            Case {editorialRecord.version} · <a href="/account#report" target="_blank" rel="noreferrer">Report a problem</a>
           </span>
         </div>
 
+        {queuedAttempt && <div className="fred-training-banner" role="status"><span>An attempt is waiting to save on this device.</span><button type="button" disabled={saving} onClick={() => void saveAttempt(queuedAttempt)}>{saving ? "Saving…" : "Retry save"}</button><button type="button" disabled={saving} onClick={() => { if (window.confirm("Discard this unsaved result? It will not appear in your cloud progress.")) { setQueuedAttempt(null); try { localStorage.removeItem("dispenserx-pending-v2:" + userId); } catch {} } }}>Discard unsaved result</button></div>}
+        {draft.candidate && <div className="fred-training-banner" role="status"><span>You have an unfinished practice session on this device.</span><button type="button" onClick={resumeDraft}>Resume draft</button><button type="button" onClick={draft.clear}>Discard draft</button></div>}
         <TitleBar />
         {practiceMode === "exam" && (
           <ExamStopwatch resetKey={`${current.id}-${attemptResetCounter}`} />
@@ -787,6 +911,8 @@ export default function PracticePage() {
             formState={formState}
             patientName={patientName}
             decision={clinicalDecision}
+            initialAssembly={assemblyDraft}
+            onDraftChange={updateAssemblyDraft}
             initialWarnings={currentWarnings}
             answersRevealed={answersRevealed}
             onBack={handleAssemblyBack}
@@ -797,6 +923,8 @@ export default function PracticePage() {
         ) : (
           <CounsellingStage
             key={current.id}
+            initialTranscript={initialTranscript}
+            onTranscriptChange={setTranscript}
             conversation={currentConversation}
             decision={clinicalDecision}
             onComplete={handleCounsellingComplete}

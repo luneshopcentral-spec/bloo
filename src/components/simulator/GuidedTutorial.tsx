@@ -195,7 +195,7 @@ function definitions(caseData: PracticeCase): Record<GuidedTutorialStep, Tutoria
       eyebrow: "Stage 2 · Workbench",
       title: "Apply and rotate the warning labels",
       body:
-        "Apply Take with food or milk, Complete the full course, and May cause nausea. Labels must not overlap or cover carton information.",
+        "Apply Complete the full course and May cause nausea. Labels must not overlap or cover carton information.",
       instruction:
         "Place the warnings on clear areas. Select one placed warning and use Turn 90° so you learn the rotation control.",
       targets: ['[data-tour="warning-label-tray"]', '[data-tour="carton-bench"]'],

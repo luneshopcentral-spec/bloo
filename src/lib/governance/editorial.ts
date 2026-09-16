@@ -25,7 +25,7 @@ export interface CaseEditorialRecord {
   }>;
 }
 
-const CONTENT_DATE = "2026-07-15";
+const CONTENT_DATE = "2026-09-16";
 const DRAFT_REVIEW = {
   status: "review_required" as const,
   reviewer: null,
@@ -95,7 +95,7 @@ const CASE_REFERENCES: Record<string, CaseEditorialRecord["references"]> = {
 
 export const CASE_EDITORIAL_RECORDS: CaseEditorialRecord[] = STATIC_CASES.map((caseData) => ({
   caseId: caseData.id,
-  version: "0.3.0-draft",
+  version: "0.4.0-draft",
   jurisdiction: "Victoria, Australia",
   contentUpdatedAt: CONTENT_DATE,
   nextReviewDue: "Before paid release or any source change",
@@ -116,6 +116,10 @@ export function getPaidReleaseReadiness(): {
 } {
   const blockers = CASE_EDITORIAL_RECORDS.flatMap((record) => {
     const caseBlockers: string[] = [];
+    if (record.version.includes("draft")) caseBlockers.push(`${record.caseId}: draft content version`);
+    for (const review of [record.clinicalReview, record.legalReview]) {
+      if (review.status === "approved" && (!review.reviewer?.trim() || !review.reviewedAt || !Number.isFinite(Date.parse(review.reviewedAt)))) caseBlockers.push(`${record.caseId}: approval needs reviewer and valid review date`);
+    }
     if (record.references.length === 0) caseBlockers.push(`${record.caseId}: no references`);
     if (record.clinicalReview.status !== "approved") caseBlockers.push(`${record.caseId}: pharmacist clinical review required`);
     if (record.legalReview.status !== "approved") caseBlockers.push(`${record.caseId}: legal/jurisdiction review required`);

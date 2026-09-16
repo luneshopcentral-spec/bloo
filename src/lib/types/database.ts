@@ -9,6 +9,24 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
+      feedback: {
+        Row: { id: string; user_id: string; kind: string; case_id: string | null; message: string; status: string; created_at: string };
+        Insert: { user_id: string; kind: string; case_id?: string | null; message: string };
+        Update: { status?: string };
+        Relationships: [];
+      };
+      quiz_attempts: {
+        Row: { id: string; user_id: string; case_id: string; version: string; mode: "practice" | "challenge"; answers: Json; percentage: number; created_at: string };
+        Insert: { id: string; user_id: string; case_id: string; version: string; mode: "practice" | "challenge"; answers: Json; percentage: number };
+        Update: { answers?: Json };
+        Relationships: [];
+      };
+      practice_sessions: {
+        Row: { id: string; user_id: string; case_id: string; case_version: string; seed: number; mode: "learn" | "practice" | "exam"; assisted: boolean; created_at: string };
+        Insert: { id?: string; user_id: string; case_id: string; case_version: string; seed: number; mode: "learn" | "practice" | "exam"; assisted?: boolean };
+        Update: { assisted?: boolean };
+        Relationships: [];
+      };
       profiles: {
         Row: {
           id: string;
@@ -152,6 +170,7 @@ export interface Database {
           mode: "learn" | "practice" | "exam";
           assisted: boolean;
           counts_toward_progress: boolean;
+          server_verified?: boolean;
           critical_failures: string[];
           competencies: Json;
           created_at: string;
@@ -168,6 +187,7 @@ export interface Database {
           mode: "learn" | "practice" | "exam";
           assisted?: boolean;
           counts_toward_progress?: boolean;
+          server_verified?: boolean;
           critical_failures?: string[];
           competencies?: Json;
           created_at?: string;
@@ -184,6 +204,7 @@ export interface Database {
           mode?: "learn" | "practice" | "exam";
           assisted?: boolean;
           counts_toward_progress?: boolean;
+          server_verified?: boolean;
           critical_failures?: string[];
           competencies?: Json;
           created_at?: string;
@@ -411,7 +432,10 @@ export interface Database {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      launch_schema_ready: { Args: Record<string, never>; Returns: boolean };
+      consume_request_limit: { Args: { request_key: string; maximum: number }; Returns: boolean };
+      acquire_operation_lock: { Args: { lock_key: string; lock_owner: string }; Returns: boolean };
+      release_operation_lock: { Args: { lock_key: string; lock_owner: string }; Returns: undefined };
     };
     Enums: {
       [_ in never]: never;

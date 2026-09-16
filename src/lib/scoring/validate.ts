@@ -4,7 +4,7 @@ import type { Patient } from "@/lib/types/patient";
 import type { DrugRow } from "@/lib/types/drug";
 import type { Prescriber } from "@/lib/types/prescriber";
 import { formatPrescriberName } from "@/lib/types/prescriber";
-import { expandAbbrevs } from "./abbreviations";
+import { directionsMatch } from "./directions";
 import type { CheckResult, DispenseResult } from "./types";
 import { dispensePassThreshold } from "./types";
 
@@ -36,42 +36,6 @@ function parseQuantity(value: string): ParsedQuantity | null {
   };
 }
 
-const NUMBER_WORDS: Record<string, string> = {
-  one: "1",
-  two: "2",
-  three: "3",
-  four: "4",
-  five: "5",
-  six: "6",
-};
-
-function directionTokens(value: string): string[] {
-  const expanded = expandAbbrevs(value).toLowerCase();
-  return expanded
-    .replace(/[’']/g, "")
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((token) => NUMBER_WORDS[token] ?? token);
-}
-
-function hasNegation(value: string): boolean {
-  return /\b(?:no|not|never|avoid|without|dont|do not)\b/i.test(value);
-}
-
-function directionsMatch(expected: string, actual: string): boolean {
-  if (!actual.trim()) return false;
-  if (hasNegation(expected) !== hasNegation(actual)) return false;
-
-  const expectedTokens = directionTokens(expected);
-  const actualTokens = new Set(directionTokens(actual));
-  if (expectedTokens.length === 0) return false;
-
-  const matched = expectedTokens.filter((token) => actualTokens.has(token)).length;
-  return matched / expectedTokens.length >= 0.8;
-}
-
 // First-4-char normalisation handles amoxicillin vs amoxycillin spelling variants.
 function normFirst4(s: string): string {
   return s.toLowerCase().replace(/[^a-z]/g, "").slice(0, 4);
@@ -92,6 +56,10 @@ export function validateDispense({
   assisted = false,
 }: ValidateInput): DispenseResult {
   const checks: CheckResult[] = [];
+  const scriptPassed = formState.scriptDate.trim() === caseData.date && formState.scriptType === caseData.scriptType;
+  checks.push({ category: "script_details", label: "Prescription date and type", passed: scriptPassed, isCritical: true,
+    expected: `${caseData.date} · ${caseData.scriptType}`, actual: `${formState.scriptDate || "(empty)"} · ${formState.scriptType}`,
+    detail: scriptPassed ? "Date and script type match the simulated encounter." : "Transcribe the date and script type from this prescription; do not substitute today's date." });
 
   // ── 0. Patient ────────────────────────────────────────────────────
   const spec = caseData.patientLookup;
@@ -115,7 +83,7 @@ export function validateDispense({
       const expAddr = normStr(exp.address);
       const gotAddr = normStr(selectedPatient.address);
       const addressOk =
-        !exp.address || gotAddr.includes(expAddr) || expAddr.includes(gotAddr);
+        !exp.address || (Boolean(gotAddr) && gotAddr === expAddr);
       const medicareOk =
         normDigits(selectedPatient.medicare_card) === normDigits(exp.medicareCard);
 
@@ -150,7 +118,7 @@ export function validateDispense({
             ? `${label} expected "${expected}", got "${actual ?? "(empty)"}"`
             : false
         ),
-        selectedPatient.date_of_birth?.trim() && exp.dateOfBirth &&
+        exp.dateOfBirth &&
           normStr(selectedPatient.date_of_birth) !== normStr(exp.dateOfBirth)
           ? `date of birth expected "${exp.dateOfBirth}", got "${selectedPatient.date_of_birth}"`
           : false,
@@ -307,7 +275,7 @@ export function validateDispense({
       qtyExpected !== null &&
       qtyStudent !== null &&
       qtyStudent.amount === qtyExpected.amount &&
-      (!qtyStudent.unit || !qtyExpected.unit || qtyStudent.unit === qtyExpected.unit);
+      (!qtyStudent.unit || qtyStudent.unit === qtyExpected.unit);
     checks.push({
       category: "quantity",
       label: `${prefix}Quantity`,

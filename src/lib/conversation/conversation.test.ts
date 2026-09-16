@@ -336,9 +336,9 @@ describe("natural student phrasing across every case", () => {
   // conversation still works when the semantic model is unavailable.
   const PROBES: Array<[string, string, string]> = [
     ["case-1", "What this does is kill the bacteria causing your infection.", "purpose"],
-    ["case-1", "Pop one capsule three times daily.", "directions"],
+    ["case-1", "Pop one capsule four times a day.", "directions"],
     ["case-1", "Make sure you take all of them, don't stop when you feel better.", "complete_course"],
-    ["case-1", "If your stomach gets upset, have it with a bit of food.", "nausea_advice"],
+    ["case-1", "It can make you feel a bit sick — take it on an empty stomach and tell us if the nausea is troublesome.", "nausea_advice"],
     ["case-1", "If your face swells up or you struggle to breathe, get to a hospital.", "allergic_reaction_safety"],
     ["case-1", "Can you tell me how you'll take these when you get home?", "teach_back"],
     ["case-1", "Any questions for me?", "invite_questions"],
@@ -442,7 +442,7 @@ describe("deterministic clinical gates", () => {
     const conversation = getConversationCase("case-1");
     const matches = classifyWithRules(
       conversation,
-      "Take one capsule three times a day and make sure you finish the full course."
+      "Take one capsule four times a day and make sure you finish the full course."
     );
     const ids = matches.map((match) => match.topicId);
     expect(ids).toContain("directions");
@@ -534,7 +534,7 @@ describe("combined marking", () => {
   it("fails counselling when a critical topic is missing despite a high score", () => {
     const conversation = getConversationCase("case-1");
     const addressed = conversation.topics
-      .filter((topic) => topic.id !== "directions")
+      .filter((topic) => topic.id !== "explain_hold")
       .map((topic) => topic.id);
     const result = scoreCounselling({
       conversation,
@@ -544,7 +544,7 @@ describe("combined marking", () => {
       matcherMode: "semantic",
     });
     expect(result.pointsEarned).toBeGreaterThanOrEqual(result.passThreshold);
-    expect(result.criticalFailures).toContain("directions");
+    expect(result.criticalFailures).toContain("explain_hold");
     expect(result.passed).toBe(false);
   });
 

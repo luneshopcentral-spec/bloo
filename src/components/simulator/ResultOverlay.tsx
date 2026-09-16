@@ -16,9 +16,10 @@ interface ResultRowProps {
   detail: string;
   passed: boolean;
   warning?: boolean;
+  evidence?: string[];
 }
 
-function ResultRow({ label, detail, passed, warning }: ResultRowProps) {
+function ResultRow({ label, detail, passed, warning, evidence }: ResultRowProps) {
   const icon = warning ? "⚠️" : passed ? "✅" : "❌";
 
   return (
@@ -27,6 +28,7 @@ function ResultRow({ label, detail, passed, warning }: ResultRowProps) {
       <div>
         <strong>{label}</strong>
         <p>{detail}</p>
+        {evidence?.length ? <details><summary>What you said</summary>{evidence.map((quote, index) => <blockquote key={index}>{quote}</blockquote>)}</details> : null}
       </div>
     </div>
   );
@@ -192,6 +194,7 @@ export function ResultOverlay({
                   key={`counselling-${check.id}`}
                   label={check.label}
                   detail={check.detail}
+                  evidence={check.evidence}
                   passed={check.passed}
                 />
               ))}

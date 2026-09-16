@@ -21,6 +21,8 @@ export interface ConversationTopic {
   patientReplies: string[];
   repeatReply?: string;
   feedback?: string;
+  /** Optional discussion topics do not become requirements for this disposition. */
+  assessed?: boolean;
 }
 
 export interface ConversationResponseIntent {
@@ -56,6 +58,8 @@ export interface ConversationCase {
   responseIntents: ConversationResponseIntent[];
   topics: ConversationTopic[];
   unsafeAdviceRules: UnsafeAdviceRule[];
+  disposition?: "dispense" | "hold_contact_prescriber" | "do_not_supply";
+  patientQuestionTopicId?: string;
 }
 
 export interface SemanticCandidate {
@@ -89,6 +93,7 @@ export interface CounsellingCheck {
   passed: boolean;
   isCritical: boolean;
   detail: string;
+  evidence?: string[];
 }
 
 export interface CounsellingResult {

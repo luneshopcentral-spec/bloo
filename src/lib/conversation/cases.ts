@@ -4,6 +4,7 @@ import type {
   ConversationTopic,
   UnsafeAdviceRule,
 } from "./types";
+import { refineConversationCases } from "./refine-cases";
 
 // Several cases require the student to withhold supply and go back to the
 // prescriber. Students phrase that many ways ("I can't hand this over",
@@ -435,22 +436,22 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
         category: "clinical_counselling",
         critical: true,
         examples: [
-          "Take one capsule three times a day.",
-          "The label says one capsule three times daily.",
+          "Take one capsule four times a day.",
+          "The label says one capsule four times daily, every six hours.",
         ],
         fallbackPatterns: [
           "\\b(?:take|use)\\b.*\\b(?:capsule|erythromycin)\\b",
-          "\\bthree times (?:a|per) day\\b|\\bthree times daily\\b|\\btds\\b",
-          "\\bevery (?:8|eight) hours\\b",
+          "\\bfour times (?:a|per) day\\b|\\bfour times daily\\b|\\bqid\\b",
+          "\\bevery (?:6|six) hours\\b",
         ],
         requiredPatternGroups: [
           ["\\b(?:one|1)\\b"],
-          ["\\bthree times (?:a|per) day\\b", "\\bthree times daily\\b", "\\btds\\b", "\\bevery (?:8|eight) hours\\b"],
+          ["\\bfour times (?:a|per) day\\b", "\\bfour times daily\\b", "\\bqid\\b", "\\bevery (?:6|six) hours\\b"],
         ],
-        forbiddenPatterns: ["\\b(?:two|2|four|4) capsules?\\b", "\\b(?:once|twice) daily\\b"],
+        forbiddenPatterns: ["\\b(?:two|2|three|3) capsules?\\b", "\\b(?:once|twice|three times) (?:a |per )?daily?\\b", "\\btds\\b"],
         patientReplies: [
-          "One capsule three times a day. Okay.",
-          "Got it — one capsule, three times each day.",
+          "One capsule four times a day. Okay.",
+          "Got it — one capsule, four times each day, about every six hours.",
         ],
       },
       {
@@ -477,22 +478,26 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
       },
       {
         id: "nausea_advice",
-        label: "Explain nausea and practical administration advice",
+        label: "Explain nausea and administration timing",
         category: "clinical_counselling",
+        // These enteric-coated erythromycin capsules are best taken on an empty
+        // stomach (about an hour before food) for absorption. Nausea is common;
+        // the advice is to contact the pharmacy if it is troublesome rather than
+        // to take the capsules with food, which reduces absorption.
         examples: [
-          "It may cause nausea, and taking it with food or milk may help.",
-          "You can take it with food if it upsets your stomach.",
+          "It can cause some nausea. Take it on an empty stomach, and let us know if the nausea is troublesome.",
+          "This medicine may upset your stomach. If it is a problem, contact the pharmacy rather than changing how you take it.",
         ],
         fallbackPatterns: [
           "\\b(?:nausea|nauseous|queasy|sick)\\w*\\b",
           "\\b(?:upset|unsettl|irritat)\\w*\\b.*\\b(?:stomach|tummy|gut)\\b",
           "\\b(?:stomach|tummy|gut)\\b.*\\b(?:upset|unsettl|irritat)\\w*\\b",
-          "\\b(?:food|milk|meal|something to eat)\\b.*\\b(?:nausea|stomach|tummy|sick|take|have)\\b",
-          "\\b(?:take|have) (?:it|them|these)\\b.*\\b(?:with|after)\\b.*\\b(?:food|milk|meal)\\b",
+          "\\bempty stomach\\b",
+          "\\b(?:before|without) (?:food|a meal|meals|eating)\\b",
         ],
         patientReplies: [
-          "I’ll try it with food if my stomach feels unsettled.",
-          "Good to know I can have it with a meal if it makes me queasy.",
+          "Okay, I’ll take it on an empty stomach and tell you if it makes me feel sick.",
+          "Right, I’ll let the pharmacy know if the nausea becomes a problem.",
         ],
       },
       {
@@ -517,7 +522,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
           "Understood — swelling or breathing trouble means I get help immediately.",
         ],
       },
-      ...closingTopics("I’ll take one capsule three times each day and finish the prescribed course."),
+      ...closingTopics("I’ll take one capsule four times each day and finish the prescribed course."),
     ],
     unsafeAdviceRules: withCommonUnsafe(
       {
@@ -2184,6 +2189,8 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
     ),
   },
 };
+
+refineConversationCases(CONVERSATION_CASES);
 
 export function getConversationCase(caseId: string): ConversationCase {
   const conversation = CONVERSATION_CASES[caseId];

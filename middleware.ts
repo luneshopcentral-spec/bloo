@@ -33,13 +33,15 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Protected routes: redirect to /sign-in if not authenticated
-  const protectedPaths = ["/dashboard", "/practice"];
+  const protectedPaths = ["/dashboard", "/practice", "/quiz", "/account", "/admin"];
   const isProtected = protectedPaths.some((p) => pathname.startsWith(p));
 
   if (isProtected && !user) {
     const url = request.nextUrl.clone();
     url.pathname = "/sign-in";
-    return NextResponse.redirect(url);
+    const redirectResponse = NextResponse.redirect(url);
+    supabaseResponse.cookies.getAll().forEach((cookie) => redirectResponse.cookies.set(cookie));
+    return redirectResponse;
   }
 
   // Auth routes: redirect to /dashboard if already authenticated
@@ -49,7 +51,9 @@ export async function middleware(request: NextRequest) {
   if (isAuth && user) {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
-    return NextResponse.redirect(url);
+    const redirectResponse = NextResponse.redirect(url);
+    supabaseResponse.cookies.getAll().forEach((cookie) => redirectResponse.cookies.set(cookie));
+    return redirectResponse;
   }
 
   return supabaseResponse;
@@ -57,6 +61,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|wasm|onnx|mp3|wav|ico|woff2|js|map)$).*)",
   ],
 };
