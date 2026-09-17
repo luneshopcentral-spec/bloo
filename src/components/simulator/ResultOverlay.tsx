@@ -16,9 +16,10 @@ interface ResultRowProps {
   detail: string;
   passed: boolean;
   warning?: boolean;
+  evidence?: string[];
 }
 
-function ResultRow({ label, detail, passed, warning }: ResultRowProps) {
+function ResultRow({ label, detail, passed, warning, evidence }: ResultRowProps) {
   const icon = warning ? "⚠️" : passed ? "✅" : "❌";
 
   return (
@@ -27,6 +28,7 @@ function ResultRow({ label, detail, passed, warning }: ResultRowProps) {
       <div>
         <strong>{label}</strong>
         <p>{detail}</p>
+        {evidence?.length ? <details><summary>What you said</summary>{evidence.map((quote, index) => <blockquote key={index}>{quote}</blockquote>)}</details> : null}
       </div>
     </div>
   );
@@ -192,6 +194,7 @@ export function ResultOverlay({
                   key={`counselling-${check.id}`}
                   label={check.label}
                   detail={check.detail}
+                  evidence={check.evidence}
                   passed={check.passed}
                 />
               ))}
@@ -202,7 +205,7 @@ export function ResultOverlay({
             <strong>Conversation assessment:</strong>{" "}
             {result.counselling.matcherMode === "semantic"
               ? "Local semantic matching plus deterministic clinical safety rules."
-              : "Expanded local language matching plus deterministic clinical safety rules."}
+              : "Conversation history and case-specific interpretation, shared by the patient and final marking. Safety findings remain visible even if advice is later corrected."}
             {` ${result.counselling.turns} student turn${result.counselling.turns === 1 ? "" : "s"} assessed.`}
           </div>
 

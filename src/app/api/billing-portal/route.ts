@@ -1,3 +1,5 @@
+import { isSameOrigin } from "@/lib/security/request";
+import { allowRequest } from "@/lib/security/rate-limit";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getStripe, siteUrl } from "@/lib/stripe/server";
@@ -8,6 +10,7 @@ export const runtime = "nodejs";
  * their subscription. Requires the Customer Portal to be enabled in the Stripe
  * dashboard (Settings → Billing → Customer portal). Plain form POST. */
 export async function POST(req: Request) {
+  if (!isSameOrigin(req)) return NextResponse.json({ error: "Invalid origin" }, { status: 403 });
   const baseUrl = siteUrl(req.url);
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -15,6 +18,7 @@ export async function POST(req: Request) {
     return NextResponse.redirect(`${baseUrl}/sign-in`, { status: 303 });
   }
 
+  if (!await allowRequest(user.id, "billing", 20)) return NextResponse.json({ error: "Please retry later." }, { status: 429 });
   const { data: profileRow, error: profileError } = await supabase
     .from("profiles")
     .select("stripe_customer_id")

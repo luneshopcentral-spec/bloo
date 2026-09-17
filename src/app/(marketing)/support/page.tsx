@@ -31,7 +31,7 @@ export default function SupportPage() {
             </>
           ) : (
             <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
-              The monitored support inbox has not been configured. Production paid checkout is blocked until <code>NEXT_PUBLIC_SUPPORT_EMAIL</code> is set.
+              Email support is not available yet. Signed-in users can <Link href="/account#report" className="font-semibold underline">submit a report from their account</Link>. Paid access remains closed.
             </div>
           )}
         </section>
@@ -40,7 +40,7 @@ export default function SupportPage() {
           <Clock3 className="h-7 w-7 text-emerald-700" aria-hidden="true" />
           <h2 className="mt-4 text-xl font-semibold text-slate-900">Beta response target</h2>
           <p className="mt-2 text-sm leading-6 text-slate-600">
-            The operator monitors support and aims to reply {SITE_CONFIG.supportResponseTime}.
+            {email ? `The operator aims to reply ${SITE_CONFIG.supportResponseTime}.` : "A support response time has not yet been confirmed for this preview."}
             Billing, account lockout and privacy requests are prioritised.
           </p>
         </section>

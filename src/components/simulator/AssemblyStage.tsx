@@ -31,6 +31,8 @@ interface AssemblyStageProps {
   initialWarnings: Set<string>;
   answersRevealed: boolean;
   onBack: () => void;
+  initialAssembly?: Case1AssemblySubmission | null;
+  onDraftChange?: (draft: Case1AssemblySubmission) => void;
   onComplete: (submission: Case1AssemblySubmission) => void;
   guidedTutorial?: boolean;
   onGuidedAction?: (action: AssemblyGuidedAction) => void;
@@ -182,19 +184,23 @@ export function AssemblyStage({
   initialWarnings,
   answersRevealed,
   onBack,
+  initialAssembly,
+  onDraftChange,
   onComplete,
   guidedTutorial = false,
   onGuidedAction,
 }: AssemblyStageProps) {
-  const [selectedPackId, setSelectedPackId] = useState<string | null>(null);
+  const [selectedPackId, setSelectedPackId] = useState<string | null>(initialAssembly?.packId || null);
   const [activeFace, setActiveFace] = useState<PackFace>("front");
   const [armedSticker, setArmedSticker] = useState<StickerToken | null>(null);
-  const [mainLabelPlacement, setMainLabelPlacement] = useState<StickerPlacement | null>(null);
+  const [mainLabelPlacement, setMainLabelPlacement] = useState<StickerPlacement | null>(initialAssembly?.mainLabelPlacement ?? null);
   const [warningPlacements, setWarningPlacements] = useState<Record<string, StickerPlacement>>(() =>
-    initialWarningPlacements(initialWarnings, answersRevealed)
+    initialAssembly?.warningPlacements ?? initialWarningPlacements(initialWarnings, answersRevealed)
   );
   const [dragToken, setDragToken] = useState<StickerToken | null>(null);
   const [ghost, setGhost] = useState<{ x: number; y: number } | null>(null);
+
+  useEffect(() => { onDraftChange?.({ packId: selectedPackId ?? "", mainLabelPlacement, warningLabels: Object.keys(warningPlacements), warningPlacements }); }, [selectedPackId, mainLabelPlacement, warningPlacements, onDraftChange]);
 
   const faceRef = useRef<HTMLDivElement>(null);
   const dragState = useRef<{ token: StickerToken; startX: number; startY: number; moved: boolean } | null>(null);
@@ -351,6 +357,28 @@ export function AssemblyStage({
     applySticker(armedSticker, placementFromPoint(event.clientX, event.clientY, faceRect, activeFace, stickerKind(armedSticker), rotation));
   }
 
+  function keyboardSticker(event: React.KeyboardEvent, token: StickerToken) {
+    if (!selectedPack || (event.target as HTMLElement).tagName === "BUTTON") return;
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault(); event.stopPropagation(); setArmedSticker(token); faceRef.current?.focus();
+    }
+  }
+  function keyboardFace(event: React.KeyboardEvent) {
+    if (event.target !== event.currentTarget || !armedSticker || !selectedPack) return;
+    const rect = faceRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const current = placementOf(armedSticker);
+    const centre = placementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2, rect, activeFace, stickerKind(armedSticker), current?.rotation ?? 0);
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault(); applySticker(armedSticker, centre);
+    } else if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) {
+      event.preventDefault();
+      const base = current?.face === activeFace ? current : centre;
+      const step = event.shiftKey ? 5 : 1;
+      applySticker(armedSticker, clampPlacementToFace({ ...base, x: base.x + (event.key === "ArrowRight" ? step : event.key === "ArrowLeft" ? -step : 0), y: base.y + (event.key === "ArrowDown" ? step : event.key === "ArrowUp" ? -step : 0) }, stickerKind(armedSticker)));
+    } else if (event.key.toLowerCase() === "r") { event.preventDefault(); rotateArmed(90); }
+  }
+
   function choosePack(packId: string) {
     if (packId === selectedPackId) return;
     setSelectedPackId(packId);
@@ -412,7 +440,7 @@ export function AssemblyStage({
   };
 
   return (
-    <main className="fred-assembly-stage">
+    <section aria-label="Pack assembly" className="fred-assembly-stage">
       <header className="fred-assembly-header">
         <div>
           <div className="fred-stage-kicker">Stage 2 of 3 · Physical pack assembly · Case 1 prototype</div>
@@ -493,6 +521,9 @@ export function AssemblyStage({
                 >
                   <div
                     ref={faceRef}
+                    tabIndex={0}
+                    role="group"
+                    onKeyDown={keyboardFace}
                     className={`fred-face-panel colour-${selectedPack.colour}`}
                     onClick={handleFaceClick}
                     aria-label={`${faceLabel(activeFace)} panel of the ${selectedPack.generic} carton`}
@@ -504,7 +535,8 @@ export function AssemblyStage({
                         token="main-label"
                         placement={mainLabelPlacement}
                         selected={armedSticker === "main-label"}
-                        onPointerDown={(event) => beginDrag(event, "main-label")}
+                        onKeyDown={(event) => keyboardSticker(event, "main-label")}
+              onPointerDown={(event) => beginDrag(event, "main-label")}
                         onRemove={removeMainLabel}
                       >
                         <DispensingLabelContent {...dispensingContext} />
@@ -522,7 +554,8 @@ export function AssemblyStage({
                             placement={placement}
                             selected={armedSticker === token}
                             tone={warningStickerTone(warning)}
-                            onPointerDown={(event) => beginDrag(event, token)}
+                            onKeyDown={(event) => keyboardSticker(event, token)}
+                    onPointerDown={(event) => beginDrag(event, token)}
                             onRemove={() => removeWarning(warning)}
                           >
                             <WarningLabelContent warning={warning} />
@@ -586,7 +619,7 @@ export function AssemblyStage({
             <span>3</span>
             <div>
               <h2 id="sticker-tray-title">Apply the labels</h2>
-              <p>Drag a label onto the panel, or tap it then click the panel. Labels are shown at their real size.</p>
+              <p>Drag or select a label. Keyboard: Enter selects it and focuses the carton; Enter places it, arrows move it, Shift + arrows move faster, and R rotates it.</p>
             </div>
           </div>
 
@@ -606,6 +639,7 @@ export function AssemblyStage({
             <div
               className={`fred-label-chip${!selectedPack ? " disabled" : ""}${armedSticker === "main-label" ? " armed" : ""}${mainLabelPlacement ? " placed" : ""}`}
               style={{ width: `${stickerPixelSize("main").width}px`, height: `${stickerPixelSize("main").height}px` }}
+              onKeyDown={(event) => keyboardSticker(event, "main-label")}
               onPointerDown={(event) => beginDrag(event, "main-label")}
               role="button"
               tabIndex={selectedPack ? 0 : -1}
@@ -630,6 +664,7 @@ export function AssemblyStage({
                     key={warning}
                     className={`fred-label-chip warning tone-${warningStickerTone(warning)}${!selectedPack ? " disabled" : ""}${armedSticker === token ? " armed" : ""}${placement ? " placed" : ""}`}
                     style={{ width: `${stickerPixelSize("warning").width}px`, height: `${stickerPixelSize("warning").height}px` }}
+                    onKeyDown={(event) => keyboardSticker(event, token)}
                     onPointerDown={(event) => beginDrag(event, token)}
                     role="button"
                     tabIndex={selectedPack ? 0 : -1}
@@ -687,7 +722,7 @@ export function AssemblyStage({
           Continue to patient consultation →
         </button>
       </footer>
-    </main>
+    </section>
   );
 }
 
@@ -697,11 +732,12 @@ interface PlacedLabelProps {
   selected: boolean;
   tone?: string;
   onPointerDown: (event: React.PointerEvent) => void;
+  onKeyDown: (event: React.KeyboardEvent) => void;
   onRemove: () => void;
   children: React.ReactNode;
 }
 
-function PlacedLabel({ token, placement, selected, tone, onPointerDown, onRemove, children }: PlacedLabelProps) {
+function PlacedLabel({ token, placement, selected, tone, onPointerDown, onKeyDown, onRemove, children }: PlacedLabelProps) {
   const kind = stickerKind(token);
   const size = stickerSizePercent(placement.face, kind);
   const className = kind === "main"
@@ -721,7 +757,8 @@ function PlacedLabel({ token, placement, selected, tone, onPointerDown, onRemove
         transformOrigin: "center",
       }}
       onPointerDown={onPointerDown}
-      role="button"
+      onKeyDown={onKeyDown}
+      role="group"
       tabIndex={0}
       aria-label={token === "main-label" ? "Dispensing label — drag to move" : `Warning label — drag to move`}
     >
@@ -796,8 +833,8 @@ function CartonFaceContent({
       <div className="fred-carton-print back-print">
         <div className="fred-carton-fine-print">
           <strong>Storage and product information</strong>
-          <span>Store below 25°C. Protect from light and moisture.</span>
-          <span>Mayne Pharma Australia · AUST R 1404X</span>
+          <span>Training pack only. Check the product reference for storage.</span>
+          <span>{pack.brand} · fictional training pack</span>
         </div>
         <div className="fred-carton-barcode" aria-hidden="true" />
       </div>
@@ -814,8 +851,8 @@ function CartonFaceContent({
   if (face === "left") {
     return (
       <div className="fred-carton-print side-print info-heavy">
-        <strong>ERYTHROMYCIN</strong>
-        <span>250 mg capsules</span>
+        <strong>{pack.generic.toUpperCase()}</strong>
+        <span>{pack.strength} {pack.form.toLowerCase()}</span>
         <div className="fred-carton-barcode" aria-hidden="true" />
         <strong>Batch MP240619</strong>
         <span>Expiry 06/2028</span>

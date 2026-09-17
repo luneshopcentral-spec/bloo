@@ -1,23 +1,13 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { DispenseDecision } from "@/lib/types/case";
 import type {
   ConversationCase,
-  ConversationMatcherMode,
   ConversationMessage,
   CounsellingResult,
-  UnsafeAdviceFinding,
 } from "@/lib/conversation/types";
-import {
-  acceptSemanticCandidates,
-  classifyWithRules,
-  findUnsafeAdvice,
-  matchResponseIntent,
-} from "@/lib/conversation/matcher";
-import { scoreCounselling } from "@/lib/conversation/score";
-import { buildPatientReply } from "@/lib/conversation/reply";
-import { useSemanticMatcher } from "@/hooks/useSemanticMatcher";
+import { advanceConversation, evaluateConversation, replayConversation, MAX_CONVERSATION_MESSAGE, MAX_CONVERSATION_TURNS, MAX_CONVERSATION_CHARACTERS } from "@/lib/conversation/engine";
 import { useVoiceConversation } from "@/hooks/useVoiceConversation";
 import { KOKORO_MODEL_DOWNLOAD_MB } from "@/lib/voice/kokoro-config";
 import { openingAudioSegment } from "@/lib/voice/patient-audio-library";
@@ -25,6 +15,8 @@ import type { PracticeMode } from "@/lib/practice/modes";
 
 interface CounsellingStageProps {
   conversation: ConversationCase;
+  initialTranscript?: ConversationMessage[];
+  onTranscriptChange?: (messages: ConversationMessage[]) => void;
   decision: DispenseDecision | null;
   onComplete: (result: CounsellingResult) => void;
   onViewResults: () => void;
@@ -43,6 +35,8 @@ function decisionLabel(decision: DispenseDecision | null): string {
 
 export function CounsellingStage({
   conversation,
+  initialTranscript,
+  onTranscriptChange,
   decision,
   onComplete,
   onViewResults,
@@ -51,7 +45,7 @@ export function CounsellingStage({
   onGuidedMessageSent,
   stageLabel = "Stage 2 of 2 · Patient consultation",
 }: CounsellingStageProps) {
-  const [messages, setMessages] = useState<ConversationMessage[]>([
+  const [messages, setMessages] = useState<ConversationMessage[]>(initialTranscript?.length ? initialTranscript : [
     {
       id: "patient-opening",
       role: "patient",
@@ -60,17 +54,16 @@ export function CounsellingStage({
     },
   ]);
   const [input, setInput] = useState("");
-  const [addressedTopicIds, setAddressedTopicIds] = useState<Set<string>>(new Set());
-  const [unsafeAdvice, setUnsafeAdvice] = useState<UnsafeAdviceFinding[]>([]);
   const [pending, setPending] = useState(false);
-  const [concernShown, setConcernShown] = useState(false);
   const [complete, setComplete] = useState(false);
-  const [matcherMode, setMatcherMode] = useState<ConversationMatcherMode>("rules");
   const [interactionMode, setInteractionMode] = useState<"text" | "voice">("text");
   const [patientAudioEnabled, setPatientAudioEnabled] = useState(true);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const transcriptRef = useRef<HTMLDivElement>(null);
-  const matcher = useSemanticMatcher(conversation);
+  const dialogue = useMemo(() => replayConversation(conversation, messages), [conversation, messages]);
+  const [messageError, setMessageError] = useState<string | null>(null);
+  const usedCharacters = messages.reduce((sum, m) => sum + m.text.length, 0);
+  const limitReached = dialogue.turns >= MAX_CONVERSATION_TURNS || usedCharacters >= MAX_CONVERSATION_CHARACTERS - MAX_CONVERSATION_MESSAGE;
   const voice = useVoiceConversation({
     patientKey: conversation.caseId,
     onTranscript: setInput,
@@ -80,7 +73,8 @@ export function CounsellingStage({
     () => messages.filter((message) => message.role === "student").length,
     [messages]
   );
-  const matcherAvailable = matcher.status === "ready" || matcher.status === "fallback";
+  // The shared conversation engine is available immediately, including offline.
+  const matcherAvailable = true;
   const latestPatientMessage = useMemo(
     () => [...messages].reverse().find((message) => message.role === "patient") ?? null,
     [messages]
@@ -153,101 +147,64 @@ export function CounsellingStage({
             ? "Voice input is unavailable in this browser. You can still type and hear the patient."
           : "Select Start speaking when you are ready. Nothing is sent for marking until you confirm the transcript.");
 
-  async function sendMessage() {
+  function sendMessage() {
     const text = input.trim();
-    if (!text || pending || complete || !matcherAvailable) return;
-
+    if (!text || pending || complete || limitReached) return;
+    if (text.length > MAX_CONVERSATION_MESSAGE) {
+      setMessageError(`Keep each response under ${MAX_CONVERSATION_MESSAGE} characters.`);
+      return;
+    }
+    const turn = advanceConversation(conversation, dialogue, text);
+    if (usedCharacters + text.length + turn.reply.text.length > MAX_CONVERSATION_CHARACTERS
+      || turn.reply.text.length > MAX_CONVERSATION_MESSAGE) {
+      setMessageError("Please send a shorter response, or finish this consultation to review your feedback.");
+      return;
+    }
     voice.abortListening();
+    setMessageError(null);
     setInput("");
     setPending(true);
-    const studentMessage: ConversationMessage = {
-      id: crypto.randomUUID(),
-      role: "student",
-      text,
-    };
-    setMessages((previous) => [...previous, studentMessage]);
-
-    const semanticCandidates = await matcher.classify(text);
-    const matches = semanticCandidates
-      ? acceptSemanticCandidates(conversation, text, semanticCandidates)
-      : classifyWithRules(conversation, text);
-    const currentMode: ConversationMatcherMode = semanticCandidates ? "semantic" : "rules";
-    setMatcherMode(currentMode);
-
-    const matchedTopicIds = matches.map((match) => match.topicId);
-    const responseIntent = matchedTopicIds.length === 0
-      ? matchResponseIntent(conversation, text)
-      : null;
-    const findings = findUnsafeAdvice(conversation, text);
-    const nextAddressed = new Set(addressedTopicIds);
-    for (const topicId of matchedTopicIds) nextAddressed.add(topicId);
-
-    const patientReply = buildPatientReply(
-      conversation,
-      matchedTopicIds,
-      addressedTopicIds,
-      studentTurns + 1,
-      concernShown,
-      responseIntent
-    );
-
-    setAddressedTopicIds(nextAddressed);
-    setUnsafeAdvice((previous) => {
-      const known = new Set(previous.map((finding) => finding.id));
-      return [...previous, ...findings.filter((finding) => !known.has(finding.id))];
-    });
-    if (patientReply.showConcern) setConcernShown(true);
-    setMessages((previous) => {
-      const updated = previous.map((message) =>
-        message.id === studentMessage.id
-          ? { ...message, matchedTopicIds }
-          : message
-      );
-      return [
-        ...updated,
-        {
-          id: crypto.randomUUID(),
-          role: "patient" as const,
-          text: patientReply.text,
-          patientAudio: patientReply.audioSegments,
-        },
-      ];
-    });
+    setMessages(previous => [...previous, {
+      id: crypto.randomUUID(), role: "student", text, matchedTopicIds: turn.matchedTopicIds,
+    }, {
+      id: crypto.randomUUID(), role: "patient", text: turn.reply.text, patientAudio: turn.reply.audioSegments,
+    }]);
     setPending(false);
     onGuidedMessageSent?.(text);
-    if (interactionMode === "voice" && patientAudioEnabled) {
-      voice.speak(patientReply.audioSegments);
-    }
+    if (interactionMode === "voice" && patientAudioEnabled) voice.speak(turn.reply.audioSegments);
     requestAnimationFrame(() => {
       transcriptRef.current?.scrollTo({ top: transcriptRef.current.scrollHeight, behavior: "smooth" });
       inputRef.current?.focus();
     });
   }
 
+  useEffect(() => { onTranscriptChange?.(messages); }, [messages, onTranscriptChange]);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      const transcript = transcriptRef.current;
+      if (transcript) transcript.scrollTop = transcript.scrollHeight;
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [messages]);
+
   function finishConversation() {
-    if (complete || pending || studentTurns < 1) return;
+    if (complete || pending || studentTurns < 1 || input.trim()) return;
     voice.abortListening();
     voice.cancelSpeech();
-    const result = scoreCounselling({
-      conversation,
-      addressedTopicIds,
-      unsafeAdvice,
-      transcript: messages,
-      matcherMode,
-    });
+    const result = evaluateConversation(conversation, messages);
     setComplete(true);
     onComplete(result);
   }
 
   return (
-    <main className="fred-counselling-stage">
+    <section aria-label="Patient consultation" className="fred-counselling-stage">
       <header className="fred-counselling-header">
         <div className="fred-consultation-identity">
           <div className="fred-patient-avatar" aria-hidden="true">{patientInitials}</div>
           <div>
             <div className="fred-stage-kicker">{stageLabel}</div>
             <h1>{conversation.patientRole}</h1>
-            <p>{conversation.handoverGoal}</p>
+            <p>{decision === "hold_contact_prescriber" ? "Explain why supply is on hold, check the patient’s understanding and agree safe next steps." : decision === "do_not_supply" ? "Explain why this medicine cannot be supplied and help the patient arrange appropriate follow-up." : conversation.handoverGoal}</p>
           </div>
         </div>
         <div className="fred-decision-recap">
@@ -266,6 +223,9 @@ export function CounsellingStage({
           <div
             ref={transcriptRef}
             className={`fred-chat-transcript ${hideCompletedTranscript ? "voice-exam" : ""}`}
+            role="log"
+            aria-label="Conversation messages"
+            tabIndex={0}
             aria-live="polite"
             aria-relevant="additions"
           >
@@ -323,10 +283,10 @@ export function CounsellingStage({
             {interactionMode === "voice" && (
               <section className="fred-voice-controls" aria-labelledby="voice-controls-title">
                 <div className="fred-voice-controls-heading">
-                  <strong id="voice-controls-title">Voice controls</strong>
+                  <p className="fred-voice-disclosure">Optional experimental voice: your browser may send microphone audio to its speech provider. Review the transcript before sending. Use text mode if you prefer.</p><strong id="voice-controls-title">Voice controls · experimental</strong>
                   <span>
                     Patient voice: {voice.patientVoiceEngine === "prerecorded"
-                      ? "Recorded library · Australian patient voice"
+                      ? "Recorded patient voice"
                       : voice.patientVoiceEngine === "kokoro"
                         ? `Kokoro safety fallback · ${voice.patientVoiceName}`
                         : `System fallback · ${voice.patientVoiceName ?? "default voice"}`}
@@ -417,6 +377,8 @@ export function CounsellingStage({
               ref={inputRef}
               id="counselling-message"
               value={input}
+              maxLength={MAX_CONVERSATION_MESSAGE}
+              aria-describedby="conversation-message-status"
               onChange={(event) => setInput(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === "Enter" && !event.shiftKey) {
@@ -431,9 +393,14 @@ export function CounsellingStage({
                     : "Type exactly what you would say to the patient…"
                   : "Preparing the local matcher…"
               }
-              disabled={!matcherAvailable || pending || complete}
+              disabled={!matcherAvailable || pending || complete || limitReached}
               rows={3}
             />
+            <p id="conversation-message-status" role="status" className="fred-conversation-limit">
+              {messageError ?? (limitReached
+                ? "Conversation limit reached. Finish the consultation to review your feedback."
+                : `${input.length}/${MAX_CONVERSATION_MESSAGE} characters · ${studentTurns}/${MAX_CONVERSATION_TURNS} responses`)}
+            </p>
             <div className="fred-chat-actions">
               <span>
                 {studentTurns < 1
@@ -446,7 +413,7 @@ export function CounsellingStage({
                 type="button"
                 className="fred-chat-send"
                 onClick={() => void sendMessage()}
-                disabled={!input.trim() || !matcherAvailable || pending || complete || isListening}
+                disabled={!input.trim() || !matcherAvailable || pending || complete || isListening || limitReached || input.length > MAX_CONVERSATION_MESSAGE}
               >
                 {interactionMode === "voice" ? "Send spoken response" : "Send to patient"}
               </button>
@@ -454,7 +421,8 @@ export function CounsellingStage({
                 type="button"
                 className="fred-chat-finish"
                 onClick={complete ? onViewResults : finishConversation}
-                disabled={pending || (!complete && studentTurns < 1)}
+                disabled={pending || (!complete && (studentTurns < 1 || Boolean(input.trim())))}
+                title={input.trim() ? "Send or clear your draft response before finishing." : undefined}
                 data-tour="counselling-finish"
               >
                 {complete ? "View results" : "Finish consultation"}
@@ -464,7 +432,7 @@ export function CounsellingStage({
           </div>
         </section>
 
-        <aside className="fred-counselling-sidebar" aria-label="Conversation assessment information">
+        <div className="fred-counselling-sidebar" role="group" aria-label="Conversation assessment information">
           <section className="fred-assessment-card">
             <span className={`fred-mode-badge ${mode}`}>{mode} mode</span>
             <h2>Consultation approach</h2>
@@ -501,23 +469,14 @@ export function CounsellingStage({
               <h2>Conversation readiness</h2>
               <span>Local</span>
             </div>
-            <div className={`fred-model-status ${matcher.status}`}>
+            <div className="fred-model-status ready">
               <span className="fred-model-dot" />
-              <span role="status" aria-live="polite">{matcher.statusMessage}</span>
+              <span role="status">Ready for your conversation</span>
             </div>
-            {matcher.status === "loading" && matcher.progress !== null && (
-              <div className="fred-model-progress" aria-label={`${matcher.progress}% loaded`}>
-                <span style={{ width: `${matcher.progress}%` }} />
-              </div>
-            )}
-            {matcher.status === "loading" && (
-              <button type="button" onClick={matcher.activateRulesFallback}>
-                Continue with expanded local matching
-              </button>
-            )}
+            <p>Ask naturally, follow up on answers and explain the plan. If the patient is unsure what you mean, try a more specific question.</p>
             <details className="fred-model-privacy">
-              <summary>Privacy and matching details</summary>
-              <p>Your conversation is processed locally in this browser. No paid model API or API key is used.</p>
+              <summary>Privacy and assessment</summary>
+              <p>Replies are generated locally from the case facts and conversation history. On submission, your transcript is saved to your account and assessed using the same interpretation rules. This is a structured training patient; unfamiliar wording may need clarification.</p>
             </details>
           </section>
 
@@ -527,8 +486,8 @@ export function CounsellingStage({
               Your dispensing accuracy and patient communication will be combined after this consultation.
             </p>
           </section>
-        </aside>
+        </div>
       </div>
-    </main>
+    </section>
   );
 }

@@ -1,8 +1,10 @@
+import { paidAccessAvailable } from "@/lib/governance/availability";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { STATIC_CASES } from "@/lib/cases/static-cases";
 import { isPlanId, PLAN_OPTIONS } from "@/lib/billing/plan";
+import { hasCompAccess } from "@/lib/entitlement/entitlement";
 import type { Database } from "@/lib/types/database";
 
 const FREE_CASE_COUNT = STATIC_CASES.filter((c) => c.isFree).length;
@@ -59,7 +61,10 @@ export default async function DashboardPage({
     .single()) as { data: ProfileRow | null; error: unknown };
 
   const firstName = profile?.full_name?.split(" ")[0] ?? "there";
-  const hasFullAccess = profile?.has_paid === true || profile?.role === "admin";
+  const hasFullAccess =
+    profile?.has_paid === true
+    || profile?.role === "admin"
+    || hasCompAccess(profile ? { has_paid: profile.has_paid, role: profile.role, comp_access_until: profile.comp_access_until } : null);
   const { data: attemptData, error: attemptError } = await supabase
     .from("attempts")
     .select("*")
@@ -68,7 +73,7 @@ export default async function DashboardPage({
     .limit(100);
   const attempts = (attemptData as AttemptRow[] | null) ?? [];
   const independentAttempts = attempts.filter((attempt) => (
-    attempt.counts_toward_progress !== false && !attempt.assisted
+    attempt.server_verified === true && attempt.counts_toward_progress !== false && !attempt.assisted
   ));
   const passedAttempts = independentAttempts.filter((attempt) => attempt.passed).length;
   const averageScore = independentAttempts.length
@@ -93,7 +98,7 @@ export default async function DashboardPage({
     .slice(0, 6);
 
   return (
-    <div className="mx-auto max-w-4xl px-8 py-10">
+    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-8 sm:py-10">
       {/* Header */}
       <div className="mb-8 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -101,7 +106,7 @@ export default async function DashboardPage({
             Welcome back, {firstName}
           </h1>
           <p className="mt-1 text-slate-500">
-            Ready to practise your dispensing skills?
+            Ready to practise your dispensing skills? Summaries cover the latest 100 attempts; only server-verified, independent attempts count.
           </p>
         </div>
 
@@ -116,8 +121,8 @@ export default async function DashboardPage({
       {checkout === "success" && (
         <Card className="mb-8 border-emerald-300 bg-emerald-50">
           <CardContent className="p-5 text-sm text-emerald-900">
-            Payment confirmed — thank you! Full access unlocks as soon as Stripe
-            notifies us (usually within seconds). Refresh if a case still shows locked, or{" "}
+            Checkout returned. Your access status below updates after Stripe
+            confirms the subscription. This return link alone does not confirm payment. Refresh if a case still shows locked, or{" "}
             <Link href="/support" className="font-medium underline">contact support</Link>.
           </CardContent>
         </Card>
@@ -206,14 +211,14 @@ export default async function DashboardPage({
               Unlock all {STATIC_CASES.length} cases with a subscription.
             </div>
             <div className="flex gap-2">
-              {PLAN_OPTIONS.map((option) => (
+              {paidAccessAvailable() ? PLAN_OPTIONS.map((option) => (
                 <form action="/api/checkout" method="post" key={option.id}>
                   <input type="hidden" name="plan" value={option.id} />
                   <Button type="submit" size="sm" variant={selectedPlan && selectedPlan !== option.id ? "outline" : "default"} className="whitespace-nowrap">
                     {option.priceDisplay}/{option.interval}
                   </Button>
                 </form>
-              ))}
+              )) : <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-950">Paid access is not open yet. The free cases remain available.</p>}
             </div>
             {selectedPlan && <p className="text-xs text-slate-600">Your {selectedPlan === "yearly" ? "annual" : "monthly"} choice from sign-up is selected.</p>}
           </CardContent>

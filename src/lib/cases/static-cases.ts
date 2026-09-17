@@ -28,11 +28,11 @@ export const STATIC_CASES: PracticeCase[] = [
         prescribedProductType: "brand",
         genericSubstitutionAllowed: false,
         correctDrugSeedId: "erythromycin-mayne-cap-250",
-        directions: "Take ONE capsule tds",
+        directions: "Take ONE capsule qid",
         repeats: "1",
         qty: "25",
         price2: "$20.86",
-        correctWarnings: ["Take with food or milk", "Complete the full course", "May cause nausea"],
+        correctWarnings: ["Complete the full course", "May cause nausea"],
         drugDetails: {
           name: "ERYTHROMYCIN (G)",
           schedule: "S4",
@@ -51,7 +51,7 @@ export const STATIC_CASES: PracticeCase[] = [
       },
     ],
     errors: [
-      "Patient history shows this course (25 capsules, three times daily — about an 8-day supply) was last dispensed on 23/06/17, only 4 days before this presentation. The repeat is being requested well before the previous course should have run out.",
+      "Patient history shows this course (25 capsules, four times daily — about a 6-day supply) was last dispensed on 23/06/17, only 4 days before this presentation. The repeat is being requested before the previous course should have run out.",
       "Hold supply and contact the prescriber to confirm why the patient needs more erythromycin this early before dispensing the repeat.",
     ],
     expectedDecision: "hold_contact_prescriber",

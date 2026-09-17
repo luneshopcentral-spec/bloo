@@ -49,6 +49,7 @@ export function emptyFormStateFor(itemCount: number): FormState {
 }
 
 export type FormAction =
+  | { type: "RESTORE"; state: FormState }
   | { type: "SET_FIELD"; field: ScriptField; value: string }
   | { type: "SET_ITEM_FIELD"; index: number; field: ItemField; value: string }
   | { type: "RESET"; itemCount?: number }
@@ -56,6 +57,8 @@ export type FormAction =
 
 export function formReducer(state: FormState, action: FormAction): FormState {
   switch (action.type) {
+    case "RESTORE":
+      return action.state;
     case "SET_FIELD":
       return { ...state, [action.field]: action.value };
     case "SET_ITEM_FIELD":

@@ -6,27 +6,17 @@ import type {
   SemanticCandidate,
   UnsafeAdviceFinding,
 } from "./types";
+import { conversationClauses, isMetaStatement, isQuestion, negatedAction, normalizeLanguage } from "./language";
 
 // Calibrated for bge-small-en-v1.5 (see semantic-matcher.worker.ts): measured
 // true paraphrase matches score >= ~0.70 while off-topic and wrong-but-related
 // noise tops out at ~0.59, so 0.62 splits the bands with margin on both sides.
 const DEFAULT_SEMANTIC_THRESHOLD = 0.62;
 const MULTI_MATCH_MARGIN = 0.035;
-const MAX_MATCHES_PER_TURN = 4;
+const MAX_MATCHES_PER_TURN = 20;
 
 export function normalizeConversationText(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[’']/g, "'")
-    .replace(/[^a-z0-9%./'\s-]/g, " ")
-    .replace(/(\d)([a-z])/g, "$1 $2")
-    .replace(/([a-z])(\d)/g, "$1 $2")
-    .replace(/\b(?:mls|millilitres?|milliliters?)\b/g, "ml")
-    .replace(/\b(?:medications?|medicines?|meds|drugs?)\b/g, "medicine")
-    .replace(/\bopoids?\b/g, "opioid")
-    .replace(/\b(?:refrigerator|refrigerated|refrigeration)\b/g, "fridge")
-    .replace(/\s+/g, " ")
-    .trim();
+  return normalizeLanguage(text);
 }
 export function splitUtterance(text: string): string[] {
   const normalized = text.trim();
@@ -50,6 +40,13 @@ function patternMatches(text: string, source: string): boolean {
 
 export function topicEvidenceIsValid(topic: ConversationTopic, text: string): boolean {
   const normalized = normalizeConversationText(text);
+  if (isMetaStatement(text)) return false;
+  if (/directions|dose|admin/.test(topic.id)
+    && /\b(?:do not|never|should not|must not) (?:take|give|use) (?:one|two|three|four|\d+)\b/.test(normalized)) return false;
+  if (topic.id === "complete_course" && /\b(?:do not|never|should not) (?:finish|complete|continue|keep)\b/.test(normalized)) return false;
+  if (topic.category === "information_gathering" && !isQuestion(text)) return false;
+  if ((topic.category === "clinical_counselling" || topic.category === "safety_netting")
+    && /^(?:(?:please|so|and) )?(?:are you|have you|do you|did you|does |is there|any |what (?!this does)|how (?:are|do|did|have)|when (?:did|do|was)|which )/.test(normalized)) return false;
 
   if (topic.forbiddenPatterns?.some((pattern) => patternMatches(normalized, pattern))) {
     return false;
@@ -122,15 +119,20 @@ export function classifyWithRules(
   conversation: ConversationCase,
   text: string
 ): AcceptedTopicMatch[] {
+  if (isMetaStatement(text)) return [];
+  const clauses = conversationClauses(text);
+  // Keep a whole turn for compound criteria (e.g. water AND upright), but
+  // never let a history question borrow a counselling statement's evidence.
   return conversation.topics
     .map((topic) => {
-      const explicit = hasRuleSignal(topic, text);
-      const overlap = exampleOverlap(topic, text);
-      const score = explicit ? 1 : overlap;
-      return { topic, score, explicit };
+      const eligible = clauses.filter(part => topicEvidenceIsValid({ ...topic, requiredPatternGroups: [] }, part));
+      const candidates = [...eligible, eligible.join(". ")].filter(part => topicEvidenceIsValid(topic, part));
+      const explicit = candidates.some(part => hasRuleSignal(topic, part));
+      const score = explicit ? 1 : Math.max(0, ...candidates.map(part => exampleOverlap(topic, part)));
+      return { topic, score, explicit, valid: candidates.length > 0 };
     })
-    .filter(({ topic, score, explicit }) =>
-      topicEvidenceIsValid(topic, text) && (explicit || score >= 0.72)
+    .filter(({ valid, score, explicit }) =>
+      valid && (explicit || score >= 0.72)
     )
     .sort((a, b) => b.score - a.score)
     .slice(0, MAX_MATCHES_PER_TURN)
@@ -175,9 +177,16 @@ export function findUnsafeAdvice(
   conversation: ConversationCase,
   text: string
 ): UnsafeAdviceFinding[] {
-  const normalized = normalizeConversationText(text);
   return conversation.unsafeAdviceRules
-    .filter((rule) => rule.patterns.some((pattern) => patternMatches(normalized, pattern)))
+    .filter((rule) => conversationClauses(text).some(clause => {
+      const normalized = normalizeConversationText(clause);
+      return rule.patterns.some(pattern => {
+        const match = new RegExp(pattern, "i").exec(normalized);
+        if (!match) return false;
+        const action = /\b(?:supply|dispense|give|take|use|start|apply|ignore|shake|refrigerat\w*|fridge|crush|chew|split|double|stop|call)\b/.exec(match[0]);
+        return !negatedAction(normalized, match.index + (action?.index ?? 0));
+      });
+    }))
     .map((rule) => ({
       id: rule.id,
       label: rule.label,

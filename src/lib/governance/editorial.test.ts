@@ -21,6 +21,10 @@ describe("clinical editorial governance", () => {
   it("blocks paid release until pharmacist and jurisdiction reviews are recorded", () => {
     const readiness = getPaidReleaseReadiness();
     expect(readiness.ready).toBe(false);
-    expect(readiness.blockers).toHaveLength(STATIC_CASES.length * 2);
+    for (const practiceCase of STATIC_CASES) {
+      expect(readiness.blockers).toContain(`${practiceCase.id}: draft content version`);
+      expect(readiness.blockers).toContain(`${practiceCase.id}: pharmacist clinical review required`);
+      expect(readiness.blockers).toContain(`${practiceCase.id}: legal/jurisdiction review required`);
+    }
   });
 });

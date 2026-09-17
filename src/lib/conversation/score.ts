@@ -14,6 +14,7 @@ interface ScoreCounsellingInput {
   unsafeAdvice: UnsafeAdviceFinding[];
   transcript: ConversationMessage[];
   matcherMode: ConversationMatcherMode;
+  evidence?: Record<string, string[]>;
 }
 export function scoreCounselling({
   conversation,
@@ -21,9 +22,10 @@ export function scoreCounselling({
   unsafeAdvice,
   transcript,
   matcherMode,
+  evidence,
 }: ScoreCounsellingInput): CounsellingResult {
   const addressed = new Set(addressedTopicIds);
-  const topicChecks = conversation.topics.map((topic) => {
+  const topicChecks = conversation.topics.filter(topic => topic.assessed !== false).map((topic) => {
     const passed = addressed.has(topic.id);
     return {
       id: topic.id,
@@ -31,6 +33,7 @@ export function scoreCounselling({
       category: topic.category,
       passed,
       isCritical: Boolean(topic.critical),
+      evidence: evidence?.[topic.id],
       detail: passed
         ? "Addressed appropriately during the patient conversation."
         : topic.critical
@@ -45,6 +48,7 @@ export function scoreCounselling({
     category: "unsafe_advice" as const,
     passed: unsafeAdvice.length === 0,
     isCritical: true,
+    evidence: unsafeAdvice.map(finding => finding.excerpt),
     detail: unsafeAdvice.length === 0
       ? "No explicitly unsafe advice was detected."
       : unsafeAdvice.map((finding) => finding.detail).join(" "),

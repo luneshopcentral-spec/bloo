@@ -25,13 +25,13 @@ export function AppNav({ userEmail }: AppNavProps) {
   if (pathname === "/practice") return null;
 
   return (
-    <nav className="border-b border-slate-200 bg-white">
-      <div className="container flex h-16 items-center justify-between">
-        <div className="flex items-center gap-6">
+    <nav aria-label="Main navigation" className="border-b border-slate-200 bg-white">
+      <div className="container flex min-h-16 flex-wrap items-center justify-between gap-3 py-3">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
           <Link href="/" className="flex items-center gap-2">
-            <Pill className="h-5 w-5 text-emerald-600" />
+            <Pill className="h-5 w-5 text-emerald-700" />
             <span className="font-bold text-slate-900">
-              DispenseRx<span className="text-emerald-600"> Practice</span>
+              DispenseRx<span className="text-emerald-700"> Practice</span>
             </span>
           </Link>
 
@@ -53,7 +53,8 @@ export function AppNav({ userEmail }: AppNavProps) {
         </div>
 
         <div className="flex items-center gap-4">
-          <span className="hidden text-sm text-slate-500 sm:block">
+          <Link href="/account" className="text-sm font-medium text-emerald-800 hover:underline">Account & help</Link>
+          <span className="hidden max-w-48 truncate text-sm text-slate-600 lg:block">
             {userEmail}
           </span>
           <Button

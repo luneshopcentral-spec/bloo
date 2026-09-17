@@ -1,4 +1,5 @@
 export type CheckCategory =
+  | "script_details"
   | "patient"
   | "prescriber"
   | "authority"

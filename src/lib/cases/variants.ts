@@ -1,7 +1,7 @@
 // Per-attempt case variation.
 //
 // Re-practising a case should test skill, not recall. Each attempt derives a
-// variant of the authored case with a fresh script date, a fresh authority
+// variant of the authored case with a fresh authority
 // approval number and — where a case authors a prescriber pool — a different
 // prescriber to find in the directory. Clinically authored content
 // (medicines, directions, quantities, repeats, warnings, the expected
@@ -30,22 +30,6 @@ function pick<T>(random: () => number, values: readonly T[]): T {
   return values[Math.floor(random() * values.length)];
 }
 
-/** DD/MM/YY, as printed on the paper prescriptions. */
-function formatScriptDate(date: Date): string {
-  const dd = String(date.getDate()).padStart(2, "0");
-  const mm = String(date.getMonth() + 1).padStart(2, "0");
-  const yy = String(date.getFullYear() % 100).padStart(2, "0");
-  return `${dd}/${mm}/${yy}`;
-}
-
-/** A prescription date within the last six weeks — always currently valid. */
-function variantScriptDate(random: () => number, now: Date): string {
-  const daysAgo = 1 + Math.floor(random() * 42);
-  const date = new Date(now);
-  date.setDate(date.getDate() - daysAgo);
-  return formatScriptDate(date);
-}
-
 /** Approval numbers follow the authored shape: H + 4 digits + 2 letters. */
 function variantApprovalNumber(random: () => number): string {
   const letters = "ABCDEFGHJKLMNPQRSTUVWXYZ"; // no I/O — avoids 1/0 confusion
@@ -60,13 +44,14 @@ function variantApprovalNumber(random: () => number): string {
  */
 export function applyCaseVariant(
   caseData: PracticeCase,
-  seed: number,
-  now: Date = new Date()
+  seed: number
 ): PracticeCase {
   const random = createRandom(seed);
   const variant: PracticeCase = {
     ...caseData,
-    date: variantScriptDate(random, now),
+    // Preserve the authored encounter chronology, including history, patient
+    // age and eligibility dates. Cosmetic variation must not change safety facts.
+    date: caseData.date,
   };
 
   // Rotate the prescriber only where the case authors a pool of clinically

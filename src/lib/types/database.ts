@@ -9,6 +9,24 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
+      feedback: {
+        Row: { id: string; user_id: string; kind: string; case_id: string | null; message: string; status: string; created_at: string };
+        Insert: { user_id: string; kind: string; case_id?: string | null; message: string };
+        Update: { status?: string };
+        Relationships: [];
+      };
+      quiz_attempts: {
+        Row: { id: string; user_id: string; case_id: string; version: string; mode: "practice" | "challenge"; answers: Json; percentage: number; created_at: string };
+        Insert: { id: string; user_id: string; case_id: string; version: string; mode: "practice" | "challenge"; answers: Json; percentage: number };
+        Update: { answers?: Json };
+        Relationships: [];
+      };
+      practice_sessions: {
+        Row: { id: string; user_id: string; case_id: string; case_version: string; seed: number; mode: "learn" | "practice" | "exam"; assisted: boolean; created_at: string };
+        Insert: { id?: string; user_id: string; case_id: string; case_version: string; seed: number; mode: "learn" | "practice" | "exam"; assisted?: boolean };
+        Update: { assisted?: boolean };
+        Relationships: [];
+      };
       profiles: {
         Row: {
           id: string;
@@ -28,6 +46,7 @@ export interface Database {
           subscription_cancel_at_period_end: boolean;
           subscription_updated_at: string | null;
           study_stage: string | null;
+          comp_access_until: string | null;
           created_at: string;
         };
         Insert: {
@@ -68,8 +87,39 @@ export interface Database {
           subscription_cancel_at_period_end?: boolean;
           subscription_updated_at?: string | null;
           study_stage?: string | null;
+          comp_access_until?: string | null;
           created_at?: string;
         };
+        Relationships: [];
+      };
+      admin_settings: {
+        Row: { key: string; value: Json; updated_by: string | null; updated_at: string };
+        Insert: { key: string; value: Json; updated_by?: string | null; updated_at?: string };
+        Update: { value?: Json; updated_by?: string | null; updated_at?: string };
+        Relationships: [];
+      };
+      announcements: {
+        Row: { id: string; title: string; body: string; level: "info" | "success" | "warning" | "critical"; active: boolean; starts_at: string; ends_at: string | null; created_by: string | null; created_at: string };
+        Insert: { id?: string; title: string; body: string; level?: "info" | "success" | "warning" | "critical"; active?: boolean; starts_at?: string; ends_at?: string | null; created_by?: string | null };
+        Update: { title?: string; body?: string; level?: "info" | "success" | "warning" | "critical"; active?: boolean; starts_at?: string; ends_at?: string | null };
+        Relationships: [];
+      };
+      access_codes: {
+        Row: { code: string; description: string | null; grants_days: number; grants_minutes?: number | null; assigned_email?: string | null; max_redemptions: number | null; redemptions: number; active: boolean; expires_at: string | null; created_by: string | null; created_at: string };
+        Insert: { code: string; description?: string | null; grants_days: number; grants_minutes?: number | null; assigned_email?: string | null; max_redemptions?: number | null; active?: boolean; expires_at?: string | null; created_by?: string | null };
+        Update: { description?: string | null; active?: boolean; max_redemptions?: number | null; expires_at?: string | null };
+        Relationships: [];
+      };
+      access_code_redemptions: {
+        Row: { id: string; code: string; user_id: string; granted_until: string; redeemed_at: string };
+        Insert: { code: string; user_id: string; granted_until: string };
+        Update: never;
+        Relationships: [];
+      };
+      admin_audit_log: {
+        Row: { id: string; actor_id: string | null; actor_email: string | null; action: string; target_type: string | null; target_id: string | null; detail: Json; created_at: string };
+        Insert: { actor_id?: string | null; actor_email?: string | null; action: string; target_type?: string | null; target_id?: string | null; detail?: Json };
+        Update: never;
         Relationships: [];
       };
       stripe_webhook_events: {
@@ -152,6 +202,7 @@ export interface Database {
           mode: "learn" | "practice" | "exam";
           assisted: boolean;
           counts_toward_progress: boolean;
+          server_verified?: boolean;
           critical_failures: string[];
           competencies: Json;
           created_at: string;
@@ -168,6 +219,7 @@ export interface Database {
           mode: "learn" | "practice" | "exam";
           assisted?: boolean;
           counts_toward_progress?: boolean;
+          server_verified?: boolean;
           critical_failures?: string[];
           competencies?: Json;
           created_at?: string;
@@ -184,6 +236,7 @@ export interface Database {
           mode?: "learn" | "practice" | "exam";
           assisted?: boolean;
           counts_toward_progress?: boolean;
+          server_verified?: boolean;
           critical_failures?: string[];
           competencies?: Json;
           created_at?: string;
@@ -411,7 +464,13 @@ export interface Database {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      launch_schema_ready: { Args: Record<string, never>; Returns: boolean };
+      consume_request_limit: { Args: { request_key: string; maximum: number }; Returns: boolean };
+      acquire_operation_lock: { Args: { lock_key: string; lock_owner: string }; Returns: boolean };
+      release_operation_lock: { Args: { lock_key: string; lock_owner: string }; Returns: undefined };
+      redeem_access_code_for_user: { Args: { input_code: string; recipient_id: string }; Returns: string };
+      admin_manage_access: { Args: { actor_id: string; operation: Json }; Returns: Json };
+      admin_list_users: { Args: { search_term: string; page_offset: number; page_size: number; access_filter: string }; Returns: Json };
     };
     Enums: {
       [_ in never]: never;

@@ -31,7 +31,7 @@ export function usePatientVoice({
   onActivity,
   speakWithSystemVoice,
 }: UsePatientVoiceOptions) {
-  const [engine, setEngine] = useState<PatientVoiceEngine>("prerecorded");
+  const [engine, setEngine] = useState<PatientVoiceEngine>(process.env.NEXT_PUBLIC_RECORDED_VOICE_ENABLED === "true" ? "prerecorded" : "kokoro");
   const [progress, setProgress] = useState<number | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [diagnostic, setDiagnostic] = useState<string | null>(null);
@@ -151,6 +151,7 @@ export function usePatientVoice({
   }, [onActivity, stopAudio]);
 
   const loadRecordedAsset = useCallback(async (segment: PatientAudioSegment): Promise<Blob | null> => {
+    if (process.env.NEXT_PUBLIC_RECORDED_VOICE_ENABLED !== "true") return null;
     const path = patientAudioPublicPath(patientKey, segment.cueId);
     if (knownMissingAssets.has(path)) return null;
     try {
@@ -195,7 +196,7 @@ export function usePatientVoice({
 
       const missingPath = patientAudioPublicPath(patientKey, segment.cueId);
       setNotice(
-        `Recorded line ${segment.cueId}.mp3 is unavailable. Kokoro is providing the local safety voice.`
+        "Experimental voice is generated locally with Kokoro. Use text mode if audio is unavailable."
       );
       setDiagnostic((current) => current ?? `Missing recorded asset: ${missingPath}`);
       try {

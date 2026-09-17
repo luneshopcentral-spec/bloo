@@ -1,0 +1,11 @@
+import type { AttemptSubmission } from "@/lib/attempts/grade";
+import type { ConversationMessage } from "@/lib/conversation/types";
+import type { PracticeMode } from "./modes";
+export interface PracticeDraft {
+  caseIndex: number; caseVersion: string; seed: number; mode: PracticeMode;
+  stage: "dispensing" | "assembly" | "counselling"; assisted: boolean; sessionId: string | null;
+  formState: AttemptSubmission["formState"]; patient: AttemptSubmission["patient"];
+  drugSeedIds: (string | null)[]; prescriberNumber: string | null;
+  warnings: string[][]; decision: AttemptSubmission["decision"];
+  assembly: AttemptSubmission["assembly"]; transcript: ConversationMessage[];
+}

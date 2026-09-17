@@ -1,3 +1,4 @@
+import { withBillingLock } from "@/lib/billing/lock";
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 import { getStripe } from "@/lib/stripe/server";
@@ -5,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { subscriptionSnapshot } from "@/lib/billing/subscription";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 
@@ -71,6 +73,15 @@ async function applySubscription(
   subscription: Stripe.Subscription,
   userIdHint?: string | null
 ) {
+  // Reconcile the customer's current subscriptions, including replacement
+  // subscriptions. A delayed cancellation of an older one must not revoke a
+  // newer active subscription.
+  const customerId = typeof subscription.customer === "string" ? subscription.customer : subscription.customer.id;
+  const subscriptions = await getStripe().subscriptions.list({ customer: customerId, status: "all", limit: 100 });
+  if (subscriptions.has_more) throw new Error("Customer subscription history needs manual reconciliation");
+  const managed = subscriptions.data.filter((item) => item.id === subscription.id || Boolean(item.metadata?.supabase_user_id));
+  const ranked = managed.sort((a, b) => Number(["active", "trialing"].includes(b.status)) - Number(["active", "trialing"].includes(a.status)) || b.created - a.created);
+  subscription = ranked[0] ?? subscription;
   const snapshot = subscriptionSnapshot(subscription);
   const userId = userIdHint
     ?? subscription.metadata?.supabase_user_id
@@ -106,10 +117,9 @@ async function subscriptionFromInvoice(
 ): Promise<Stripe.Subscription | null> {
   const subscriptionDetails = (invoice as Stripe.Invoice & {
     subscription?: string | Stripe.Subscription | null;
-  }).subscription;
+  }).subscription ?? invoice.parent?.subscription_details?.subscription;
   if (!subscriptionDetails) return null;
-  if (typeof subscriptionDetails !== "string") return subscriptionDetails;
-  return stripe.subscriptions.retrieve(subscriptionDetails);
+  return stripe.subscriptions.retrieve(typeof subscriptionDetails === "string" ? subscriptionDetails : subscriptionDetails.id);
 }
 
 async function handleEvent(
@@ -136,7 +146,8 @@ async function handleEvent(
     case "customer.subscription.created":
     case "customer.subscription.updated":
     case "customer.subscription.deleted": {
-      await applySubscription(admin, event.data.object as Stripe.Subscription);
+      const latest = await stripe.subscriptions.retrieve((event.data.object as Stripe.Subscription).id);
+      await applySubscription(admin, latest);
       return;
     }
     case "invoice.paid":
@@ -180,21 +191,22 @@ export async function POST(req: Request) {
 
   const admin = createAdminClient();
   try {
+    return await withBillingLock("stripe-entitlements", async () => {
     const shouldProcess = await beginEvent(admin, event);
     if (!shouldProcess) {
       return NextResponse.json({ received: true, duplicate: true });
     }
-    await handleEvent(admin, stripe, event);
-    await finishEvent(admin, event, "processed");
-    return NextResponse.json({ received: true });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown webhook error";
-    console.error(`Error handling Stripe event ${event.id} (${event.type}):`, error);
     try {
-      await finishEvent(admin, event, "failed", message);
-    } catch (logError) {
-      console.error(`Unable to record Stripe event failure ${event.id}:`, logError);
+      await handleEvent(admin, stripe, event);
+      await finishEvent(admin, event, "processed");
+    } catch (error) {
+      await finishEvent(admin, event, "failed", error instanceof Error ? error.message : "Handler error");
+      throw error;
     }
+    return NextResponse.json({ received: true });
+    });
+  } catch (error) {
+    console.error(`Error handling Stripe event ${event.id} (${event.type}):`, error);
     return NextResponse.json({ error: "Handler failed" }, { status: 500 });
   }
 }

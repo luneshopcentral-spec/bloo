@@ -1,5 +1,7 @@
 "use client";
 
+import { createClient } from "@/lib/supabase/client";
+import { QUIZ_CONTENT_VERSION } from "@/lib/quiz/version";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
@@ -32,9 +34,13 @@ interface StoredQuizProgress {
   lastMode: QuizMode;
 }
 
-const PROGRESS_KEY = "dispenserx-consultation-quiz-progress-v1";
+const PROGRESS_VERSION = QUIZ_CONTENT_VERSION;
 
-export function QuizWorkspace() {
+export function QuizWorkspace({ userId }: { userId: string }) {
+  const progressKey = `dispenserx-quiz:${PROGRESS_VERSION}:${userId}`;
+  const [attemptId, setAttemptId] = useState("");
+  const [saveNotice, setSaveNotice] = useState("");
+  const [pendingSave, setPendingSave] = useState<string | null>(null);
   const [view, setView] = useState<WorkspaceView>("library");
   const [selectedCase, setSelectedCase] = useState<ConsultationQuizCase | null>(null);
   const [mode, setMode] = useState<QuizMode>("practice");
@@ -47,12 +53,44 @@ export function QuizWorkspace() {
 
   useEffect(() => {
     try {
-      const stored = window.localStorage.getItem(PROGRESS_KEY);
+      const stored = window.localStorage.getItem(progressKey);
       if (stored) setProgress(JSON.parse(stored) as Record<string, StoredQuizProgress>);
+      setPendingSave(window.localStorage.getItem(progressKey + ":pending"));
     } catch {
       // Progress is optional; the quiz remains fully usable without storage.
     }
-  }, []);
+  }, [progressKey]);
+
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      const supabase = createClient();
+      const cloud: Record<string, StoredQuizProgress> = {};
+      for (let offset = 0; active; offset += 500) {
+        const { data, error } = await supabase.from("quiz_attempts").select("case_id, mode, percentage")
+          .eq("user_id", userId).eq("version", QUIZ_CONTENT_VERSION)
+          .order("created_at", { ascending: true }).order("id", { ascending: true }).range(offset, offset + 499);
+        if (!active || error || !data) return;
+        for (const row of data) {
+          const previous = cloud[row.case_id];
+          cloud[row.case_id] = { attempts: (previous?.attempts ?? 0) + 1, bestPercent: Math.max(previous?.bestPercent ?? 0, row.percentage), lastMode: row.mode };
+        }
+        if (data.length < 500) break;
+      }
+      if (active) setProgress(cloud);
+    })();
+    return () => { active = false; };
+  }, [userId]);
+  async function saveQuiz(body: string) {
+    setPendingSave(body);
+    try { localStorage.setItem(progressKey + ":pending", body); } catch {}
+    try {
+      const response = await fetch("/api/quiz-attempts", { method: "POST", headers: { "Content-Type": "application/json" }, body });
+      if (!response.ok) throw new Error("Save unavailable");
+      setSaveNotice("Quiz saved to your account."); setPendingSave(null);
+      try { localStorage.removeItem(progressKey + ":pending"); } catch {}
+    } catch { setSaveNotice("Quiz is waiting to save on this device. Retry when connected."); }
+  }
 
   const closeBook = useCallback(() => setBookOpen(false), []);
   const currentQuestion = selectedCase?.questions[questionIndex] ?? null;
@@ -68,6 +106,8 @@ export function QuizWorkspace() {
   }), []);
 
   function beginQuiz(quizCase: ConsultationQuizCase) {
+    if (pendingSave) { setSaveNotice("Save the pending quiz before starting another."); return; }
+    setAttemptId(crypto.randomUUID());
     setSelectedCase(quizCase);
     setQuestionIndex(0);
     setAnswers({});
@@ -111,6 +151,7 @@ export function QuizWorkspace() {
   function finishQuiz() {
     if (!selectedCase) return;
     const nextResult = scoreConsultationQuiz(selectedCase, answers);
+    void saveQuiz(JSON.stringify({ id: attemptId, caseId: selectedCase.id, version: QUIZ_CONTENT_VERSION, mode, answers }));
     setResult(nextResult);
     setView("results");
     setBookOpen(false);
@@ -126,7 +167,7 @@ export function QuizWorkspace() {
     };
     setProgress(nextProgress);
     try {
-      window.localStorage.setItem(PROGRESS_KEY, JSON.stringify(nextProgress));
+      window.localStorage.setItem(progressKey, JSON.stringify(nextProgress));
     } catch {
       // Do not block results if browser storage is unavailable.
     }
@@ -136,8 +177,9 @@ export function QuizWorkspace() {
   if (view === "library") {
     return (
       <div className="min-h-[calc(100vh-4rem)] bg-slate-50">
+        {(saveNotice || pendingSave) && <div className="mx-auto max-w-7xl p-4 text-slate-900"><p role="status">{saveNotice || "A quiz is waiting to save on this device."}</p>{pendingSave && <button className="mt-2 rounded-lg border bg-white px-4 py-2" onClick={() => void saveQuiz(pendingSave)}>Retry saving quiz</button>}</div>}
         <section className="border-b border-slate-200 bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 text-white">
-          <div className="mx-auto max-w-7xl px-8 py-10">
+          <div className="mx-auto max-w-7xl px-4 sm:px-8 py-10">
             <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
               <div className="max-w-3xl">
                 <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-emerald-300">
@@ -157,7 +199,7 @@ export function QuizWorkspace() {
           </div>
         </section>
 
-        <div className="mx-auto max-w-7xl px-8 py-8">
+        <div className="mx-auto max-w-7xl px-4 sm:px-8 py-8">
           <section className="mb-7 grid gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm md:grid-cols-[1fr_1fr_auto] md:items-center">
             <ModeChoice
               active={mode === "practice"}
@@ -232,7 +274,7 @@ export function QuizWorkspace() {
 
   if (view === "results" && result) {
     return (
-      <div className="min-h-[calc(100vh-4rem)] bg-slate-50 px-8 py-8">
+      <div className="min-h-[calc(100vh-4rem)] bg-slate-50 px-4 sm:px-8 py-8">
         <div className="mx-auto max-w-5xl">
           <button type="button" onClick={returnToLibrary} className="mb-5 flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-slate-950">
             <ArrowLeft className="h-4 w-4" /> Back to quiz library
@@ -266,7 +308,7 @@ export function QuizWorkspace() {
               return (
                 <article key={answer.question.id} className={`rounded-xl border bg-white p-5 ${answer.correct ? "border-emerald-200" : "border-red-200"}`}>
                   <div className="flex items-start gap-3">
-                    {answer.correct ? <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" /> : <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-600" />}
+                    {answer.correct ? <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-700" /> : <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-600" />}
                     <div className="min-w-0 flex-1">
                       <div className="mb-2 flex flex-wrap items-center gap-2">
                         <span className="text-xs font-bold uppercase text-slate-500">Question {index + 1}</span>
@@ -296,8 +338,9 @@ export function QuizWorkspace() {
 
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-slate-100">
+        {(saveNotice || pendingSave) && <div className="mx-auto max-w-7xl p-4 text-slate-900"><p role="status">{saveNotice || "A quiz is waiting to save on this device."}</p>{pendingSave && <button className="mt-2 rounded-lg border bg-white px-4 py-2" onClick={() => void saveQuiz(pendingSave)}>Retry saving quiz</button>}</div>}
       <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur">
-        <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-5 px-6 py-3">
+        <div className="mx-auto flex max-w-[1500px] flex-wrap items-center justify-between gap-5 px-4 sm:px-6 py-3">
           <div className="flex min-w-0 items-center gap-3">
             <button type="button" onClick={returnToLibrary} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900" aria-label="Exit quiz">
               <X className="h-5 w-5" />
@@ -367,7 +410,7 @@ export function QuizWorkspace() {
                     {String.fromCharCode(65 + optionIndex)}
                   </span>
                   <span className="pt-0.5 text-sm leading-6 text-slate-800">{option.text}</span>
-                  {correct && <Check className="ml-auto h-5 w-5 shrink-0 text-emerald-600" />}
+                  {correct && <Check className="ml-auto h-5 w-5 shrink-0 text-emerald-700" />}
                   {selectedWrong && <X className="ml-auto h-5 w-5 shrink-0 text-red-600" />}
                 </label>
               );
@@ -411,7 +454,7 @@ function Metric({ value, label }: { value: number; label: string }) {
   return (
     <div className="min-w-24 rounded-xl border border-white/15 bg-white/5 px-4 py-3 backdrop-blur">
       <div className="text-xl font-bold">{value}</div>
-      <div className="text-[11px] uppercase tracking-wide text-slate-400">{label}</div>
+      <div className="text-[11px] uppercase tracking-wide text-slate-600">{label}</div>
     </div>
   );
 }
