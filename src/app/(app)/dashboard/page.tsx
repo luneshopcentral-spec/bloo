@@ -1,4 +1,4 @@
-import { paidAccessAvailable } from "@/lib/governance/availability";
+import { checkoutAvailability } from "@/lib/governance/availability";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
@@ -45,6 +45,7 @@ export default async function DashboardPage({
   const supabase = await createClient();
   const { checkout, billing, plan } = await searchParams;
   const selectedPlan = isPlanId(plan) ? plan : null;
+  const checkoutState = checkoutAvailability();
 
   const {
     data: { user },
@@ -175,6 +176,22 @@ export default async function DashboardPage({
       )}
 
       {/* Billing / entitlement */}
+      {checkoutState.testMode && (
+        <Card className="mb-6 border-blue-200 bg-blue-50">
+          <CardContent className="p-5 text-sm text-blue-950">
+            <strong>Stripe sandbox</strong> — use a Stripe test card. No real payments are taken.
+            {hasFullAccess && !profile?.has_paid && <>
+              <p className="mt-2">You already have access, but you can still test checkout. Use a separate student account to test unlocking cases.</p>
+              <div className="mt-3 flex flex-wrap gap-2">{PLAN_OPTIONS.map(option => (
+                <form action="/api/checkout" method="post" key={option.id}>
+                  <input type="hidden" name="plan" value={option.id} />
+                  <Button type="submit" variant="outline">Test {option.shortName.toLowerCase()} · {option.priceDisplay}/{option.interval}</Button>
+                </form>
+              ))}</div>
+            </>}
+          </CardContent>
+        </Card>
+      )}
       {hasFullAccess ? (
         <Card className="mb-8 border-emerald-200 bg-emerald-50/60">
           <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
@@ -194,7 +211,7 @@ export default async function DashboardPage({
                 </span>
               )}
             </div>
-            {profile?.role !== "admin" && (
+            {profile?.stripe_customer_id && (profile?.role !== "admin" || checkoutState.testMode) && (
               <form action="/api/billing-portal" method="post">
                 <Button type="submit" variant="outline" size="sm">
                   Manage subscription
@@ -211,7 +228,7 @@ export default async function DashboardPage({
               Unlock all {STATIC_CASES.length} cases with a subscription.
             </div>
             <div className="flex gap-2">
-              {paidAccessAvailable() ? PLAN_OPTIONS.map((option) => (
+              {checkoutState.available ? PLAN_OPTIONS.map((option) => (
                 <form action="/api/checkout" method="post" key={option.id}>
                   <input type="hidden" name="plan" value={option.id} />
                   <Button type="submit" size="sm" variant={selectedPlan && selectedPlan !== option.id ? "outline" : "default"} className="whitespace-nowrap">

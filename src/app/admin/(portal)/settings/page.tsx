@@ -1,6 +1,6 @@
 import { requireAdmin } from "@/lib/admin/guard";
 import { loadSettings } from "@/lib/admin/settings";
-import { paidAccessAvailable } from "@/lib/governance/availability";
+import { checkoutAvailability, paidAccessAvailable } from "@/lib/governance/availability";
 import { getPaidReleaseReadiness } from "@/lib/governance/editorial";
 import { SettingsForm } from "@/components/admin/SettingsForm";
 
@@ -10,6 +10,7 @@ export default async function AdminSettingsPage() {
   await requireAdmin();
   const settings = await loadSettings();
   const paidReady = paidAccessAvailable();
+  const checkoutState = checkoutAvailability();
   const readiness = getPaidReleaseReadiness();
 
   return (
@@ -29,7 +30,7 @@ export default async function AdminSettingsPage() {
         </p>
         <div className="mt-4 flex items-center gap-2">
           <span className={`inline-block h-2.5 w-2.5 rounded-full ${paidReady ? "bg-emerald-500" : "bg-amber-500"}`} />
-          <span className="text-sm font-medium">{paidReady ? "Paid access is LIVE" : "Paid access is closed"}</span>
+          <span className="text-sm font-medium">{checkoutState.testMode ? "Stripe sandbox checkout is open; live payments are closed" : paidReady ? "Paid access is LIVE" : "Paid access is closed"}</span>
         </div>
         {!readiness.ready && readiness.blockers.length > 0 && (
           <ul className="mt-3 list-inside list-disc space-y-1 text-xs text-slate-600">

@@ -1,4 +1,4 @@
-import { paidAccessAvailable } from "@/lib/governance/availability";
+import { checkoutAvailability } from "@/lib/governance/availability";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { withBillingLock } from "@/lib/billing/lock";
 import { isSameOrigin } from "@/lib/security/request";
@@ -18,8 +18,7 @@ export const maxDuration = 60;
 export async function POST(req: Request) {
   if (!isSameOrigin(req)) return NextResponse.json({ error: "Invalid origin" }, { status: 403 });
   const baseUrl = siteUrl(req.url);
-  const controlledTest = process.env.STRIPE_TEST_MODE === "true" && process.env.STRIPE_SECRET_KEY?.startsWith("sk_test_");
-  if (!paidAccessAvailable() && !controlledTest) return NextResponse.redirect(`${baseUrl}/dashboard?checkout=unavailable`, { status: 303 });
+  if (!checkoutAvailability().available) return NextResponse.redirect(`${baseUrl}/dashboard?checkout=unavailable`, { status: 303 });
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {

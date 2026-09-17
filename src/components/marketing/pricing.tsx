@@ -1,6 +1,6 @@
 "use client";
 
-import { usePaidAvailability } from "@/hooks/usePaidAvailability";
+import { useCheckoutAvailability } from "@/hooks/usePaidAvailability";
 import { useState } from "react";
 import Link from "next/link";
 import { CheckCircle2, CreditCard, ExternalLink, FlaskConical } from "lucide-react";
@@ -19,7 +19,7 @@ const included = [
 ];
 
 export function Pricing() {
-  const paidAvailable = usePaidAvailability();
+  const { available: paidAvailable, testMode } = useCheckoutAvailability();
   const [selectedPlan, setSelectedPlan] = useState<PlanId>("monthly");
   const plan = planOption(selectedPlan);
   const taxCopy = SITE_CONFIG.pricesIncludeGst
@@ -72,8 +72,9 @@ export function Pricing() {
               </p>
               {plan.badge && <p className="mt-2 text-sm font-semibold text-emerald-800">{plan.badge}</p>}
               <p className="my-7 text-sm leading-6 text-slate-700">Full library access with the same features on both billing periods. Cancel in Stripe; access continues to the period end.</p>
-              {paidAvailable ? <Link href={`/sign-up?plan=${plan.id}`} className="mt-auto inline-flex h-12 items-center justify-center rounded-md bg-emerald-800 px-4 font-semibold text-white transition hover:bg-emerald-900">
-                Choose {plan.shortName.toLowerCase()}
+              {testMode && <p className="mb-4 rounded-lg bg-blue-50 p-3 text-sm text-blue-950">Stripe sandbox · test cards only. No real payments are taken.</p>}
+              {paidAvailable ? <Link href={`${testMode ? "/dashboard" : "/sign-up"}?plan=${plan.id}`} className="mt-auto inline-flex h-12 items-center justify-center rounded-md bg-emerald-800 px-4 font-semibold text-white transition hover:bg-emerald-900">
+                {testMode ? "Test" : "Choose"} {plan.shortName.toLowerCase()}
               </Link> : <p className="mt-auto rounded-lg bg-amber-50 p-4 text-sm font-medium text-amber-950">Full access is not open yet. Try the free cases while clinical and launch reviews are completed.</p>}
           </article>
         </div>

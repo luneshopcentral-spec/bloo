@@ -1,5 +1,5 @@
 "use client";
-import { usePaidAvailability } from "@/hooks/usePaidAvailability";
+import { useCheckoutAvailability } from "@/hooks/usePaidAvailability";
 import type { PracticeCase } from "@/lib/types/case";
 import { PLAN_OPTIONS } from "@/lib/billing/plan";
 
@@ -14,7 +14,7 @@ interface LockedCasePanelProps {
  * this is the upgrade prompt for the rest of the library.
  */
 export function LockedCasePanel({ caseData, freeCaseCount }: LockedCasePanelProps) {
-  const paidAvailable = usePaidAvailability();
+  const { available: paidAvailable, testMode } = useCheckoutAvailability();
   const title = caseData.title.replace(/^Case \d+ — /, "");
 
   return (
@@ -28,6 +28,7 @@ export function LockedCasePanel({ caseData, freeCaseCount }: LockedCasePanelProp
           repeat-timing traps and the full counselling library.
         </p>
         <div className="fred-locked-actions">
+          {testMode && <p>Stripe sandbox · use a test card. No real payments are taken.</p>}
           {paidAvailable ? PLAN_OPTIONS.map((plan) => (
             <form action="/api/checkout" method="post" key={plan.id}>
               <input type="hidden" name="plan" value={plan.id} />

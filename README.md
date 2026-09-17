@@ -8,6 +8,10 @@ Launch fixes are implemented locally. Production database upgrades, clinical and
 
 Keep `PAID_LAUNCH_APPROVED=false` until the checklist is complete. The server also checks content approval, billing configuration and database readiness before accepting checkout.
 
+### Stripe sandbox checkout
+
+Set `STRIPE_TEST_MODE=true` with an `sk_test_` secret key, both sandbox price IDs and the sandbox webhook signing secret, then redeploy. Pricing and dashboard checkout buttons will open in clearly labelled sandbox mode while `PAID_LAUNCH_APPROVED=false`. Admins and accounts with complimentary access also get sandbox test buttons on the main-site dashboard. Use a separate student test account to verify access unlocking; sandbox purchases still update that account's billing records in the configured database. Before moving to live Stripe, remove the sandbox test accounts or clear their sandbox billing records through a trusted administrative connection. Live checkout still requires live keys and the launch-readiness approvals.
+
 ## Local setup
 
 Use Node.js 22 and npm. On Windows PowerShell, use `npm.cmd` if the script execution policy blocks `npm`.
