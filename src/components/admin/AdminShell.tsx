@@ -15,6 +15,7 @@ import {
   SlidersHorizontal,
   LogOut,
   ShieldCheck,
+  History,
 } from "lucide-react";
 
 const NAV = [
@@ -25,6 +26,7 @@ const NAV = [
   { href: "/quizzes", label: "Quizzes", icon: ListChecks },
   { href: "/announcements", label: "Announcements", icon: Megaphone },
   { href: "/codes", label: "Access codes", icon: Ticket },
+  { href: "/audit", label: "Admin activity", icon: History },
   { href: "/settings", label: "Settings", icon: SlidersHorizontal },
 ];
 
@@ -40,30 +42,35 @@ export function AdminShell({ email, children }: { email: string; children: React
   const pathname = normalise(usePathname() ?? "/");
   const router = useRouter();
   const [signingOut, setSigningOut] = useState(false);
+  const [signOutError, setSignOutError] = useState(false);
 
   async function signOut() {
     setSigningOut(true);
-    await createClient().auth.signOut();
+    setSignOutError(false);
+    const { error } = await createClient().auth.signOut().catch(() => ({ error: true }));
+    if (error) { setSigningOut(false); setSignOutError(true); return; }
     router.replace("/login");
     router.refresh();
   }
 
   return (
     <div className="flex min-h-screen">
-      <aside className="hidden w-60 shrink-0 flex-col border-r border-slate-200 bg-white p-4 md:flex">
+      <a href="#admin-content" className="skip-link">Skip to admin content</a>
+      <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col overflow-y-auto border-r border-slate-200 bg-white p-4 md:flex">
         <div className="mb-6 flex items-center gap-2 px-2">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-900 text-white">
             <ShieldCheck className="h-4 w-4" />
           </span>
           <span className="font-semibold">Admin</span>
         </div>
-        <nav className="flex-1 space-y-1">
+        <nav aria-label="Admin navigation" className="flex-1 space-y-1">
           {NAV.map(({ href, label, icon: Icon }) => {
             const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
             return (
               <Link
                 key={href}
                 href={href}
+                aria-current={active ? "page" : undefined}
                 className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
                   active ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"
                 }`}
@@ -75,7 +82,7 @@ export function AdminShell({ email, children }: { email: string; children: React
           })}
         </nav>
         <div className="mt-4 border-t border-slate-200 pt-4">
-          <p className="truncate px-3 text-xs text-slate-500" title={email}>{email}</p>
+          <p className="truncate px-3 text-xs text-slate-600" title={email}>{email}</p>
           <button
             onClick={signOut}
             disabled={signingOut}
@@ -84,10 +91,11 @@ export function AdminShell({ email, children }: { email: string; children: React
             <LogOut className="h-4 w-4" />
             {signingOut ? "Signing out…" : "Sign out"}
           </button>
+          {signOutError && <p role="alert" className="px-3 text-xs text-red-700">Sign-out failed. Please try again.</p>}
         </div>
       </aside>
 
-      <div className="flex-1">
+      <div className="min-w-0 flex-1">
         {/* Mobile top nav */}
         <div className="flex items-center gap-1 overflow-x-auto border-b border-slate-200 bg-white p-2 md:hidden">
           {NAV.map(({ href, label, icon: Icon }) => {
@@ -106,7 +114,7 @@ export function AdminShell({ email, children }: { email: string; children: React
             );
           })}
         </div>
-        <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
+        <main id="admin-content" tabIndex={-1} className="mx-auto max-w-6xl px-4 py-8">{children}</main>
       </div>
     </div>
   );

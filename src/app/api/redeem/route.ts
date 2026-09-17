@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { isSameOrigin } from "@/lib/security/request";
 import { allowRequest } from "@/lib/security/rate-limit";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 
@@ -29,8 +30,9 @@ export async function POST(req: Request) {
     .safeParse(await req.json().catch(() => null));
   if (!input.success) return NextResponse.json({ error: "Enter a valid code." }, { status: 400 });
 
-  // The RPC (security definer) validates and grants atomically as the caller.
-  const { data, error } = await client.rpc("redeem_access_code", { input_code: input.data.code });
+  // Recipient comes exclusively from the verified session. The RPC is not
+  // callable by a browser and commits the grant/counter/redemption together.
+  const { data, error } = await createAdminClient().rpc("redeem_access_code_for_user", { input_code: input.data.code, recipient_id: user.id });
   if (error) {
     const reason = REASONS[error.message] ?? "That code could not be redeemed.";
     return NextResponse.json({ error: reason }, { status: 400 });

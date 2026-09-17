@@ -52,8 +52,12 @@ export function AnnouncementsManager({ rows }: { rows: AnnouncementRow[] }) {
 
   async function act(action: string, id: string, extra: Record<string, unknown> = {}) {
     if (action === "delete" && !window.confirm("Delete this announcement permanently?")) return;
-    await adminPost("/api/admin/announcements", { action, id, ...extra });
-    router.refresh();
+    setBusy(true);
+    setError(null);
+    const result = await adminPost("/api/admin/announcements", { action, id, ...extra });
+    setBusy(false);
+    if (result.ok) router.refresh();
+    else setError(result.error ?? "The announcement could not be updated.");
   }
 
   return (
@@ -84,8 +88,9 @@ export function AnnouncementsManager({ rows }: { rows: AnnouncementRow[] }) {
                 <button
                   key={l}
                   type="button"
+                  aria-pressed={level === l}
                   onClick={() => setLevel(l)}
-                  className={`rounded-full px-3 py-1 text-xs font-medium ${level === l ? LEVEL_STYLE[l] : "bg-slate-100 text-slate-500"}`}
+                  className={`rounded-full px-3 py-1 text-xs font-medium ${level === l ? LEVEL_STYLE[l] : "bg-slate-100 text-slate-600"}`}
                 >
                   {l}
                 </button>
@@ -94,8 +99,8 @@ export function AnnouncementsManager({ rows }: { rows: AnnouncementRow[] }) {
           </div>
         </div>
         <div className="mt-4 flex items-center gap-3">
-          <Button type="submit" disabled={busy}>{busy ? "Posting…" : "Post announcement"}</Button>
-          {error && <span className="text-sm text-red-600">{error}</span>}
+          <Button type="submit" className="bg-slate-900 text-white hover:bg-slate-800" disabled={busy}>{busy ? "Posting…" : "Post announcement"}</Button>
+          {error && <span role="alert" className="text-sm text-red-600">{error}</span>}
         </div>
       </form>
 
@@ -110,20 +115,20 @@ export function AnnouncementsManager({ rows }: { rows: AnnouncementRow[] }) {
               ) : (
                 <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs text-slate-600">Hidden</span>
               )}
-              <span className="ml-auto text-xs text-slate-400">from {formatDate(row.startsAt)}{row.endsAt ? ` to ${formatDate(row.endsAt)}` : ""}</span>
+              <span className="ml-auto text-xs text-slate-600">from {formatDate(row.startsAt)}{row.endsAt ? ` to ${formatDate(row.endsAt)}` : ""}</span>
             </div>
             <p className="whitespace-pre-wrap break-words text-sm text-slate-700">{row.body}</p>
             <div className="mt-3 flex justify-end gap-1">
-              <Button variant="ghost" size="sm" onClick={() => act("set_active", row.id, { active: !row.active })}>
+              <Button disabled={busy} variant="ghost" size="sm" onClick={() => act("set_active", row.id, { active: !row.active })}>
                 {row.active ? "Hide" : "Show"}
               </Button>
-              <Button variant="ghost" size="sm" className="text-red-600 hover:bg-red-50 hover:text-red-700" onClick={() => act("delete", row.id)}>
+              <Button disabled={busy} variant="ghost" size="sm" className="text-red-600 hover:bg-red-50 hover:text-red-700" onClick={() => act("delete", row.id)}>
                 Delete
               </Button>
             </div>
           </article>
         ))}
-        {rows.length === 0 && <p className="text-sm text-slate-500">No announcements yet.</p>}
+        {rows.length === 0 && <p className="text-sm text-slate-600">No announcements yet.</p>}
       </div>
     </div>
   );

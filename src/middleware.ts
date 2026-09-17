@@ -36,6 +36,10 @@ export async function middleware(request: NextRequest) {
 
   const withRefreshedCookies = (response: NextResponse) => {
     supabaseResponse.cookies.getAll().forEach((cookie) => response.cookies.set(cookie));
+    if (onAdminHost) {
+      response.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
+      response.headers.set("Cache-Control", "private, no-store");
+    }
     return response;
   };
   const redirectTo = (target: string) => {
@@ -49,13 +53,13 @@ export async function middleware(request: NextRequest) {
   if (onAdminHost) {
     // API and framework assets pass straight through (never namespaced).
     if (pathname.startsWith("/api") || pathname.startsWith("/_next")) {
-      return supabaseResponse;
+      return withRefreshedCookies(supabaseResponse);
     }
     // Everything the admin operator sees is gated behind auth except the login
     // page itself. Role (admin vs. not) is enforced in the admin layout.
     const isLogin = pathname === "/login" || pathname.startsWith("/login/");
     if (!user && !isLogin) return redirectTo("/login");
-    if (user && isLogin) return redirectTo("/");
+    // Leave login reachable for signed-in non-admins and account switching.
 
     // Rewrite clean subdomain paths (/users) onto the internal tree (/admin/users).
     const url = request.nextUrl.clone();

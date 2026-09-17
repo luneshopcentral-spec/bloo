@@ -58,7 +58,7 @@ node scripts/test-database.mjs
 - Device drafts and failed submissions are scoped to the signed-in account. A student can resume a practice draft or retry a queued save. Local storage is a convenience, not a backup.
 - Quiz answers are graded by the server and persisted per account/content version. Offline results are queued on that device. Quiz progress is separate from simulator competency summaries.
 - `/account` supports profile edits, password-reset requests, JSON data export, billing portal access and support/deletion requests. Deletion requests require operator handling; they do not immediately delete an account.
-- `/admin` is restricted to a server-checked `profiles.role='admin'` and lists feedback plus content-review status. Assign that role only using a trusted administrative connection.
+- The admin portal has its own login on `admin.<your-domain>`. It manages timed access codes, registered users, feedback, announcements and maintenance, with an operator activity log. Primary-site `/admin` routes are hidden. See [admin setup and verification](docs/admin-portal-2026-09-17.md).
 
 ## Voice and content
 

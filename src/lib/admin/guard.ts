@@ -4,6 +4,21 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/types/database";
+import { isAdminHost } from "./host";
+import { allowRequest } from "@/lib/security/rate-limit";
+
+export async function requireAdminMutation(request: Request): Promise<AdminActor> {
+  // Next can normalise request.url to the internal server hostname. Match the
+  // browser's Host to the configured allowlist before comparing its Origin.
+  const host = (request.headers.get("host") ?? new URL(request.url).host).toLowerCase();
+  const origin = request.headers.get("origin");
+  const validOrigin = origin === `https://${host}` || (process.env.NODE_ENV !== "production" && origin === `http://${host}`);
+  if (!isAdminHost(host) || !validOrigin) throw new AdminAuthError(403, "Invalid admin origin");
+  if (Number(request.headers.get("content-length") ?? 0) > 20000) throw new AdminAuthError(413, "Request too large");
+  const actor = await requireAdmin("api");
+  if (!await allowRequest(actor.id, "admin-mutation", 60)) throw new AdminAuthError(429, "Too many changes. Please try again shortly.");
+  return actor;
+}
 
 export interface AdminActor {
   id: string;
@@ -43,7 +58,7 @@ export class AdminAuthError extends Error {
   }
 }
 
-/** Append an entry to the tamper-evident admin audit log. Best-effort: a logging
+/** Append an entry to the service-only admin audit log. Best-effort: a logging
  * failure never blocks the underlying action, but it is surfaced in server logs. */
 export async function logAdminAction(
   actor: AdminActor,
@@ -51,7 +66,7 @@ export async function logAdminAction(
   target: { type?: string; id?: string; detail?: Record<string, unknown> } = {}
 ): Promise<void> {
   try {
-    await createAdminClient().from("admin_audit_log").insert({
+    const { error } = await createAdminClient().from("admin_audit_log").insert({
       actor_id: actor.id,
       actor_email: actor.email,
       action,
@@ -59,6 +74,7 @@ export async function logAdminAction(
       target_id: target.id ?? null,
       detail: (target.detail ?? null) as Json,
     });
+    if (error) throw error;
   } catch (error) {
     console.error("admin_audit_log insert failed", { action, error });
   }

@@ -38,12 +38,13 @@ export function UserActions({
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-5">
-      <h2 className="mb-4 font-medium">Manage account</h2>
+      <h2 className="mb-2 font-medium">Manage account</h2><p className="mb-4 text-sm text-slate-600">Grants never shorten existing access. Revoking a trial does not cancel a paid subscription. Changes are recorded in the audit log.</p>
       <div className="flex flex-wrap items-end gap-4">
         <div className="flex items-end gap-2">
           <div>
-            <label className="mb-1 block text-xs text-slate-500">Grant trial (days)</label>
+            <label htmlFor="grant-days" className="mb-1 block text-xs text-slate-600">Minimum access from today (days)</label>
             <Input
+              id="grant-days"
               type="number"
               min={1}
               max={365}
@@ -54,8 +55,8 @@ export function UserActions({
           </div>
           <Button
             variant="outline"
-            disabled={busy !== null}
-            onClick={() => run("grant", { action: "grant_comp", days: compDays })}
+            disabled={busy !== null || !Number.isInteger(compDays) || compDays < 1 || compDays > 365}
+            onClick={() => run("grant", { action: "grant_comp", minutes: compDays * 1440 })}
           >
             Grant access
           </Button>
@@ -107,7 +108,7 @@ export function UserActions({
         </div>
       </div>
       {message && (
-        <p className={`mt-3 text-sm ${message.ok ? "text-emerald-600" : "text-red-600"}`}>{message.text}</p>
+        <p role="status" className={`mt-3 text-sm ${message.ok ? "text-emerald-700" : "text-red-600"}`}>{message.text}</p>
       )}
     </div>
   );

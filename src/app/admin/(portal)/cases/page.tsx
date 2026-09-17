@@ -23,7 +23,7 @@ export default async function AdminCasesPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Cases</h1>
-        <p className="mt-1 text-sm text-slate-500">{STATIC_CASES.length} authored simulator cases, with live attempt analytics.</p>
+        <p className="mt-1 text-sm text-slate-600">{STATIC_CASES.length} authored simulator cases, with live attempt analytics.</p>
       </div>
 
       <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
@@ -33,7 +33,7 @@ export default async function AdminCasesPage() {
 
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
         <table className="w-full text-sm">
-          <thead className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
+          <thead className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-600">
             <tr>
               <th className="px-4 py-3">Case</th>
               <th className="px-4 py-3">Access</th>
@@ -51,7 +51,7 @@ export default async function AdminCasesPage() {
                 <tr key={c.id} className="border-b border-slate-100 last:border-0">
                   <td className="px-4 py-3">
                     <div className="font-medium">{c.title}</div>
-                    <div className="text-xs text-slate-500">{c.id}</div>
+                    <div className="text-xs text-slate-600">{c.id}</div>
                   </td>
                   <td className="px-4 py-3">
                     {c.isFree ? (
@@ -64,7 +64,7 @@ export default async function AdminCasesPage() {
                     {record ? (
                       <>
                         <div>{record.version}</div>
-                        <div className="text-slate-400">clinical: {record.clinicalReview.status} · legal: {record.legalReview.status}</div>
+                        <div className="text-slate-600">clinical: {record.clinicalReview.status} · legal: {record.legalReview.status}</div>
                       </>
                     ) : "—"}
                   </td>

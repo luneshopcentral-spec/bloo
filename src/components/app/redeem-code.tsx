@@ -13,7 +13,7 @@ export function RedeemCode({ activeUntil }: { activeUntil: string | null }) {
 
   const activeLabel =
     activeUntil && Date.parse(activeUntil) > Date.now()
-      ? new Date(activeUntil).toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" })
+      ? new Date(activeUntil).toLocaleString("en-AU", { day: "2-digit", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", timeZone: "Australia/Sydney", timeZoneName: "short" })
       : null;
 
   async function submit(event: React.FormEvent) {
@@ -55,12 +55,13 @@ export function RedeemCode({ activeUntil }: { activeUntil: string | null }) {
           placeholder="Enter access code"
           className="max-w-xs font-mono"
           aria-label="Access code"
+          maxLength={32}
         />
         <Button type="submit" disabled={busy || code.trim().length < 3}>
           {busy ? "Redeeming…" : "Redeem"}
         </Button>
       </form>
-      {message && <p className={`mt-2 text-sm ${message.ok ? "text-emerald-700" : "text-red-600"}`}>{message.text}</p>}
+      {message && <p role="status" className={`mt-2 text-sm ${message.ok ? "text-emerald-700" : "text-red-600"}`}>{message.text}</p>}
     </div>
   );
 }

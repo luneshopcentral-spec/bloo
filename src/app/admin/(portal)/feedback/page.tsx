@@ -43,7 +43,7 @@ export default async function AdminFeedbackPage({
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Feedback</h1>
-        <p className="mt-1 text-sm text-slate-500">User-reported content issues, bugs and requests.</p>
+        <p className="mt-1 text-sm text-slate-600">User-reported content issues, bugs and requests.</p>
       </div>
       {error ? (
         <p className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">

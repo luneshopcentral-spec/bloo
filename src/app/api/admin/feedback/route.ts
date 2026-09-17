@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireAdmin, logAdminAction, AdminAuthError } from "@/lib/admin/guard";
+import { requireAdminMutation, logAdminAction, AdminAuthError } from "@/lib/admin/guard";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
@@ -13,7 +13,7 @@ const schema = z.object({
 export async function POST(request: Request) {
   let actor;
   try {
-    actor = await requireAdmin("api");
+    actor = await requireAdminMutation(request);
   } catch (error) {
     if (error instanceof AdminAuthError) {
       return NextResponse.json({ error: error.message }, { status: error.status });

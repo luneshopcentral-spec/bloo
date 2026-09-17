@@ -39,16 +39,20 @@ const KIND_STYLE: Record<string, string> = {
 export function FeedbackList({ items, activeFilter }: { items: FeedbackItem[]; activeFilter: string | null }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   async function setStatus(id: string, status: string) {
     setBusy(id);
+    setError(null);
     const result = await adminPost("/api/admin/feedback", { id, status });
     setBusy(null);
     if (result.ok) router.refresh();
+    else setError(result.error ?? "The feedback status could not be saved.");
   }
 
   return (
     <div className="space-y-4">
+      {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       <div className="flex gap-1">
         {STATUS_TABS.map((tab) => {
           const active = activeFilter === tab.value;
@@ -67,7 +71,7 @@ export function FeedbackList({ items, activeFilter }: { items: FeedbackItem[]; a
         })}
       </div>
 
-      {items.length === 0 && <p className="text-sm text-slate-500">No feedback in this view.</p>}
+      {items.length === 0 && <p className="text-sm text-slate-600">No feedback in this view.</p>}
 
       <div className="space-y-3">
         {items.map((item) => (
@@ -80,11 +84,11 @@ export function FeedbackList({ items, activeFilter }: { items: FeedbackItem[]; a
               <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLE[item.status] ?? "bg-slate-100"}`}>
                 {item.status.replace("_", " ")}
               </span>
-              <span className="ml-auto text-xs text-slate-400">{formatDateTime(item.createdAt)}</span>
+              <span className="ml-auto text-xs text-slate-600">{formatDateTime(item.createdAt)}</span>
             </div>
             <p className="whitespace-pre-wrap break-words text-sm text-slate-800">{item.message}</p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
-              <span className="text-xs text-slate-500">{item.email}</span>
+              <span className="text-xs text-slate-600">{item.email}</span>
               <div className="ml-auto flex gap-1">
                 {["open", "in_progress", "resolved"]
                   .filter((s) => s !== item.status)

@@ -32,14 +32,20 @@ function AdminLoginForm() {
     setError(null);
     setLoading(true);
     const supabase = createClient();
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    const { error: signInError, data } = await supabase.auth.signInWithPassword({ email, password }).catch(() => ({ error: new Error("Network error"), data: { user: null } }));
     if (signInError) {
       setLoading(false);
       setError("Those credentials were not accepted.");
       return;
     }
-    // Middleware bounces an authenticated operator from /login to the portal
-    // root, where the role gate has the final say.
+    const { data: profile, error: profileError } = await supabase.from("profiles").select("role").eq("id", data.user!.id).single();
+    if (profileError || profile?.role !== "admin") {
+      await supabase.auth.signOut();
+      setPassword("");
+      setLoading(false);
+      setError("This account does not have administrator access.");
+      return;
+    }
     router.replace("/");
     router.refresh();
   }
@@ -53,7 +59,7 @@ function AdminLoginForm() {
           </span>
           <div>
             <h1 className="text-lg font-semibold">Admin portal</h1>
-            <p className="text-xs text-slate-500">Authorised operators only</p>
+            <p className="text-xs text-slate-600">Authorised operators only</p>
           </div>
         </div>
 
@@ -89,7 +95,7 @@ function AdminLoginForm() {
               <button
                 type="button"
                 onClick={() => setShowPassword((value) => !value)}
-                className="absolute inset-y-0 right-3 flex items-center text-slate-400"
+                className="absolute inset-y-0 right-3 flex items-center text-slate-600"
                 aria-label={showPassword ? "Hide password" : "Show password"}
               >
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -97,12 +103,13 @@ function AdminLoginForm() {
             </div>
           </div>
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
 
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sign in"}
+          <Button type="submit" className="w-full bg-slate-900 text-white hover:bg-slate-800" disabled={loading}>
+            {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Signing in…</> : "Sign in"}
           </Button>
         </form>
+        {process.env.NEXT_PUBLIC_SITE_URL && <a className="mt-4 block text-center text-sm text-slate-600 underline" href={`${process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, "")}/forgot-password`}>Reset your password on the main site</a>}
       </div>
     </main>
   );

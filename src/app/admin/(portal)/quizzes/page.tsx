@@ -22,7 +22,7 @@ export default async function AdminQuizzesPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Quizzes</h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-slate-600">
           {CONSULTATION_QUIZ_CASES.length} consultation quiz cases · content version <code className="rounded bg-slate-100 px-1">{QUIZ_CONTENT_VERSION}</code>
         </p>
       </div>
@@ -34,7 +34,7 @@ export default async function AdminQuizzesPage() {
 
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
         <table className="w-full text-sm">
-          <thead className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
+          <thead className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-600">
             <tr>
               <th className="px-4 py-3">Quiz</th>
               <th className="px-4 py-3">Difficulty</th>
@@ -51,7 +51,7 @@ export default async function AdminQuizzesPage() {
                 <tr key={q.id} className="border-b border-slate-100 last:border-0">
                   <td className="px-4 py-3">
                     <div className="font-medium">{q.title}</div>
-                    <div className="text-xs text-slate-500">{q.id}</div>
+                    <div className="text-xs text-slate-600">{q.id}</div>
                   </td>
                   <td className="px-4 py-3">
                     <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">{q.difficulty}</span>

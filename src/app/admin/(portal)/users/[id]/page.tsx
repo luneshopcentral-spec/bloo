@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { z } from "zod";
 import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/admin/guard";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -15,10 +16,13 @@ export default async function AdminUserDetailPage({
 }) {
   const actor = await requireAdmin();
   const { id } = await params;
+  if (!z.string().uuid().safeParse(id).success) notFound();
   const admin = createAdminClient();
 
-  const { data: profile } = await admin.from("profiles").select("*").eq("id", id).single();
+  const { data: profile, error: profileError } = await admin.from("profiles").select("*").eq("id", id).single();
+  if (profileError && profileError.code !== "PGRST116") return <p role="alert">Could not load the account. Please try again.</p>;
   if (!profile) notFound();
+  const { data: authData } = await admin.auth.admin.getUserById(id);
 
   const [{ data: attempts }, { data: quizzes }, { data: redemptions }] = await Promise.all([
     admin.from("attempts").select("case_id, passed, score, max_score, mode, created_at").eq("user_id", id).order("created_at", { ascending: false }).limit(20),
@@ -31,13 +35,13 @@ export default async function AdminUserDetailPage({
 
   return (
     <div className="space-y-6">
-      <Link href="/users" className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800">
+      <Link href="/users" className="inline-flex items-center gap-1 text-sm text-slate-600 hover:text-slate-800">
         <ArrowLeft className="h-4 w-4" /> Back to users
       </Link>
 
       <div className="rounded-xl border border-slate-200 bg-white p-6">
         <h1 className="text-2xl font-semibold">{profile.full_name || "—"}</h1>
-        <p className="text-sm text-slate-500">{profile.email}</p>
+        <p className="text-sm text-slate-600">{profile.email}</p>
         <dl className="mt-4 grid gap-x-8 gap-y-2 text-sm sm:grid-cols-2">
           <Field label="Role" value={profile.role} />
           <Field label="University" value={profile.university ?? "—"} />
@@ -47,9 +51,11 @@ export default async function AdminUserDetailPage({
           <Field label="Renews / ends" value={formatDate(profile.subscription_current_period_end)} />
           <Field
             label="Trial / comp access"
-            value={isFuture(profile.comp_access_until) ? `Active until ${formatDate(profile.comp_access_until)}` : "None"}
+            value={isFuture(profile.comp_access_until) ? `Active until ${formatDateTime(profile.comp_access_until)}` : "None"}
           />
-          <Field label="Joined" value={formatDate(profile.created_at)} />
+          <Field label="Joined" value={formatDateTime(profile.created_at)} />
+          <Field label="Email confirmed" value={formatDateTime(authData.user?.email_confirmed_at)} />
+          <Field label="Last sign-in" value={formatDateTime(authData.user?.last_sign_in_at)} />
         </dl>
       </div>
 
@@ -61,14 +67,14 @@ export default async function AdminUserDetailPage({
       />
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <ActivityCard title={`Practice attempts (${passed}/${totalAttempts} passed)`}>
+        <ActivityCard title={`Latest 20 practice attempts (${passed}/${totalAttempts} passed)`}>
           {(attempts ?? []).map((a, i) => (
             <Row key={i} left={a.case_id} mid={`${a.score}/${a.max_score} · ${a.mode}`} right={formatDate(a.created_at)} ok={a.passed} />
           ))}
           {totalAttempts === 0 && <Empty />}
         </ActivityCard>
 
-        <ActivityCard title={`Quiz attempts (${quizzes?.length ?? 0})`}>
+        <ActivityCard title={`Latest 20 quiz attempts (${quizzes?.length ?? 0})`}>
           {(quizzes ?? []).map((q, i) => (
             <Row key={i} left={q.case_id} mid={q.mode} right={formatDate(q.created_at)} ok={q.percentage >= 80} tag={`${q.percentage}%`} />
           ))}
@@ -79,7 +85,7 @@ export default async function AdminUserDetailPage({
       {(redemptions?.length ?? 0) > 0 && (
         <ActivityCard title="Access-code redemptions">
           {(redemptions ?? []).map((r, i) => (
-            <Row key={i} left={r.code} mid={`granted until ${formatDate(r.granted_until)}`} right={formatDateTime(r.redeemed_at)} />
+            <Row key={i} left={r.code} mid={`granted until ${formatDateTime(r.granted_until)}`} right={formatDateTime(r.redeemed_at)} />
           ))}
         </ActivityCard>
       )}
@@ -90,7 +96,7 @@ export default async function AdminUserDetailPage({
 function Field({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between border-b border-slate-100 py-1">
-      <dt className="text-slate-500">{label}</dt>
+      <dt className="text-slate-600">{label}</dt>
       <dd className="font-medium">{value}</dd>
     </div>
   );
@@ -111,14 +117,14 @@ function Row({ left, mid, right, ok, tag }: { left: string; mid: string; right: 
       <span className="flex items-center gap-2">
         {ok !== undefined && <span className={`h-2 w-2 rounded-full ${ok ? "bg-emerald-500" : "bg-red-400"}`} />}
         <span className="font-medium">{left}</span>
-        {tag && <span className="text-xs text-slate-500">{tag}</span>}
+        {tag && <span className="text-xs text-slate-600">{tag}</span>}
       </span>
-      <span className="text-xs text-slate-500">{mid}</span>
-      <span className="text-xs text-slate-400">{right}</span>
+      <span className="text-xs text-slate-600">{mid}</span>
+      <span className="text-xs text-slate-600">{right}</span>
     </div>
   );
 }
 
 function Empty() {
-  return <p className="text-sm text-slate-400">No activity yet.</p>;
+  return <p className="text-sm text-slate-600">No activity yet.</p>;
 }

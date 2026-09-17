@@ -27,7 +27,7 @@ export default async function AdminAnnouncementsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Announcements</h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-slate-600">
           Active announcements appear as a banner to signed-in users until they dismiss them or the window ends.
         </p>
       </div>

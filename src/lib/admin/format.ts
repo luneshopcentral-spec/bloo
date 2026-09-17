@@ -1,17 +1,19 @@
 // Shared, dependency-free formatting for the admin portal. Dates render in the
-// operator's locale; the platform's clinical content stays Australian.
+// Sydney time consistently on server and browser, avoiding hydration drift.
 export function formatDate(iso: string | null | undefined): string {
   if (!iso) return "—";
   const ms = Date.parse(iso);
   if (!Number.isFinite(ms)) return "—";
-  return new Date(ms).toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" });
+  return new Date(ms).toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "2-digit", month: "short", year: "numeric" });
 }
 
 export function formatDateTime(iso: string | null | undefined): string {
   if (!iso) return "—";
   const ms = Date.parse(iso);
   if (!Number.isFinite(ms)) return "—";
-  return new Date(ms).toLocaleString(undefined, {
+  return new Date(ms).toLocaleString("en-AU", {
+    timeZone: "Australia/Sydney",
+    timeZoneName: "short",
     day: "2-digit",
     month: "short",
     year: "numeric",

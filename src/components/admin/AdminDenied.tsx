@@ -21,7 +21,7 @@ export function AdminDenied({ email }: { email: string }) {
           <ShieldAlert className="h-6 w-6" />
         </span>
         <h1 className="text-lg font-semibold">Not authorised</h1>
-        <p className="mt-2 text-sm text-slate-500">
+        <p className="mt-2 text-sm text-slate-600">
           {email || "This account"} does not have administrator access.
         </p>
         <Button onClick={signOut} variant="outline" className="mt-6 w-full">

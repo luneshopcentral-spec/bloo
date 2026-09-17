@@ -1,17 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { adminPost } from "@/lib/admin/client-api";
-import { formatDate, isFuture } from "@/lib/admin/format";
+import { formatDateTime, isFuture } from "@/lib/admin/format";
 
 export interface AccessCodeRow {
   code: string;
   description: string | null;
   grantsDays: number;
+  grantsMinutes: number;
+  assignedEmail: string | null;
   maxRedemptions: number | null;
   redemptions: number;
   active: boolean;
@@ -22,18 +25,27 @@ export interface AccessCodeRow {
 function randomCode(): string {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let out = "TRIAL-";
-  for (let i = 0; i < 6; i += 1) out += alphabet[Math.floor(Math.random() * alphabet.length)];
+  const bytes = crypto.getRandomValues(new Uint8Array(12));
+  for (const byte of bytes) out += alphabet[byte % alphabet.length];
   return out;
 }
 
 export function CodesManager({ rows }: { rows: AccessCodeRow[] }) {
   const router = useRouter();
-  const [code, setCode] = useState(randomCode());
+  const [code, setCode] = useState("");
+  useEffect(() => {
+    setCode(randomCode());
+  }, []);
   const [description, setDescription] = useState("");
   const [grantsDays, setGrantsDays] = useState(14);
-  const [maxRedemptions, setMaxRedemptions] = useState("");
+  const [maxRedemptions, setMaxRedemptions] = useState("1");
+  const [unit, setUnit] = useState("days");
+  const [expiresAt, setExpiresAt] = useState("");
+  const [assignedEmail, setAssignedEmail] = useState("");
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null);
+  const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(
+    null,
+  );
 
   async function create(event: React.FormEvent) {
     event.preventDefault();
@@ -43,7 +55,10 @@ export function CodesManager({ rows }: { rows: AccessCodeRow[] }) {
       action: "create",
       code: code.trim().toUpperCase(),
       description: description.trim() || undefined,
-      grantsDays,
+      grantsMinutes:
+        grantsDays * (unit === "days" ? 1440 : unit === "hours" ? 60 : 1),
+      expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
+      assignedEmail: assignedEmail.trim() || null,
       maxRedemptions: maxRedemptions ? Number(maxRedemptions) : null,
     });
     setBusy(false);
@@ -51,7 +66,7 @@ export function CodesManager({ rows }: { rows: AccessCodeRow[] }) {
       setMessage({ text: `Created ${code.trim().toUpperCase()}`, ok: true });
       setCode(randomCode());
       setDescription("");
-      setMaxRedemptions("");
+      setMaxRedemptions("1");
       router.refresh();
     } else {
       setMessage({ text: result.error ?? "Failed", ok: false });
@@ -59,44 +74,151 @@ export function CodesManager({ rows }: { rows: AccessCodeRow[] }) {
   }
 
   async function toggle(row: AccessCodeRow) {
-    await adminPost("/api/admin/codes", { action: "set_active", code: row.code, active: !row.active });
-    router.refresh();
+    setBusy(true);
+    const result = await adminPost("/api/admin/codes", {
+      action: "set_active",
+      code: row.code,
+      active: !row.active,
+    });
+    setBusy(false);
+    setMessage({
+      text: result.ok
+        ? `${row.code} ${row.active ? "deactivated" : "reactivated"}. Existing grants are unchanged.`
+        : (result.error ?? "Update failed"),
+      ok: result.ok,
+    });
+    if (result.ok) router.refresh();
   }
 
   return (
     <div className="space-y-6">
-      <form onSubmit={create} className="rounded-xl border border-slate-200 bg-white p-5">
+      <form
+        onSubmit={create}
+        className="rounded-xl border border-slate-200 bg-white p-5"
+      >
         <h2 className="mb-4 font-medium">New access code</h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <Label htmlFor="code">Code</Label>
             <div className="mt-1 flex gap-1">
-              <Input id="code" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} className="font-mono" />
-              <Button type="button" variant="ghost" onClick={() => setCode(randomCode())} title="Generate">↻</Button>
+              <Input
+                id="code"
+                required
+                maxLength={32}
+                value={code}
+                onChange={(e) => setCode(e.target.value.toUpperCase())}
+                className="font-mono"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setCode(randomCode())}
+                aria-label="Generate a random access code"
+                title="Generate"
+              >
+                ↻
+              </Button>
             </div>
           </div>
           <div>
-            <Label htmlFor="days">Grants (days)</Label>
-            <Input id="days" type="number" min={1} max={365} value={grantsDays} onChange={(e) => setGrantsDays(Number(e.target.value))} className="mt-1" />
+            <Label htmlFor="days">Access duration</Label>
+            <div className="mt-1 flex gap-2">
+              <Input
+                required
+                id="days"
+                type="number"
+                min={unit === "minutes" ? 15 : 1}
+                max={unit === "days" ? 365 : unit === "hours" ? 8760 : 525600}
+                value={grantsDays}
+                onChange={(e) => setGrantsDays(Number(e.target.value))}
+              />
+              <select
+                aria-label="Duration unit"
+                className="rounded-md border px-2"
+                value={unit}
+                onChange={(e) => setUnit(e.target.value)}
+              >
+                <option value="days">Days</option>
+                <option value="hours">Hours</option>
+                <option value="minutes">Minutes</option>
+              </select>
+            </div>
           </div>
           <div>
             <Label htmlFor="max">Max redemptions</Label>
-            <Input id="max" type="number" min={1} placeholder="Unlimited" value={maxRedemptions} onChange={(e) => setMaxRedemptions(e.target.value)} className="mt-1" />
+            <Input
+              id="max"
+              type="number"
+              min={1}
+              placeholder="Unlimited"
+              value={maxRedemptions}
+              onChange={(e) => setMaxRedemptions(e.target.value)}
+              className="mt-1"
+            />
           </div>
           <div>
             <Label htmlFor="desc">Note (optional)</Label>
-            <Input id="desc" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="e.g. Monash cohort" className="mt-1" />
+            <Input
+              id="desc"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              maxLength={200}
+              placeholder="e.g. Monash cohort"
+              className="mt-1"
+            />
           </div>
         </div>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <div>
+            <Label htmlFor="code-expiry">
+              Redeem before (optional, your local time)
+            </Label>
+            <Input
+              className="mt-1"
+              id="code-expiry"
+              type="datetime-local"
+              value={expiresAt}
+              onChange={(e) => setExpiresAt(e.target.value)}
+            />
+          </div>
+          <div>
+            <Label htmlFor="code-email">
+              Restrict to account email (optional)
+            </Label>
+            <Input
+              className="mt-1"
+              id="code-email"
+              type="email"
+              maxLength={254}
+              placeholder="Any registered user"
+              value={assignedEmail}
+              onChange={(e) => setAssignedEmail(e.target.value)}
+            />
+          </div>
+        </div>
+        <p className="mt-4 text-xs text-slate-600">
+          Access starts when redeemed. A grant never shortens existing access.
+          Each user can redeem a code once. Deactivating a code stops future
+          redemptions; revoke an existing grant from the user’s account.
+        </p>
         <div className="mt-4 flex items-center gap-3">
-          <Button type="submit" disabled={busy}>{busy ? "Creating…" : "Create code"}</Button>
-          {message && <span className={`text-sm ${message.ok ? "text-emerald-600" : "text-red-600"}`}>{message.text}</span>}
+          <Button type="submit" className="bg-slate-900 text-white hover:bg-slate-800" disabled={busy}>
+            {busy ? "Creating…" : "Create code"}
+          </Button>
+          {message && (
+            <span
+              role="status"
+              className={`text-sm ${message.ok ? "text-emerald-700" : "text-red-600"}`}
+            >
+              {message.text}
+            </span>
+          )}
         </div>
       </form>
 
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
         <table className="w-full text-sm">
-          <thead className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
+          <thead className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-600">
             <tr>
               <th className="px-4 py-3">Code</th>
               <th className="px-4 py-3">Grants</th>
@@ -109,31 +231,92 @@ export function CodesManager({ rows }: { rows: AccessCodeRow[] }) {
           <tbody>
             {rows.map((row) => {
               const expired = row.expiresAt && !isFuture(row.expiresAt);
-              const full = row.maxRedemptions !== null && row.redemptions >= row.maxRedemptions;
+              const full =
+                row.maxRedemptions !== null &&
+                row.redemptions >= row.maxRedemptions;
               return (
-                <tr key={row.code} className="border-b border-slate-100 last:border-0">
+                <tr
+                  key={row.code}
+                  className="border-b border-slate-100 last:border-0"
+                >
                   <td className="px-4 py-3">
-                    <span className="font-mono font-medium">{row.code}</span>
-                    {row.description && <div className="text-xs text-slate-500">{row.description}</div>}
+                    <Link
+                      href={`/codes/${encodeURIComponent(row.code)}`}
+                      className="font-mono font-medium text-blue-700 hover:underline"
+                    >
+                      {row.code}
+                    </Link>
+                    {row.description && (
+                      <div className="text-xs text-slate-600">
+                        {row.description}
+                      </div>
+                    )}
+                    {row.assignedEmail && (
+                      <div className="text-xs text-slate-600">
+                        For {row.assignedEmail}
+                      </div>
+                    )}
                   </td>
-                  <td className="px-4 py-3">{row.grantsDays} days</td>
+                  <td className="px-4 py-3">
+                    {row.grantsMinutes % 1440 === 0
+                      ? `${row.grantsMinutes / 1440} days`
+                      : row.grantsMinutes % 60 === 0
+                        ? `${row.grantsMinutes / 60} hours`
+                        : `${row.grantsMinutes} minutes`}
+                  </td>
                   <td className="px-4 py-3 tabular-nums">
-                    {row.redemptions}{row.maxRedemptions !== null ? ` / ${row.maxRedemptions}` : ""}
+                    {row.redemptions}
+                    {row.maxRedemptions !== null
+                      ? ` / ${row.maxRedemptions}`
+                      : ""}
                   </td>
-                  <td className="px-4 py-3 text-slate-500">{row.expiresAt ? formatDate(row.expiresAt) : "—"}</td>
+                  <td className="px-4 py-3 text-slate-600">
+                    {row.expiresAt ? formatDateTime(row.expiresAt) : "—"}
+                  </td>
                   <td className="px-4 py-3">
                     {!row.active ? (
-                      <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs text-slate-600">Inactive</span>
+                      <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs text-slate-600">
+                        Inactive
+                      </span>
                     ) : expired ? (
-                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800">Expired</span>
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800">
+                        Expired
+                      </span>
                     ) : full ? (
-                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800">Full</span>
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800">
+                        Full
+                      </span>
                     ) : (
-                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-800">Active</span>
+                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-800">
+                        Active
+                      </span>
                     )}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <Button variant="ghost" size="sm" onClick={() => toggle(row)}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      aria-label={`Copy ${row.code}`}
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(row.code);
+                          setMessage({ text: `Copied ${row.code}`, ok: true });
+                        } catch {
+                          setMessage({
+                            text: "Copy failed. Select the code and copy it manually.",
+                            ok: false,
+                          });
+                        }
+                      }}
+                    >
+                      Copy
+                    </Button>
+                    <Button
+                      disabled={busy}
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => toggle(row)}
+                    >
                       {row.active ? "Deactivate" : "Reactivate"}
                     </Button>
                   </td>
@@ -141,7 +324,14 @@ export function CodesManager({ rows }: { rows: AccessCodeRow[] }) {
               );
             })}
             {rows.length === 0 && (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-500">No codes yet.</td></tr>
+              <tr>
+                <td
+                  colSpan={6}
+                  className="px-4 py-8 text-center text-slate-600"
+                >
+                  No codes yet.
+                </td>
+              </tr>
             )}
           </tbody>
         </table>

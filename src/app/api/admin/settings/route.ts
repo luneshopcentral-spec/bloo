@@ -1,21 +1,19 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireAdmin, logAdminAction, AdminAuthError } from "@/lib/admin/guard";
+import { requireAdminMutation, logAdminAction, AdminAuthError } from "@/lib/admin/guard";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { SETTING_KEYS } from "@/lib/admin/settings";
 
 export const runtime = "nodejs";
 
-const schema = z.object({
-  key: z.enum(SETTING_KEYS as [string, ...string[]]),
-  // Only primitive JSON values are accepted for settings.
-  value: z.union([z.boolean(), z.string().max(500), z.number()]),
-});
+const schema = z.discriminatedUnion("key", [
+  z.object({ key: z.literal("maintenance_mode"), value: z.boolean() }),
+  z.object({ key: z.literal("maintenance_message"), value: z.string().trim().min(1).max(500) }),
+]);
 
 export async function POST(request: Request) {
   let actor;
   try {
-    actor = await requireAdmin("api");
+    actor = await requireAdminMutation(request);
   } catch (error) {
     if (error instanceof AdminAuthError) return NextResponse.json({ error: error.message }, { status: error.status });
     throw error;

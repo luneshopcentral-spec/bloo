@@ -1,74 +1,114 @@
+import Link from "next/link";
 import { requireAdmin } from "@/lib/admin/guard";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { UsersTable, type AdminUserRow } from "@/components/admin/UsersTable";
-
 export const dynamic = "force-dynamic";
-
-type SearchParams = { q?: string };
-
+type Report = {
+  total: number;
+  rows: Array<{
+    id: string;
+    email: string;
+    full_name: string;
+    university: string | null;
+    role: string;
+    has_paid: boolean;
+    subscription_plan: string | null;
+    subscription_status: string | null;
+    comp_access_until: string | null;
+    created_at: string;
+    attempts: number;
+    passed: number;
+    last_practice: string | null;
+    quiz_attempts: number;
+    last_quiz: string | null;
+  }>;
+};
 export default async function AdminUsersPage({
   searchParams,
 }: {
-  searchParams: Promise<SearchParams>;
+  searchParams: Promise<{ q?: string; page?: string; access?: string }>;
 }) {
   await requireAdmin();
-  const { q } = await searchParams;
-  const admin = createAdminClient();
-
-  let query = admin
-    .from("profiles")
-    .select("id, email, full_name, university, has_paid, role, subscription_plan, subscription_status, comp_access_until, created_at")
-    .order("created_at", { ascending: false })
-    .limit(500);
-  if (q && q.trim()) {
-    const term = `%${q.trim()}%`;
-    query = query.or(`email.ilike.${term},full_name.ilike.${term}`);
-  }
-  const { data: profiles } = await query;
-
-  // Aggregate activity in one pass. At launch scale a few thousand attempt rows
-  // is cheap; revisit with a materialised view if this grows large.
-  const { data: attempts } = await admin
-    .from("attempts")
-    .select("user_id, passed, created_at")
-    .order("created_at", { ascending: false })
-    .limit(8000);
-
-  const activity = new Map<string, { total: number; passed: number; last: string | null }>();
-  for (const row of attempts ?? []) {
-    const entry = activity.get(row.user_id) ?? { total: 0, passed: 0, last: null };
-    entry.total += 1;
-    if (row.passed) entry.passed += 1;
-    if (!entry.last || row.created_at > entry.last) entry.last = row.created_at;
-    activity.set(row.user_id, entry);
-  }
-
-  const rows: AdminUserRow[] = (profiles ?? []).map((p) => {
-    const stats = activity.get(p.id);
-    return {
-      id: p.id,
-      email: p.email,
-      fullName: p.full_name,
-      university: p.university,
-      role: p.role,
-      hasPaid: p.has_paid,
-      plan: p.subscription_plan,
-      subscriptionStatus: p.subscription_status,
-      compAccessUntil: p.comp_access_until,
-      createdAt: p.created_at,
-      attempts: stats?.total ?? 0,
-      passRate: stats && stats.total > 0 ? Math.round((stats.passed / stats.total) * 100) : null,
-      lastActive: stats?.last ?? null,
-    };
+  const params = await searchParams;
+  const q = (params.q ?? "").trim().slice(0, 120);
+  const page = Math.min(
+    100000,
+    Math.max(1, Number.parseInt(params.page ?? "1") || 1),
+  );
+  const access = ["all", "paid", "trial", "free", "admin"].includes(
+    params.access ?? "",
+  )
+    ? params.access!
+    : "all";
+  const { data, error } = await createAdminClient().rpc("admin_list_users", {
+    search_term: q,
+    page_offset: (page - 1) * 50,
+    page_size: 50,
+    access_filter: access,
   });
-
+  const report = data as unknown as Report | null;
+  const rows: AdminUserRow[] = (report?.rows ?? []).map((p) => ({
+    id: p.id,
+    email: p.email,
+    fullName: p.full_name,
+    university: p.university,
+    role: p.role,
+    hasPaid: p.has_paid,
+    plan: p.subscription_plan,
+    subscriptionStatus: p.subscription_status,
+    compAccessUntil: p.comp_access_until,
+    createdAt: p.created_at,
+    attempts: p.attempts,
+    passRate: p.attempts ? Math.round((p.passed / p.attempts) * 100) : null,
+    lastActive:
+      [p.last_practice, p.last_quiz].filter(Boolean).sort().at(-1) ?? null,
+    quizAttempts: p.quiz_attempts,
+  }));
+  const link = (n: number) =>
+    `/users?${new URLSearchParams({ q, access, page: String(n) })}`;
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">Users</h1>
-        <p className="mt-1 text-sm text-slate-500">{rows.length} accounts (most recent first).</p>
+        <h1 className="text-2xl font-semibold">Registered users</h1>
+        <p className="mt-1 text-sm text-slate-600">
+          {error
+            ? "User reporting is currently unavailable."
+            : `${report?.total ?? 0} matching accounts · 50 per page`}
+        </p>
       </div>
-      <UsersTable rows={rows} initialQuery={q ?? ""} />
+      {error ? (
+        <p
+          role="alert"
+          className="rounded-lg border border-amber-200 bg-amber-50 p-4"
+        >
+          Could not load users. Check database readiness and try again.
+        </p>
+      ) : (
+        <>
+          <UsersTable rows={rows} initialQuery={q} accessFilter={access} />
+          <p className="text-xs text-slate-600">
+            Practice counts and pass rates include all verified, independent
+            attempts. Last learning activity includes practice and quizzes, not
+            sign-ins.
+          </p>
+          <nav
+            aria-label="User pages"
+            className="flex items-center gap-4 text-sm"
+          >
+            {page > 1 && (
+              <Link href={link(page - 1)} className="underline">
+                Previous
+              </Link>
+            )}
+            <span>Page {page}</span>
+            {page * 50 < (report?.total ?? 0) && (
+              <Link href={link(page + 1)} className="underline">
+                Next
+              </Link>
+            )}
+          </nav>
+        </>
+      )}
     </div>
   );
 }
