@@ -151,10 +151,21 @@ export default async function DashboardPage({
           </CardContent>
         </Card>
       )}
+      {["terms", "customer", "configuration"].includes(checkout ?? "") && (
+        <Card className="mb-8 border-red-300 bg-red-50">
+          <CardContent className="p-5 text-sm text-red-900">
+            {checkout === "terms" && "Checkout is unavailable because the Stripe account has no valid terms of service URL configured."}
+            {checkout === "customer" && "Your billing profile could not be found in the configured Stripe account. Support needs to reconnect it before you can pay."}
+            {checkout === "configuration" && "Checkout is unavailable because Stripe could not authorise the payment service."}
+            {" "}No payment was taken. Please{" "}
+            <Link href="/support" className="font-medium underline">contact support</Link>.
+          </CardContent>
+        </Card>
+      )}
       {checkout === "price" && (
         <Card className="mb-8 border-red-300 bg-red-50">
           <CardContent className="p-5 text-sm text-red-900">
-            Checkout is unavailable because the live Stripe price does not match the published plan. No payment was taken. Please{" "}
+            Checkout is unavailable because the configured Stripe price is missing or does not match the published plan. No payment was taken. Please{" "}
             <Link href="/support" className="font-medium underline">contact support</Link>.
           </CardContent>
         </Card>

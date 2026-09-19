@@ -7,6 +7,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getStripe, stripePriceId, siteUrl } from "@/lib/stripe/server";
 import { isPlanId, planOption } from "@/lib/billing/plan";
 import { stripePriceMatchesPlan } from "@/lib/billing/stripe-price";
+import { pendingCheckoutUrl } from "@/lib/billing/pending-checkout";
+import { checkoutErrorReason } from "@/lib/billing/checkout-error";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -79,9 +81,8 @@ export async function POST(req: Request) {
     if (subscriptions.data.some((s) => !["canceled", "incomplete_expired"].includes(s.status))) {
       return NextResponse.redirect(baseUrl + "/account?billing=existing", { status: 303 });
     }
-    const pending = await stripe.checkout.sessions.list({ customer: customerId, status: "open", limit: 100 });
-    const existing = pending.data.find((s) => s.mode === "subscription" && s.url);
-    if (existing?.url) return NextResponse.redirect(existing.url, { status: 303 });
+    const existingUrl = await pendingCheckoutUrl(stripe, customerId, user.id, plan, priceId);
+    if (existingUrl) return NextResponse.redirect(existingUrl, { status: 303 });
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       line_items: [{ price: priceId, quantity: 1 }],
@@ -112,6 +113,6 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     console.error("Stripe checkout failed:", error);
-    return NextResponse.redirect(`${baseUrl}/dashboard?checkout=error`, { status: 303 });
+    return NextResponse.redirect(`${baseUrl}/dashboard?checkout=${checkoutErrorReason(error)}`, { status: 303 });
   }
 }
