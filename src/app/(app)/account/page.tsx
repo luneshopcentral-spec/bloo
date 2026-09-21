@@ -13,7 +13,7 @@ export default async function AccountPage() {
   return <div className="mx-auto max-w-3xl space-y-8 px-4 py-10">
     <header><Link href="/dashboard" className="text-sm text-emerald-800 underline">Back to dashboard</Link><h1 className="mt-3 text-3xl font-bold">Account and support</h1><p className="mt-2 break-all text-slate-600">{user.email}</p></header>
     <section className="rounded-xl border bg-white p-6"><h2 className="mb-5 text-xl font-semibold">Your profile</h2><AccountSettings userId={user.id} name={profile?.full_name ?? ""} university={profile?.university ?? ""} /></section>
-    <section className="rounded-xl border bg-white p-6"><h2 className="mb-3 text-xl font-semibold">Redeem an access code</h2><p className="mb-4 text-sm text-slate-600">Have a trial code? Enter it here to unlock full access.</p><RedeemCode activeUntil={profile?.comp_access_until ?? null} /></section>
+    <section id="access-code" className="rounded-xl border bg-white p-6"><h2 className="mb-3 text-xl font-semibold">Redeem a student access code</h2><p className="mb-4 text-sm text-slate-600">Enter your test-group or trial code to unlock full access for its duration. No card or subscription is needed. Stripe discount codes are entered at checkout.</p><RedeemCode activeUntil={profile?.comp_access_until ?? null} /></section>
     <section className="rounded-xl border bg-white p-6"><h2 className="mb-3 text-xl font-semibold">Billing and data</h2>
       {profile?.stripe_customer_id && <form action="/api/billing-portal" method="post"><button className="mb-4 rounded-lg border px-4 py-2">Manage billing or cancel subscription</button></form>}
       <p className="mb-4"><Link href="/forgot-password" className="text-emerald-800 underline">Reset your password</Link></p>

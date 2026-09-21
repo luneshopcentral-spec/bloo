@@ -185,4 +185,22 @@ describe("admin and redemption API boundaries", () => {
     );
     expect(rpc).not.toHaveBeenCalled();
   });
+  it.each(["invalid code", "code expired", "code inactive", "code fully redeemed", "already redeemed"])("returns a useful redemption error for %s", async reason => {
+    rpc.mockResolvedValue({ data: null, error: { message: reason } });
+    const result = await redeem(request("redeem", { code: "TEST" }));
+    expect(result.status).toBe(400);
+    expect((await result.json()).error).not.toBe("That code could not be redeemed.");
+  });
+  it("distinguishes unavailable redemption infrastructure from a bad student code", async () => {
+    rpc.mockResolvedValue({ data: null, error: { message: "private database details" } });
+    const result = await redeem(request("redeem", { code: "TEST" }));
+    expect(result.status).toBe(503);
+    expect(await result.text()).not.toContain("private database details");
+  });
+  it("does not unlock access on a malformed successful RPC response", async () => {
+    rpc.mockResolvedValue({ data: null, error: null });
+    expect((await redeem(request("redeem", { code: "TEST" }))).status).toBe(503);
+    rpc.mockRejectedValue(new Error("connection unavailable"));
+    expect((await redeem(request("redeem", { code: "TEST" }))).status).toBe(503);
+  });
 });

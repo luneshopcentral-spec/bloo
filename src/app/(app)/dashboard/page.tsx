@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { STATIC_CASES } from "@/lib/cases/static-cases";
 import { isPlanId, PLAN_OPTIONS } from "@/lib/billing/plan";
 import { hasCompAccess } from "@/lib/entitlement/entitlement";
+import { RedeemCode } from "@/components/app/redeem-code";
 import type { Database } from "@/lib/types/database";
 
 const FREE_CASE_COUNT = STATIC_CASES.filter((c) => c.isFree).length;
@@ -107,7 +108,7 @@ export default async function DashboardPage({
             Welcome back, {firstName}
           </h1>
           <p className="mt-1 text-slate-500">
-            Ready to practise your dispensing skills? Summaries cover the latest 100 attempts; only server-verified, independent attempts count.
+            Practise a case, review your feedback and build confidence for the pharmacy counter.
           </p>
         </div>
 
@@ -118,6 +119,34 @@ export default async function DashboardPage({
           Foundation beta · {STATIC_CASES.length} cases
         </Badge>
       </div>
+
+      <Card id="access-code" className="mb-6 scroll-mt-6 border-emerald-200">
+        <CardHeader>
+          <h2 className="text-lg font-semibold tracking-tight">Have a student access code?</h2>
+          <CardDescription>Enter the code from your test-group organiser to unlock all {STATIC_CASES.length} cases for the agreed time. No payment or card is needed.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <RedeemCode activeUntil={profile?.comp_access_until ?? null} />
+          <p className="mt-3 text-xs text-slate-600">Have a Stripe discount code instead? Enter it under “Add promotion code” on the Stripe checkout page after choosing a subscription below.</p>
+        </CardContent>
+      </Card>
+
+      <Card className="mb-6 bg-slate-50">
+        <CardHeader><h2 className="text-lg font-semibold tracking-tight">Your first test session</h2><CardDescription>Use a laptop or desktop for the simulator.</CardDescription></CardHeader>
+        <CardContent className="space-y-4 text-sm text-slate-700">
+          <ol className="list-decimal space-y-2 pl-5">
+            <li>Redeem your group’s code above, if you have one.</li>
+            <li>Open the simulator and choose <strong>Guided tutorial</strong>. Learn mode helps you explore without affecting independent progress.</li>
+            <li>Try a case independently in Practice mode, then review the feedback.</li>
+            <li>Tell us where you got stuck, which patient replies felt wrong, or which marks seemed unclear.</li>
+          </ol>
+          <div className="flex flex-wrap gap-3">
+            <Button asChild size="sm"><Link href="/practice">Open simulator</Link></Button>
+            <Button asChild size="sm" variant="outline"><Link href="/account#report">Send tester feedback</Link></Button>
+          </div>
+          <p className="text-xs text-slate-600">Beta training with fictional cases. Check clinical guidance with your educator and current references.</p>
+        </CardContent>
+      </Card>
 
       {checkout === "success" && (
         <Card className="mb-8 border-emerald-300 bg-emerald-50">
@@ -210,7 +239,8 @@ export default async function DashboardPage({
               <strong>Full access active.</strong>{" "}
               {profile?.role === "admin"
                 ? "Developer account — all cases unlocked."
-                : "All cases are unlocked. Thanks for subscribing."}
+                : profile?.has_paid ? "All cases are unlocked with your subscription."
+                : "All cases are unlocked through your time-limited access grant. No subscription is required."}
               {profile?.role !== "admin" && profile?.subscription_plan && (
                 <span className="mt-1 block text-xs text-emerald-800">
                   {profile.subscription_plan === "yearly" ? "Annual" : "Monthly"} plan
@@ -236,7 +266,7 @@ export default async function DashboardPage({
           <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="text-sm text-slate-700">
               <strong>You&rsquo;re on the free demo</strong> — the first {FREE_CASE_COUNT} cases.
-              Unlock all {STATIC_CASES.length} cases with a subscription.
+              Use your student access code above or choose a subscription to unlock all {STATIC_CASES.length} cases.
             </div>
             <div className="flex gap-2">
               {checkoutState.available ? PLAN_OPTIONS.map((option) => (
@@ -256,11 +286,12 @@ export default async function DashboardPage({
       {attemptError && (
         <Card className="mb-8 border-amber-300 bg-amber-50">
           <CardContent className="p-5 text-sm text-amber-900">
-            Progress is temporarily unavailable. Apply the latest Supabase attempt-progress migration, then refresh.
+            Your progress could not be loaded. Refresh the page or contact support if this continues. Your saved attempts have not been changed.
           </CardContent>
         </Card>
       )}
 
+      <p className="mb-3 text-sm text-slate-600">Progress covers your latest 100 attempts. Only independently completed, server-verified attempts count; tutorials and Learn mode are excluded.</p>
       <div className="mb-8 grid gap-4 md:grid-cols-3">
         <Card>
           <CardContent className="flex items-center gap-4 p-5">

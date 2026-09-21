@@ -85,6 +85,7 @@ function SignUpForm() {
   async function onSubmit(values: FormValues) {
     setLoading(true);
     setServerError(null);
+    try {
     const supabase = createClient();
     const { data, error } = await supabase.auth.signUp({
       email: values.email,
@@ -112,11 +113,17 @@ function SignUpForm() {
     }
     router.push(destination(selectedPlan));
     router.refresh();
+    } catch {
+      setServerError("Connection unavailable. Your details are still here; please try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function resendConfirmation() {
     if (!confirmationEmail) return;
     setResendState("sending");
+    try {
     const supabase = createClient();
     const { error } = await supabase.auth.resend({
       type: "signup",
@@ -124,6 +131,9 @@ function SignUpForm() {
       options: { emailRedirectTo: emailRedirectTo(selectedPlan) },
     });
     setResendState(error ? "error" : "sent");
+    } catch {
+      setResendState("error");
+    }
   }
 
   if (confirmationEmail) {
@@ -159,6 +169,7 @@ function SignUpForm() {
       <CardHeader className="space-y-1">
         <h1 className="text-2xl font-bold leading-none tracking-tight">Create your account</h1>
         <CardDescription>Try {FREE_CASE_COUNT} of {STATIC_CASES.length} cases free. No card required.</CardDescription>
+        <p className="pt-2 text-sm text-slate-600">Joining a student test group? Create your account, then enter your organiser’s access code on the dashboard.</p>
         {selectedPlan && <p className="pt-2 text-sm font-medium text-emerald-800">Selected after sign-up: {planOption(selectedPlan).name}</p>}
       </CardHeader>
 

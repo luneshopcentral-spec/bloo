@@ -32,10 +32,16 @@ export async function POST(req: Request) {
 
   // Recipient comes exclusively from the verified session. The RPC is not
   // callable by a browser and commits the grant/counter/redemption together.
-  const { data, error } = await createAdminClient().rpc("redeem_access_code_for_user", { input_code: input.data.code, recipient_id: user.id });
-  if (error) {
-    const reason = REASONS[error.message] ?? "That code could not be redeemed.";
-    return NextResponse.json({ error: reason }, { status: 400 });
+  try {
+    const { data, error } = await createAdminClient().rpc("redeem_access_code_for_user", { input_code: input.data.code, recipient_id: user.id });
+    if (error && REASONS[error.message]) {
+      return NextResponse.json({ error: REASONS[error.message] }, { status: 400 });
+    }
+    if (error || typeof data !== "string" || !Number.isFinite(Date.parse(data))) {
+      return NextResponse.json({ error: "Access codes are temporarily unavailable. Your code has been kept; please retry or contact support." }, { status: 503 });
+    }
+    return NextResponse.json({ ok: true, grantedUntil: data });
+  } catch {
+    return NextResponse.json({ error: "Access codes are temporarily unavailable. Please retry or contact support." }, { status: 503 });
   }
-  return NextResponse.json({ ok: true, grantedUntil: data });
 }

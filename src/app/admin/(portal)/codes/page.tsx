@@ -44,7 +44,7 @@ export default async function AdminCodesPage({
         <h1 className="text-2xl font-semibold">Access codes</h1>
         <p className="mt-1 text-sm text-slate-600">
           Issue codes that unlock full access for a set number of minutes, hours
-          or days. Users redeem them on their account page.
+          or days. Students enter them on their dashboard under “Have a student access code?” or on their account page. These grant access directly; they are separate from Stripe discount codes.
         </p>
       </div>
       {error ? (

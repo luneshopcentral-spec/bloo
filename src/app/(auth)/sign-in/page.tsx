@@ -67,7 +67,7 @@ function SignInForm() {
   async function onSubmit(values: FormValues) {
     setLoading(true);
     setServerError(null);
-
+    try {
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithPassword({
       email: values.email,
@@ -82,6 +82,11 @@ function SignInForm() {
 
     router.push("/dashboard");
     router.refresh();
+    } catch {
+      setServerError("Connection unavailable. Please try signing in again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (

@@ -3,109 +3,108 @@ import Link from "next/link";
 import { ArrowRight, Check, Maximize2 } from "lucide-react";
 import { STATIC_CASES } from "@/lib/cases/static-cases";
 
-const previews = [
-  {
-    src: "/product/feedback-results.png",
-    alt: "DispenseRx Practice result screen showing a failed critical safety gate and check-by-check dispensing feedback for a fictional patient case.",
-    label: "Check-by-check feedback",
-    detail: "Safety gates stay visible even when the total score is high.",
-    className: "relative z-10",
-  },
-  {
-    src: "/product/counselling-practice.png",
-    alt: "DispenseRx Practice patient counselling screen showing a fictional conversation and assessment guidance.",
-    label: "Counselling practice",
-    detail: "Practise patient-friendly questions and explanations after dispensing.",
-    className: "relative z-20 mt-5",
-  },
-] as const;
+const preview = {
+  src: "/product/feedback-results.png",
+  alt: "DispenseRx Practice result screen showing a failed critical safety gate and check-by-check dispensing feedback for a fictional patient case.",
+  label: "Check-by-check feedback",
+  detail: "Safety gates stay visible even when the total score is high.",
+} as const;
+
+const trust = [
+  `Try 2 of ${STATIC_CASES.length} cases free`,
+  "No card required",
+  "Instant feedback",
+];
 
 export function Hero() {
   return (
-    <section className="hero-grid relative overflow-hidden bg-[#061513] pb-14 pt-16 text-white lg:pb-16 lg:pt-20">
-      <div className="hero-orb hero-orb-one" />
-      <div className="hero-orb hero-orb-two" />
-      <div className="container relative z-10">
-        <div className="grid items-start gap-12 lg:grid-cols-[0.86fr_1.14fr] lg:gap-10">
+    <section className="relative overflow-hidden border-b border-slate-200 bg-white pb-14 pt-28 sm:pb-20 lg:pt-32">
+      {/* Soft light wash under the fixed navbar — no grid, no neon glow. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-gradient-to-b from-emerald-50 to-transparent"
+      />
+      <div className="container relative">
+        <div className="grid items-center gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:gap-14">
           <div className="max-w-xl">
-            <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-300/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-200">
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-300 opacity-75" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-300" />
-              </span>
+            <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
               Independent Australian training simulator
-            </div>
+            </span>
 
-            <p className="mb-4 font-mono text-sm text-emerald-300/80">
-              PRACTISE BEFORE PLACEMENT
-            </p>
-            <h1 className="text-balance text-4xl font-bold leading-[1.08] tracking-tight sm:text-5xl lg:text-6xl">
+            <h1 className="mt-6 text-balance text-4xl font-bold leading-[1.1] tracking-tight text-slate-900 sm:text-5xl lg:text-[3.4rem]">
               Practise dispensing{" "}
-              <span className="mt-2 block bg-gradient-to-r from-emerald-300 via-teal-200 to-cyan-300 bg-clip-text text-transparent">
-                before placement.
-              </span>
+              <span className="text-emerald-700">before placement.</span>
             </h1>
-            <p className="mt-7 max-w-lg text-lg leading-8 text-slate-300">
+
+            <p className="mt-6 max-w-lg text-lg leading-8 text-slate-600">
               Work through fictional patient scenarios, make explicit safety
               decisions and review immediate, check-by-check feedback.
             </p>
 
-            <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link
                 href="/sign-up"
-                className="group inline-flex h-13 items-center justify-center rounded-full bg-emerald-300 px-7 py-3.5 font-bold text-[#06201b] shadow-[0_0_40px_rgba(110,231,183,.22)] transition hover:-translate-y-0.5 hover:bg-emerald-200"
+                className="group inline-flex items-center justify-center rounded-full bg-emerald-700 px-7 py-3.5 font-semibold text-white shadow-sm transition hover:bg-emerald-800"
               >
                 Try 2 cases free
-                <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
+                <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-0.5" />
               </Link>
               <a
                 href="#how-it-works"
-                className="inline-flex h-13 items-center justify-center rounded-full border border-white/15 bg-white/[0.04] px-7 py-3.5 font-semibold text-white backdrop-blur transition hover:border-white/30 hover:bg-white/[0.08]"
+                className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-7 py-3.5 font-semibold text-slate-800 transition hover:border-slate-400 hover:bg-slate-50"
               >
                 How it works
               </a>
             </div>
 
-            <div className="mt-10 flex flex-wrap items-center gap-x-7 gap-y-3 text-sm text-slate-300">
-              <span className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-300" /> Try 2 of {STATIC_CASES.length} cases free</span>
-              <span className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-300" /> No card required</span>
-              <span className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-300" /> Instant feedback</span>
-            </div>
+            <ul className="mt-9 flex flex-wrap items-center gap-x-6 gap-y-3 text-sm text-slate-600">
+              {trust.map((item) => (
+                <li key={item} className="flex items-center gap-2">
+                  <Check className="h-4 w-4 text-emerald-600" aria-hidden="true" />
+                  {item}
+                </li>
+              ))}
+            </ul>
           </div>
 
-          <div className="relative mx-auto grid w-full max-w-3xl gap-4 grid-cols-1" aria-label="Real DispenseRx Practice product previews">
-            <div className="absolute -inset-8 rounded-[3rem] bg-emerald-400/[0.06] blur-3xl" />
-            {previews.slice(0, 1).map((preview) => (
-              <figure key={preview.src} className={preview.className}>
-                <a
-                  href={preview.src}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="group block overflow-hidden rounded-2xl border border-white/15 bg-[#0b1d1a] shadow-[0_30px_90px_rgba(0,0,0,.45)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-offset-4 focus-visible:ring-offset-[#061513]"
-                  aria-label={`Enlarge ${preview.label.toLowerCase()} screenshot`}
+          <div className="relative mx-auto w-full max-w-3xl" aria-label="DispenseRx Practice product preview">
+            <figure>
+              <a
+                href={preview.src}
+                target="_blank"
+                rel="noreferrer"
+                className="group relative block overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_60px_-24px_rgba(15,23,42,0.35)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-4 focus-visible:ring-offset-white"
+                aria-label={`Enlarge ${preview.label.toLowerCase()} screenshot`}
+              >
+                <Image
+                  src={preview.src}
+                  alt={preview.alt}
+                  width={1586}
+                  height={992}
+                  priority
+                  sizes="(max-width: 1023px) 100vw, 58vw"
+                  className="h-auto w-full transition duration-300 group-hover:scale-[1.01]"
+                />
+                <span
+                  className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-emerald-700 shadow-sm ring-1 ring-slate-200 backdrop-blur transition group-hover:bg-white"
+                  aria-hidden="true"
                 >
-                  <Image
-                    src={preview.src}
-                    alt={preview.alt}
-                    width={1586}
-                    height={992}
-                    priority={preview.src === previews[0].src}
-                    sizes={preview.src === previews[0].src ? "(max-width: 1023px) 100vw, 58vw" : "(max-width: 639px) 88vw, (max-width: 1023px) 72vw, 42vw"}
-                    className="h-auto w-full transition duration-300 group-hover:scale-[1.01]"
-                  />
-                  <span className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-[#061513]/85 text-emerald-200 opacity-90 backdrop-blur transition group-hover:bg-[#061513]" aria-hidden="true">
-                    <Maximize2 className="h-4 w-4" />
-                  </span>
-                </a>
-                <figcaption className="mt-3 rounded-xl border border-white/10 bg-[#102622]/95 px-4 py-3 shadow-xl backdrop-blur">
-                  <p className="text-sm font-bold text-white">{preview.label}</p>
-                  <p className="mt-1 text-xs leading-5 text-slate-300">{preview.detail} Tap or click to enlarge.</p>
-                </figcaption>
-              </figure>
-            ))}
-            <p className="relative z-20 mt-4 text-right text-xs text-slate-300 ">
-              Beta product preview · fictional patient information
-            </p>
+                  <Maximize2 className="h-4 w-4" />
+                </span>
+              </a>
+              <figcaption className="mt-4 flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">{preview.label}</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    {preview.detail} Tap or click to enlarge.
+                  </p>
+                </div>
+                <p className="shrink-0 text-right text-xs text-slate-400">
+                  Beta preview · fictional data
+                </p>
+              </figcaption>
+            </figure>
           </div>
         </div>
       </div>

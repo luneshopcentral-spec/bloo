@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { adminPost } from "@/lib/admin/client-api";
 import { formatDateTime, isFuture } from "@/lib/admin/format";
+import { absoluteUrl } from "@/lib/site-config";
 
 export interface AccessCodeRow {
   code: string;
@@ -293,6 +294,32 @@ export function CodesManager({ rows }: { rows: AccessCodeRow[] }) {
                     )}
                   </td>
                   <td className="px-4 py-3 text-right">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={!row.active || Boolean(expired) || full}
+                      aria-label={`Copy joining instructions for ${row.code}`}
+                      onClick={async () => {
+                        const duration = row.grantsMinutes % 1440 === 0 ? `${row.grantsMinutes / 1440} days` : row.grantsMinutes % 60 === 0 ? `${row.grantsMinutes / 60} hours` : `${row.grantsMinutes} minutes`;
+                        const invitation = [
+                          "You are invited to test DispenseRx Practice on a laptop or desktop.",
+                          `1. Create your account at ${absoluteUrl("/sign-up")} and confirm your email if prompted.`,
+                          `2. Sign in and open ${absoluteUrl("/dashboard#access-code")}. Enter ${row.code} under Student access code.`,
+                          `Your access lasts ${duration} from redemption. No card, payment or subscription is needed.`,
+                          row.expiresAt ? `Redeem before ${formatDateTime(row.expiresAt)}.` : "",
+                          row.assignedEmail ? `Use the account email ${row.assignedEmail}.` : "",
+                          "3. Open the simulator and choose Guided tutorial, then try a case in Practice mode.",
+                          `4. Send feedback at ${absoluteUrl("/account#report")}. Include the case number, what you tried and what you expected. Use fictional patient details only.`,
+                          "This is beta training software. Check clinical guidance with your educator and current references.",
+                        ].filter(Boolean).join("\n");
+                        try {
+                          await navigator.clipboard.writeText(invitation);
+                          setMessage({ text: `Joining instructions copied for ${row.code}. You can paste them into your group invitation.`, ok: true });
+                        } catch {
+                          setMessage({ text: "Copy failed. Share the code and ask students to redeem it on their dashboard.", ok: false });
+                        }
+                      }}
+                    >Copy invite</Button>
                     <Button
                       variant="ghost"
                       size="sm"

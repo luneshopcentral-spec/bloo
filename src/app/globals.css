@@ -94,39 +94,6 @@ input:focus-visible,
   outline-offset: 3px;
 }
 
-.hero-grid::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background-image: linear-gradient(rgba(110, 231, 183, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(110, 231, 183, 0.035) 1px, transparent 1px);
-  background-size: 54px 54px;
-  mask-image: linear-gradient(to bottom, black 0%, transparent 88%);
-}
-
-.hero-orb {
-  pointer-events: none;
-  position: absolute;
-  border-radius: 9999px;
-  filter: blur(90px);
-}
-
-.hero-orb-one {
-  right: -12rem;
-  top: 4rem;
-  height: 34rem;
-  width: 34rem;
-  background: rgba(16, 185, 129, 0.13);
-}
-
-.hero-orb-two {
-  bottom: 4rem;
-  left: -14rem;
-  height: 30rem;
-  width: 30rem;
-  background: rgba(34, 211, 238, 0.07);
-}
-
 .float-card {
   animation: float-card 5s ease-in-out infinite;
 }
