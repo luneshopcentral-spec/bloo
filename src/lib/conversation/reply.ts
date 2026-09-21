@@ -62,9 +62,6 @@ export function buildPatientReply(
           addressed.delete("teach_back");
           return buildTeachBackSegments(conversation, addressed);
         }
-        if (previouslyAddressed.has(selectedId) && selectedTopic.repeatReply) {
-          return [topicRepeatAudioSegment(selectedTopic)];
-        }
         if (selectedId === "invite_questions") {
           const concernAlreadyResolved =
             previouslyAddressed.has(conversation.patientQuestionTopicId ?? conversation.concernTopicId) ||
@@ -74,6 +71,9 @@ export function buildPatientReply(
               ? noFurtherQuestionsAudioSegment()
               : patientQuestionAudioSegment(conversation),
           ];
+        }
+        if (previouslyAddressed.has(selectedId) && selectedTopic.repeatReply) {
+          return [topicRepeatAudioSegment(selectedTopic)];
         }
         const replyIndex = (studentTurns + index) % selectedTopic.patientReplies.length;
         return [topicAudioSegment(selectedTopic, replyIndex)];

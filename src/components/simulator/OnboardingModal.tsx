@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import * as Dialog from "@radix-ui/react-dialog";
 
 interface OnboardingModalProps {
   open: boolean;
   onClose: () => void;
+  onStartTutorial: () => void;
 }
 
 const STEPS = [
@@ -40,71 +41,36 @@ const STEPS = [
   },
 ];
 
-export function OnboardingModal({ open, onClose }: OnboardingModalProps) {
-  const closeRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    closeRef.current?.focus();
-    function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
-
-  if (!open) return null;
-
+export function OnboardingModal({ open, onClose, onStartTutorial }: OnboardingModalProps) {
   return (
-    <div className="fred-onboarding-backdrop">
-      <div
-        className="fred-onboarding-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="onboarding-title"
-      >
-        <div className="fred-onboarding-title">
-          <span id="onboarding-title">How a case works</span>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close the walkthrough"
-          >
-            ✕
-          </button>
-        </div>
-
-        <div className="fred-onboarding-body">
-          <p className="fred-onboarding-intro">
-            Each case is a complete dispensing episode: check the script, enter
-            it accurately, make a safety decision, then counsel the patient.
-          </p>
-
-          <ol className="fred-onboarding-steps">
-            {STEPS.map((step, index) => (
-              <li key={step.title}>
-                <span className="fred-onboarding-step-number">{index + 1}</span>
-                <div>
-                  <strong>{step.title}</strong>
-                  <p>{step.detail}</p>
-                </div>
-              </li>
-            ))}
-          </ol>
-
-          <p className="fred-onboarding-modes">
-            <strong>Modes:</strong> Learn allows answer reveals, Practice is
-            exam-like with optional reveals, and Exam hides all help and adds a
-            timer. Reopen this guide any time from “How it works” in the toolbar.
-          </p>
-        </div>
-
-        <div className="fred-onboarding-footer">
-          <button ref={closeRef} type="button" onClick={onClose}>
-            Start practising
-          </button>
-        </div>
-      </div>
-    </div>
+    <Dialog.Root open={open} onOpenChange={value => { if (!value) onClose(); }}>
+      <Dialog.Overlay className="fred-onboarding-backdrop">
+        <Dialog.Content className="fred-onboarding-dialog" onPointerDownOutside={event => event.preventDefault()}>
+          <div className="fred-onboarding-title">
+            <Dialog.Title>Welcome to the dispensing workspace</Dialog.Title>
+            <Dialog.Close aria-label="Close the walkthrough">✕</Dialog.Close>
+          </div>
+          <div className="fred-onboarding-body">
+            <Dialog.Description className="fred-onboarding-intro">New here? Work through one case with a guide beside you. You will use the real controls, receive feedback at each step and practise speaking to the patient in your own words.</Dialog.Description>
+            <div className="fred-onboarding-path">
+              <strong>Your first guided case</strong>
+              <p>Read and enter the prescription → check the physical pack → talk with the patient → review feedback.</p>
+              <p>Learn mode · saved on this device · no effect on your independent progress</p>
+            </div>
+            <details className="fred-onboarding-reference">
+              <summary>What happens in each stage?</summary>
+              <ol className="fred-onboarding-steps">
+                {STEPS.map((step, index) => <li key={step.title}><span className="fred-onboarding-step-number">{index + 1}</span><div><strong>{step.title}</strong><p>{step.detail}</p></div></li>)}
+              </ol>
+            </details>
+            <p className="fred-onboarding-modes"><strong>Already familiar?</strong> Explore on your own. You can launch the guided tutorial or reopen this overview from the toolbar whenever you need it.</p>
+          </div>
+          <div className="fred-onboarding-footer">
+            <button className="secondary" type="button" onClick={onClose}>Explore on my own</button>
+            <button type="button" onClick={onStartTutorial}>Guide me through a case</button>
+          </div>
+        </Dialog.Content>
+      </Dialog.Overlay>
+    </Dialog.Root>
   );
 }

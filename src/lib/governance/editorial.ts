@@ -25,7 +25,7 @@ export interface CaseEditorialRecord {
   }>;
 }
 
-const CONTENT_DATE = "2026-09-16";
+const CONTENT_DATE = "2026-09-19";
 const DRAFT_REVIEW = {
   status: "review_required" as const,
   reviewer: null,
@@ -95,7 +95,7 @@ const CASE_REFERENCES: Record<string, CaseEditorialRecord["references"]> = {
 
 export const CASE_EDITORIAL_RECORDS: CaseEditorialRecord[] = STATIC_CASES.map((caseData) => ({
   caseId: caseData.id,
-  version: "0.5.0-draft",
+  version: "0.6.0-draft",
   jurisdiction: "Victoria, Australia",
   contentUpdatedAt: CONTENT_DATE,
   nextReviewDue: "Before paid release or any source change",

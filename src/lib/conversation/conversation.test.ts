@@ -168,7 +168,7 @@ describe("conversation configuration", () => {
     expect(matchResponseIntent(conversation, "Thank you, goodbye")?.id).toBe("courtesy_close");
   });
 
-  it("does not repeat the same patient question after questions were already invited", () => {
+  it("keeps asking an unanswered question when questions are invited again", () => {
     const conversation = getConversationCase("case-3");
     const first = buildPatientReply(conversation, ["invite_questions"], new Set(), 8, true, null);
     const repeat = buildPatientReply(
@@ -180,7 +180,7 @@ describe("conversation configuration", () => {
       null
     );
     expect(first.text).toBe(conversation.patientQuestion);
-    expect(repeat.text).toBe("No, I think that covers everything. Thank you.");
+    expect(repeat.text).toBe(conversation.patientQuestion);
   });
 
   it("does not reopen a concern that was already answered when closing the handover", () => {

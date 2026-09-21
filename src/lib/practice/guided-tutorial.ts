@@ -1,3 +1,37 @@
+import { getConversationCase } from "@/lib/conversation/cases";
+import { replayConversation } from "@/lib/conversation/engine";
+import type { ConversationMessage } from "@/lib/conversation/types";
+
+export const GUIDED_TUTORIAL_STEPS = [
+  "welcome", "prescription", "patient", "prescriber", "medicine", "label-entry",
+  "initials", "decision", "dispense-submit", "pack", "main-label", "warning-labels",
+  "assembly-submit", "patient-question", "patient-history", "patient-explanation",
+  "patient-safety-close", "patient-understanding", "finish-consultation", "results",
+] as const;
+export type GuidedTutorialStep = (typeof GUIDED_TUTORIAL_STEPS)[number];
+export function isGuidedTutorialStep(value: unknown): value is GuidedTutorialStep {
+  return typeof value === "string" && (GUIDED_TUTORIAL_STEPS as readonly string[]).includes(value);
+}
+
+const OBJECTIVES: Partial<Record<GuidedTutorialStep, Array<[string, string]>>> = {
+  "patient-question": [["introduction", "Introduce yourself as the pharmacist"], ["confirm_identity", "Ask the patient's name"], ["confirm_age", "Confirm their date of birth or age"]],
+  "patient-history": [["allergies", "Ask about allergies or previous reactions"], ["current_medicines", "Check other medicines and products"]],
+  "patient-explanation": [["purpose", "Explain what the antibiotic is for"], ["explain_hold", "Explain the early repeat, hold supply and contact the prescriber"], ["next_steps", "Tell the patient how you will follow up"]],
+  "patient-safety-close": [["allergic_reaction_safety", "Explain urgent warning signs and what to do"]],
+  "patient-understanding": [["teach_back", "Ask the patient to explain the plan back"], ["invite_questions", "Invite their questions"]],
+};
+export function guidedConversationProgress(step: GuidedTutorialStep, transcript: ConversationMessage[]) {
+  const state = replayConversation(getConversationCase("case-1"), transcript);
+  return {
+    objectives: (OBJECTIVES[step] ?? []).map(([id, label]) => ({ id, label, done: state.addressed.has(id) })),
+    unresolved: state.unresolvedAdviceIds.length > 0,
+  };
+}
+export function guidedConversationStepComplete(step: GuidedTutorialStep, transcript: ConversationMessage[]) {
+  const { objectives, unresolved } = guidedConversationProgress(step, transcript);
+  return objectives.length > 0 && objectives.every(o => o.done) && !unresolved;
+}
+
 export const GUIDED_TUTORIAL_OPENING_MESSAGE =
   "Hello, I am the pharmacist looking after you today. Could I confirm your full name? What is your date of birth? Do you have any medicine allergies?";
 
@@ -7,38 +41,10 @@ export const GUIDED_TUTORIAL_EXPLANATION_MESSAGE =
 export const GUIDED_TUTORIAL_SAFETY_MESSAGE =
   "Take it on an empty stomach. If it causes nausea, let us know rather than changing how you take it. If you develop facial swelling or difficulty breathing, seek urgent help. Can you repeat the plan back to me in your own words? What questions do you have?";
 
-function normaliseTutorialMessage(message: string): string {
-  return message.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+// Compatibility helpers use the same interpretation as the live conversation.
+function messageCompletes(step: GuidedTutorialStep, message: string) {
+  return guidedConversationStepComplete(step, [{ id: "example", role: "student", text: message }]);
 }
-
-export function matchesGuidedOpeningMessage(message: string): boolean {
-  const value = normaliseTutorialMessage(message);
-  return value.includes("pharmacist")
-    && value.includes("name")
-    && (value.includes("date of birth") || value.includes("dob"))
-    && value.includes("allerg");
-}
-
-export function matchesGuidedExplanationMessage(message: string): boolean {
-  const value = normaliseTutorialMessage(message);
-  return (value.includes("erythromycin") || value.includes("antibiotic"))
-    && value.includes("infection")
-    && (value.includes("medicine") || value.includes("medication"))
-    && (value.includes("vitamin") || value.includes("supplement") || value.includes("herbal"))
-    && value.includes("early")
-    && (value.includes("cannot supply") || value.includes("hold the supply"))
-    && (value.includes("prescriber") || value.includes("doctor"))
-    && value.includes("one capsule")
-    && value.includes("four times")
-    && value.includes("course");
-}
-
-export function matchesGuidedSafetyMessage(message: string): boolean {
-  const value = normaliseTutorialMessage(message);
-  return (value.includes("nausea") || value.includes("sick"))
-    && (value.includes("empty stomach") || value.includes("let us know") || value.includes("rather than"))
-    && value.includes("urgent")
-    && (value.includes("swelling") || value.includes("breathing") || value.includes("allergic"))
-    && (value.includes("plan back") || value.includes("own words"))
-    && value.includes("question");
-}
+export const matchesGuidedOpeningMessage = (message: string) => messageCompletes("patient-question", message);
+export const matchesGuidedExplanationMessage = (message: string) => messageCompletes("patient-explanation", message);
+export const matchesGuidedSafetyMessage = (message: string) => messageCompletes("patient-safety-close", message) && messageCompletes("patient-understanding", message);

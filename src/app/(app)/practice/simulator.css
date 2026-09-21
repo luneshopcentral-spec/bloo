@@ -5409,7 +5409,7 @@
   background: #f8fafc;
 }
 .fred-root .fred-tour-card-footer > span {
-  color: #68778d;
+  color: #475569;
   font-size: 10.5px;
   font-weight: 750;
 }
@@ -5507,3 +5507,32 @@
 .fred-root .fred-warning-chip-roll .fred-label-render.warning .fred-warning-text { font: 11px/1.35 Arial, Helvetica, sans-serif; padding-bottom: 14px; }
 .fred-root .fred-warning-chip-roll .fred-label-render.warning .fred-warning-code { font-size: 10px; }
 .fred-root .fred-assembly-stage .fred-sticker-help { font-size: 12px; line-height: 1.4; }
+
+/* Guided practice keeps the patient and composer unobstructed on laptops. */
+.fred-root .fred-guided-tour-inline .fred-tour-card { position: relative; width: 100%; max-height: none; box-shadow: 0 3px 12px #0c172a14; }
+.fred-root .fred-tour-objectives { list-style: none; padding: 0 16px; margin: 4px 0 14px; display: grid; gap: 9px; font-size: 13px; line-height: 1.45; }
+.fred-root .fred-tour-objectives li { display: flex; align-items: baseline; gap: 9px; color: #475569; }
+.fred-root .fred-tour-objectives li[data-complete="true"] { color: #166534; }
+.fred-root .fred-tour-example { margin: 0 16px 16px; border: 1px solid #dbe4f0; border-radius: 8px; padding: 10px; font-size: 13px; line-height: 1.5; }
+.fred-root .fred-tour-example summary { cursor: pointer; font-weight: 700; color: #244985; }
+.fred-root .fred-tour-example p { margin: 10px 0 0; }
+.fred-root .fred-tour-tools { display: flex; gap: 8px; padding: 0 16px 12px; }
+.fred-root .fred-tour-tools button { border: 1px solid #cbd5e1; border-radius: 6px; background: #f8fafc; color: #244985; padding: 7px 9px; font-size: 12px; cursor: pointer; }
+.fred-root .fred-tour-card.collapsed h2 { font-size: 14px; margin-bottom: 14px; }
+.fred-root .fred-tour-card > .fred-tour-correction { color: #991b1b; background: #fef2f2; padding: 10px; margin-bottom: 12px; }
+.fred-root .fred-tour-card-head { gap: 3px; flex-wrap: wrap; justify-content: flex-end; }
+.fred-root .fred-tour-card-head > div { flex: 1 1 100%; justify-content: space-between; }
+.fred-root .fred-tour-card-head strong { white-space: nowrap; }
+.fred-root .fred-counselling-grid.has-tutorial { grid-template-columns: minmax(0, 1fr) 310px; }
+.fred-root [data-tour="result-guide-slot"] { margin-bottom: 12px; }
+.fred-root .fred-tour-spotlight { box-shadow: 0 0 0 9999px rgba(12,23,42,.22), 0 0 0 5px rgba(251,191,36,.2); }
+.fred-root .fred-tour-scrim { background: rgba(12,23,42,.22); }
+.fred-root .fred-onboarding-dialog { max-height: calc(100dvh - 48px); overflow-y: auto; }
+.fred-root .fred-onboarding-title h2 { font-size: 17px; font-weight: 700; margin: 0; }
+.fred-root .fred-onboarding-path { border: 1px solid #bbd5ca; background: #f0f9f5; border-radius: 10px; padding: 16px; margin: 16px 0; }
+.fred-root .fred-onboarding-path p { margin: 8px 0 0; }
+.fred-root .fred-onboarding-reference summary { cursor: pointer; padding: 10px 0; font-weight: 700; }
+.fred-root .fred-onboarding-footer { gap: 12px; }
+.fred-root .fred-onboarding-footer button.secondary { color: #244985; border-color: #cbd5e1; background: white; }
+.fred-root .fred-tour-card button:focus-visible, .fred-root .fred-tour-card summary:focus-visible { outline: 3px solid #2563eb; outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) { .fred-root .fred-tour-spotlight, .fred-root .fred-tour-progress i { transition: none; } }

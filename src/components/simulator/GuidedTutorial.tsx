@@ -1,40 +1,21 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import type { ConversationMessage } from "@/lib/conversation/types";
 import type { PracticeCase } from "@/lib/types/case";
 import {
-  GUIDED_TUTORIAL_EXPLANATION_MESSAGE,
   GUIDED_TUTORIAL_OPENING_MESSAGE,
-  GUIDED_TUTORIAL_SAFETY_MESSAGE,
 } from "@/lib/practice/guided-tutorial";
 
-export const GUIDED_TUTORIAL_STEPS = [
-  "welcome",
-  "prescription",
-  "patient",
-  "prescriber",
-  "medicine",
-  "label-entry",
-  "initials",
-  "decision",
-  "dispense-submit",
-  "pack",
-  "main-label",
-  "warning-labels",
-  "assembly-submit",
-  "patient-question",
-  "patient-explanation",
-  "patient-safety-close",
-  "finish-consultation",
-  "results",
-] as const;
-
-export type GuidedTutorialStep = (typeof GUIDED_TUTORIAL_STEPS)[number];
+import { GUIDED_TUTORIAL_STEPS, guidedConversationProgress, type GuidedTutorialStep } from "@/lib/practice/guided-tutorial";
+export { GUIDED_TUTORIAL_STEPS, type GuidedTutorialStep } from "@/lib/practice/guided-tutorial";
 
 interface GuidedTutorialProps {
   active: boolean;
   step: GuidedTutorialStep;
   caseData: PracticeCase;
+  transcript: ConversationMessage[];
   onNext: () => void;
   onExit: () => void;
 }
@@ -50,6 +31,7 @@ interface TutorialStepDefinition {
   preferredSide?: "left" | "right";
   manualNext?: boolean;
   final?: boolean;
+  example?: string;
 }
 
 interface TargetRect {
@@ -147,7 +129,7 @@ function definitions(caseData: PracticeCase): Record<GuidedTutorialStep, Tutoria
       body:
         "Enter what is printed on the prescription. The directions preview expands accepted abbreviations.",
       instruction:
-        `Directions: “${item.directions}” · Repeats: ${item.repeats} · Quantity: ${item.qty} · Price: ${item.price2.replace("$", "")}`,
+        `Directions: “${item.directions}” · Repeats: ${item.repeats} · Quantity: ${item.qty}. Price is optional and not assessed.`,
       targets: ['[data-tour="label-entry-fields"]'],
     },
     initials: {
@@ -170,7 +152,7 @@ function definitions(caseData: PracticeCase): Record<GuidedTutorialStep, Tutoria
       eyebrow: "Stage 1 · Final check",
       title: "Continue to physical assembly",
       body:
-        "The readiness panel should now show that every required entry is complete. Review the label once more before continuing.",
+        "Supply remains on hold. The next stage is a simulated pack-check exercise only; it does not authorise handing medicine to the patient.",
       instruction: "Select “Complete dispensing → Pack assembly”.",
       targets: ['[data-tour="dispense-submit"]'],
     },
@@ -212,29 +194,46 @@ function definitions(caseData: PracticeCase): Record<GuidedTutorialStep, Tutoria
     },
     "patient-question": {
       eyebrow: "Stage 3 · Patient interaction",
-      title: "Ask an opening safety question",
+      title: "Introduce yourself and confirm identity",
+      example: GUIDED_TUTORIAL_OPENING_MESSAGE,
       body:
         "Use the conversation box exactly as you would speak at the counter. The simulated patient responds to the meaning of your message.",
       instruction:
-        `Type: “${GUIDED_TUTORIAL_OPENING_MESSAGE}” Then send it.`,
+        "Use your own words. Ask one question at a time if you prefer; completed checks stay ticked.",
+      targets: ['[data-tour="counselling-composer"]'],
+    },
+    "patient-history": {
+      eyebrow: "Stage 3 · Get to know the patient", title: "Check medicines and allergies",
+      body: "Read the patient's answer before moving on. Ask a follow-up if something needs clarification.",
+      instruction: "Ask about medicine allergies and what else the patient takes, including non-prescription products.",
+      example: "Have you ever reacted badly to a medicine? What other medicines do you take, including supplements?",
       targets: ['[data-tour="counselling-composer"]'],
     },
     "patient-explanation": {
       eyebrow: "Stage 3 · Patient interaction",
       title: "Explain the medicine and plan",
+      example: "This antibiotic is for your infection. The repeat is too early, so I will hold supply and contact your doctor. I will update you after speaking with them.",
       body:
         "Respond in clear patient-friendly language and stay consistent with the clinical decision you recorded.",
       instruction:
-        `Type: “${GUIDED_TUTORIAL_EXPLANATION_MESSAGE}” Then send it.`,
+        "Explain the early repeat, why supply stays on hold, and how you will contact the prescriber and update the patient. You can do this across several messages.",
       targets: ['[data-tour="counselling-composer"]'],
     },
     "patient-safety-close": {
       eyebrow: "Stage 3 · Patient interaction",
-      title: "Safety-net, check understanding and close",
+      title: "Explain when to seek urgent help",
+      example: "If you develop facial swelling or difficulty breathing, seek urgent medical help.",
       body:
-        "Finish the handover with practical side-effect advice, urgent warning signs, teach-back and an invitation for questions.",
+        "Supply is still on hold. Explain the urgent warning signs clearly without telling the patient to start this repeat.",
       instruction:
-        `Type: “${GUIDED_TUTORIAL_SAFETY_MESSAGE}” Then send it.`,
+        "Explain what to do for breathing difficulty or facial swelling. Read the patient’s response before continuing.",
+      targets: ['[data-tour="counselling-composer"]'],
+    },
+    "patient-understanding": {
+      eyebrow: "Stage 3 · Check the plan", title: "Check understanding and invite questions",
+      body: "Teach-back checks your explanation. Ask the patient to describe the plan, then give them space for questions.",
+      instruction: "Ask for the plan in their own words, and invite questions. A yes/no ‘Do you understand?’ is not teach-back.",
+      example: "Just to check I explained it clearly, can you tell me the plan in your own words? What questions do you have?",
       targets: ['[data-tour="counselling-composer"]'],
     },
     "finish-consultation": {
@@ -265,7 +264,11 @@ export function GuidedTutorial({
   caseData,
   onNext,
   onExit,
+  transcript,
 }: GuidedTutorialProps) {
+  const [collapsed, setCollapsed] = useState(false);
+  const [pinnedSide, setPinnedSide] = useState<"left" | "right" | null>(null);
+  const [inlineHost, setInlineHost] = useState<HTMLElement | null>(null);
   const [targetRect, setTargetRect] = useState<TargetRect | null>(null);
   const [anchorRect, setAnchorRect] = useState<TargetRect | null>(null);
   const [measuredCardHeight, setMeasuredCardHeight] = useState(0);
@@ -273,6 +276,7 @@ export function GuidedTutorial({
   const cardRef = useRef<HTMLElement>(null);
   const stepDefinitions = useMemo(() => definitions(caseData), [caseData]);
   const definition = stepDefinitions[step];
+  const progress = useMemo(() => guidedConversationProgress(step, transcript), [step, transcript]);
   const stepNumber = GUIDED_TUTORIAL_STEPS.indexOf(step) + 1;
 
   useEffect(() => {
@@ -280,6 +284,8 @@ export function GuidedTutorial({
     const selectors = definition.targets ?? [];
 
     function updateTarget() {
+      const resultHost = step === "results" ? document.querySelector<HTMLElement>('[data-tour="result-guide-slot"]') : null;
+      setInlineHost(resultHost ?? document.querySelector<HTMLElement>('[data-tour="consultation-guide-slot"]'));
       const target = visibleTarget(selectors);
       const anchor = visibleTarget(definition.cardAnchorTargets ?? []);
       setTargetRect(target ? rectOf(target) : null);
@@ -288,7 +294,7 @@ export function GuidedTutorial({
 
     function revealTarget() {
       const target = visibleTarget(selectors);
-      target?.scrollIntoView({ block: "center", inline: "nearest", behavior: "smooth" });
+      target?.scrollIntoView({ block: "center", inline: "nearest", behavior: "instant" });
       updateTarget();
     }
 
@@ -322,6 +328,8 @@ export function GuidedTutorial({
     observer.observe(card);
     return () => observer.disconnect();
   }, [active, step]);
+
+  useEffect(() => { setCollapsed(false); setPinnedSide(null); }, [step]);
 
   if (!active) return null;
 
@@ -378,6 +386,13 @@ export function GuidedTutorial({
     }
   }
 
+  if (pinnedSide) {
+    cardLeft = pinnedSide === "left" ? 16 : viewportWidth - cardWidth - 16;
+    cardTop = 80;
+    arrow = "none";
+  }
+  cardTop = Math.max(16, Math.min(cardTop, viewportHeight - estimatedCardHeight - 16));
+
   let targetArrow: { glyph: string; left: number; top: number } | null = null;
   if (targetRect && arrow !== "none") {
     if (arrow === "right") {
@@ -407,9 +422,9 @@ export function GuidedTutorial({
     }
   }
 
-  return (
-    <div className="fred-guided-tour-layer" aria-live="polite">
-      {targetRect ? (
+  const card = (
+    <div className={inlineHost ? "fred-guided-tour-inline" : "fred-guided-tour-layer"}>
+      {!inlineHost && !collapsed && (targetRect ? (
         <div
           className="fred-tour-spotlight"
           style={{
@@ -421,8 +436,8 @@ export function GuidedTutorial({
         />
       ) : (
         <div className="fred-tour-scrim" />
-      )}
-      {targetArrow && (
+      ))}
+      {!inlineHost && !collapsed && targetArrow && (
         <div
           className="fred-tour-target-arrow"
           style={{ left: `${targetArrow.left}px`, top: `${targetArrow.top}px` }}
@@ -434,10 +449,9 @@ export function GuidedTutorial({
 
       <section
         ref={cardRef}
-        className={`fred-tour-card arrow-${arrow}${compactModal ? " compact-modal" : ""}`}
-        style={{ left: `${cardLeft}px`, top: `${cardTop}px`, width: `${cardWidth}px` }}
-        role="dialog"
-        aria-modal="false"
+        className={`fred-tour-card arrow-${arrow}${compactModal ? " compact-modal" : ""}${collapsed ? " collapsed" : ""}`}
+        style={inlineHost ? undefined : { left: `${cardLeft}px`, top: `${collapsed ? 80 : cardTop}px`, width: `${cardWidth}px` }}
+        role="region"
         aria-labelledby="guided-tour-title"
       >
         <div className="fred-tour-card-head">
@@ -445,6 +459,7 @@ export function GuidedTutorial({
             <span>{definition.eyebrow}</span>
             <strong>{stepNumber} of {GUIDED_TUTORIAL_STEPS.length}</strong>
           </div>
+          <button type="button" onClick={() => setCollapsed(v => !v)} aria-expanded={!collapsed} aria-label={collapsed ? "Expand tutorial guide" : "Minimise tutorial guide"}>{collapsed ? "Expand" : "Minimise"}</button>
           <button type="button" onClick={onExit} aria-label="Exit guided tutorial">
             Exit
           </button>
@@ -453,11 +468,18 @@ export function GuidedTutorial({
           <i style={{ width: `${(stepNumber / GUIDED_TUTORIAL_STEPS.length) * 100}%` }} />
         </div>
         <h2 id="guided-tour-title">{definition.title}</h2>
+        {!collapsed && <>
         <p>{definition.body}</p>
         <div className="fred-tour-instruction">
           <span aria-hidden="true">→</span>
           <strong>{definition.instruction}</strong>
         </div>
+        {progress.objectives.length > 0 && <ul className="fred-tour-objectives" aria-label="Tutorial objectives">
+          {progress.objectives.map(o => <li key={o.id} data-complete={o.done}><span aria-hidden="true">{o.done ? "✓" : "○"}</span><span>{o.label}<span className="sr-only">{o.done ? " — complete" : " — still to do"}</span></span></li>)}
+        </ul>}
+        {progress.unresolved && <p role="status" className="fred-tour-correction">The patient needs clarification of earlier advice. Correct it before moving on. The original advice stays in your learning feedback.</p>}
+        {definition.example && <details className="fred-tour-example" key={step}><summary>Show an example</summary><p>{definition.example}</p><p>You can use different words or split this into shorter messages.</p></details>}
+        {!inlineHost && <div className="fred-tour-tools"><button type="button" onClick={() => setPinnedSide(v => v === "left" ? "right" : "left")}>Move guide</button><button type="button" onClick={() => { const target = visibleTarget(definition.targets ?? []); target?.scrollIntoView({ block: "center" }); const input = target?.matches("input, button, textarea") ? target : target?.querySelector<HTMLElement>("input, button, textarea"); input?.focus(); }}>Show me where</button></div>}
         <div className="fred-tour-card-footer">
           {definition.manualNext ? (
             <button
@@ -472,7 +494,9 @@ export function GuidedTutorial({
             <span>Complete the highlighted action to continue</span>
           )}
         </div>
+        </>}
       </section>
     </div>
   );
+  return inlineHost ? createPortal(card, inlineHost) : card;
 }

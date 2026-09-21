@@ -47,6 +47,8 @@ export function topicEvidenceIsValid(topic: ConversationTopic, text: string): bo
   if (topic.category === "information_gathering" && !isQuestion(text)) return false;
   if ((topic.category === "clinical_counselling" || topic.category === "safety_netting")
     && /^(?:(?:please|so|and) )?(?:are you|have you|do you|did you|does |is there|any |what (?!this does)|how (?:are|do|did|have)|when (?:did|do|was)|which )/.test(normalized)) return false;
+  if ((topic.category === "clinical_counselling" || topic.category === "safety_netting")
+    && /^(?:(?:can|could|would) you (?:please )?(?:tell me|confirm|explain)|i (?:was |am )?wonder(?:ing)? (?:if|whether)|i would like to (?:ask|check|confirm)|let me (?:check|confirm))\b/.test(normalized)) return false;
 
   if (topic.forbiddenPatterns?.some((pattern) => patternMatches(normalized, pattern))) {
     return false;

@@ -10,6 +10,7 @@ import type { ConversationMessage } from "@/lib/conversation/types";
 import { STATIC_CASES, ALL_WARNINGS } from "@/lib/cases/static-cases";
 import { applyCaseVariant } from "@/lib/cases/variants";
 import { formReducer, emptyFormStateFor } from "@/components/simulator/state";
+import { directionsMatch } from "@/lib/scoring/directions";
 import { validateDispense } from "@/lib/scoring/validate";
 import { getDispenseReadinessIssues } from "@/lib/scoring/readiness";
 import type { DispenseResult } from "@/lib/scoring/types";
@@ -58,9 +59,8 @@ import {
   type GuidedTutorialStep,
 } from "@/components/simulator/GuidedTutorial";
 import {
-  matchesGuidedExplanationMessage,
-  matchesGuidedOpeningMessage,
-  matchesGuidedSafetyMessage,
+  guidedConversationStepComplete,
+  isGuidedTutorialStep,
 } from "@/lib/practice/guided-tutorial";
 import type { StatusTone }     from "@/components/simulator/StatusBar";
 
@@ -117,7 +117,6 @@ export default function PracticePage() {
   const [attemptResetCounter, setAttemptResetCounter] = useState(0);
   const [guidedTutorialActive, setGuidedTutorialActive] = useState(false);
   const [guidedTutorialStep, setGuidedTutorialStep] = useState<GuidedTutorialStep>("welcome");
-  const [guidedCounsellingMessages, setGuidedCounsellingMessages] = useState<string[]>([]);
 
   // Keep the prescription available without covering the core laptop workspace.
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -249,10 +248,13 @@ export default function PracticePage() {
   }, []);
 
   function startGuidedTutorial() {
+    if (saving || queuedAttempt) { showStatus("Save or discard the pending result before starting the tutorial.", "error"); return; }
+    if ((hasAttemptProgress || draft.candidate) && !window.confirm("Start a fresh guided case? This replaces the unfinished draft on this device. Choose Cancel to keep or resume your work.")) return;
+    draft.clear();
+    setDrawerOpen(false); setDrugModalOpen(false); setPrescriberModalOpen(false); setAddPatientModalOpen(false);
     dismissOnboarding();
     setGuidedTutorialActive(true);
     setGuidedTutorialStep("welcome");
-    setGuidedCounsellingMessages([]);
     setPracticeMode("learn");
     setAttemptSeed(Date.now());
     setAttemptResetCounter((value) => value + 1);
@@ -452,6 +454,7 @@ export default function PracticePage() {
   }
 
   async function handleDispense() {
+    if (guidedTutorialActive && guidedTutorialStep !== "dispense-submit") { showStatus("Complete the current tutorial step before continuing to assembly.", "info"); return; }
     if (queuedAttempt) { showStatus("Save the pending attempt before starting another.", "error"); return; }
     if (!await ensureSession()) { showStatus("Practice tracking is unavailable. Your form is kept; retry shortly.", "error"); return; }
     if (formState.pharmacistInitials.trim().length < 2) {
@@ -511,6 +514,7 @@ export default function PracticePage() {
   }
 
   function handleAssemblyComplete(submission: Case1AssemblySubmission) {
+    if (guidedTutorialActive && guidedTutorialStep !== "assembly-submit") { showStatus("Finish the highlighted pack checks before continuing.", "info"); return; }
     assemblyRef.current = submission;
     const assembledWarnings = current.items.map((_, index) =>
       index === 0 ? new Set(submission.warningLabels) : selectedWarnings[index] ?? new Set<string>()
@@ -652,8 +656,8 @@ export default function PracticePage() {
 
   const draft = useLocalDraft<PracticeDraft>({
     storageKey: userId ? "dispenserx-draft-v3:" + userId : null,
-    enabled: hasAttemptProgress && !lastResult && !restoring,
-    value: { caseIndex: currentCaseIndex, caseVersion: editorialRecord.version, seed: attemptSeed, mode: practiceMode, stage, assisted: answersRevealed, sessionId, formState, patient: selectedPatient, drugSeedIds: selectedDrugs.map((drug) => drug?.seed_id ?? null), prescriberNumber: selectedPrescriber?.prescriber_number ?? null, warnings: selectedWarnings.map((w) => [...w]), decision: clinicalDecision, assembly: assemblyDraft, transcript },
+    enabled: (hasAttemptProgress || guidedTutorialActive) && !lastResult && !restoring,
+    value: { tutorialStep: guidedTutorialActive ? guidedTutorialStep : undefined, caseIndex: currentCaseIndex, caseVersion: editorialRecord.version, seed: attemptSeed, mode: practiceMode, stage, assisted: answersRevealed, sessionId, formState, patient: selectedPatient, drugSeedIds: selectedDrugs.map((drug) => drug?.seed_id ?? null), prescriberNumber: selectedPrescriber?.prescriber_number ?? null, warnings: selectedWarnings.map((w) => [...w]), decision: clinicalDecision, assembly: assemblyDraft, transcript },
   });
 
   function resumeDraft() {
@@ -676,6 +680,9 @@ export default function PracticePage() {
     assemblyRef.current = saved.assembly; setAssemblyDraft(saved.assembly); setSessionId(saved.sessionId);
     sessionRef.current = saved.sessionId ? { key: JSON.stringify([c.id, saved.seed, saved.mode]), promise: Promise.resolve(saved.sessionId) } : null;
     setTranscript(saved.transcript); setInitialTranscript(saved.transcript);
+    if (saved.caseIndex === 0 && saved.mode === "learn" && isGuidedTutorialStep(saved.tutorialStep)) {
+      setGuidedTutorialStep(saved.tutorialStep); setGuidedTutorialActive(true);
+    }
     if (saved.stage === "counselling") {
       let result = validateDispense({ caseData: c, formState: saved.formState, selectedPatient: saved.patient, selectedDrugs: drugs, selectedPrescriber: prescriber, selectedWarnings: saved.warnings.map((w) => new Set(w)), decision: saved.decision, assisted: saved.assisted });
       if (c.id === "case-1" && saved.assembly) result = addCase1AssemblyChecks(result, saved.assembly);
@@ -707,11 +714,9 @@ export default function PracticePage() {
         break;
       case "label-entry":
         completed = Boolean(item)
-          && normaliseTutorialEntry(item.directions) === normaliseTutorialEntry(expectedItem.directions)
+          && directionsMatch(expectedItem.directions, item.directions)
           && normaliseTutorialEntry(item.repeats) === normaliseTutorialEntry(expectedItem.repeats)
-          && normaliseTutorialEntry(item.qty) === normaliseTutorialEntry(String(expectedItem.qty))
-          && normaliseTutorialEntry(item.price.replace("$", ""))
-            === normaliseTutorialEntry(expectedItem.price2.replace("$", ""));
+          && normaliseTutorialEntry(item.qty) === normaliseTutorialEntry(String(expectedItem.qty));
         break;
       case "initials":
         completed = formState.pharmacistInitials.trim().length >= 2;
@@ -726,13 +731,11 @@ export default function PracticePage() {
         completed = stage === "counselling";
         break;
       case "patient-question":
-        completed = guidedCounsellingMessages.some(matchesGuidedOpeningMessage);
-        break;
+      case "patient-history":
       case "patient-explanation":
-        completed = guidedCounsellingMessages.some(matchesGuidedExplanationMessage);
-        break;
       case "patient-safety-close":
-        completed = guidedCounsellingMessages.some(matchesGuidedSafetyMessage);
+      case "patient-understanding":
+        completed = guidedConversationStepComplete(guidedTutorialStep, transcript);
         break;
       case "finish-consultation":
         completed = overlayOpen && Boolean(lastResult);
@@ -750,7 +753,7 @@ export default function PracticePage() {
     drawerOpen,
     advanceGuidedTutorial,
     formState,
-    guidedCounsellingMessages,
+    transcript,
     guidedTutorialActive,
     guidedTutorialStep,
     lastResult,
@@ -778,7 +781,7 @@ export default function PracticePage() {
         </div>
 
         {queuedAttempt && <div className="fred-training-banner" role="status"><span>An attempt is waiting to save on this device.</span><button type="button" disabled={saving} onClick={() => void saveAttempt(queuedAttempt)}>{saving ? "Saving…" : "Retry save"}</button><button type="button" disabled={saving} onClick={() => { if (window.confirm("Discard this unsaved result? It will not appear in your cloud progress.")) { setQueuedAttempt(null); try { localStorage.removeItem("dispenserx-pending-v2:" + userId); } catch {} } }}>Discard unsaved result</button></div>}
-        {draft.candidate && <div className="fred-training-banner" role="status"><span>You have an unfinished practice session on this device.</span><button type="button" onClick={resumeDraft}>Resume draft</button><button type="button" onClick={draft.clear}>Discard draft</button></div>}
+        {draft.candidate && <div className="fred-training-banner" role="status"><span>{draft.candidate.tutorialStep ? "Your guided tutorial is saved. Resume at your last step." : "You have an unfinished practice session on this device."}</span><button type="button" onClick={resumeDraft}>Resume draft</button><button type="button" onClick={draft.clear}>Discard draft</button></div>}
         <TitleBar />
         {practiceMode === "exam" && (
           <ExamStopwatch resetKey={`${current.id}-${attemptResetCounter}`} />
@@ -937,16 +940,14 @@ export default function PracticePage() {
             onViewResults={() => setOverlayOpen(true)}
             mode={practiceMode}
             guidedTutorial={guidedTutorialActive}
-            onGuidedMessageSent={(message) =>
-              setGuidedCounsellingMessages((previous) => [...previous, message])
-            }
+            guidedCanFinish={!guidedTutorialActive || guidedTutorialStep === "finish-consultation" || guidedTutorialStep === "results"}
             stageLabel={isCase1AssemblyPrototype
               ? "Stage 3 of 3 · Patient consultation"
               : "Stage 2 of 2 · Patient consultation"}
           />
         )}
 
-        <OnboardingModal open={onboardingOpen} onClose={dismissOnboarding} />
+        <OnboardingModal open={onboardingOpen} onClose={dismissOnboarding} onStartTutorial={startGuidedTutorial} />
 
         <ResultOverlay
           show={overlayOpen}
@@ -960,6 +961,7 @@ export default function PracticePage() {
         <GuidedTutorial
           active={guidedTutorialActive}
           step={guidedTutorialStep}
+          transcript={transcript}
           caseData={current}
           onNext={advanceGuidedTutorial}
           onExit={exitGuidedTutorial}

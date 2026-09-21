@@ -23,7 +23,7 @@ interface CounsellingStageProps {
   mode: PracticeMode;
   stageLabel?: string;
   guidedTutorial?: boolean;
-  onGuidedMessageSent?: (message: string) => void;
+  guidedCanFinish?: boolean;
 }
 
 function decisionLabel(decision: DispenseDecision | null): string {
@@ -42,7 +42,7 @@ export function CounsellingStage({
   onViewResults,
   mode,
   guidedTutorial = false,
-  onGuidedMessageSent,
+  guidedCanFinish = true,
   stageLabel = "Stage 2 of 2 · Patient consultation",
 }: CounsellingStageProps) {
   const [messages, setMessages] = useState<ConversationMessage[]>(initialTranscript?.length ? initialTranscript : [
@@ -170,7 +170,6 @@ export function CounsellingStage({
       id: crypto.randomUUID(), role: "patient", text: turn.reply.text, patientAudio: turn.reply.audioSegments,
     }]);
     setPending(false);
-    onGuidedMessageSent?.(text);
     if (interactionMode === "voice" && patientAudioEnabled) voice.speak(turn.reply.audioSegments);
     requestAnimationFrame(() => {
       transcriptRef.current?.scrollTo({ top: transcriptRef.current.scrollHeight, behavior: "smooth" });
@@ -188,7 +187,7 @@ export function CounsellingStage({
   }, [messages]);
 
   function finishConversation() {
-    if (complete || pending || studentTurns < 1 || input.trim()) return;
+    if (complete || pending || studentTurns < 1 || input.trim() || !guidedCanFinish) return;
     voice.abortListening();
     voice.cancelSpeech();
     const result = evaluateConversation(conversation, messages);
@@ -213,7 +212,7 @@ export function CounsellingStage({
         </div>
       </header>
 
-      <div className="fred-counselling-grid">
+      <div className={`fred-counselling-grid${guidedTutorial ? " has-tutorial" : ""}`}>
         <section className="fred-chat-window" aria-labelledby="patient-conversation-title">
           <div className="fred-chat-titlebar">
             <span id="patient-conversation-title">Consultation transcript</span>
@@ -381,7 +380,7 @@ export function CounsellingStage({
               aria-describedby="conversation-message-status"
               onChange={(event) => setInput(event.target.value)}
               onKeyDown={(event) => {
-                if (event.key === "Enter" && !event.shiftKey) {
+                if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
                   event.preventDefault();
                   void sendMessage();
                 }
@@ -421,8 +420,8 @@ export function CounsellingStage({
                 type="button"
                 className="fred-chat-finish"
                 onClick={complete ? onViewResults : finishConversation}
-                disabled={pending || (!complete && (studentTurns < 1 || Boolean(input.trim())))}
-                title={input.trim() ? "Send or clear your draft response before finishing." : undefined}
+                disabled={pending || (!complete && (studentTurns < 1 || Boolean(input.trim()) || !guidedCanFinish))}
+                title={!guidedCanFinish ? "Complete the tutorial objectives before finishing, or exit the guide to continue independently." : input.trim() ? "Send or clear your draft response before finishing." : undefined}
                 data-tour="counselling-finish"
               >
                 {complete ? "View results" : "Finish consultation"}
@@ -433,7 +432,8 @@ export function CounsellingStage({
         </section>
 
         <div className="fred-counselling-sidebar" role="group" aria-label="Conversation assessment information">
-          <section className="fred-assessment-card">
+          {guidedTutorial && <div data-tour="consultation-guide-slot" />}
+          {!guidedTutorial && <section className="fred-assessment-card">
             <span className={`fred-mode-badge ${mode}`}>{mode} mode</span>
             <h2>Consultation approach</h2>
             <p>
@@ -462,7 +462,7 @@ export function CounsellingStage({
                 </details>
               </details>
             )}
-          </section>
+          </section>}
 
           <section className="fred-model-card fred-model-card-compact">
             <div className="fred-model-card-heading">

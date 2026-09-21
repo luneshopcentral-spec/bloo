@@ -12,6 +12,9 @@ export function refineConversationCases(cases: Record<string, ConversationCase>)
     topic("allergies").fallbackPatterns.push(String.raw`\b(?:bad|unusual|unwanted) reaction\b.*\b(?:medicine|tablets?|antibiotics?)\b`, String.raw`\b(?:medicine|tablets?|antibiotics?)\b.*\b(?:disagreed with|made you (?:ill|unwell)|reaction)\b`);
     topic("current_medicines").fallbackPatterns.push(String.raw`\b(?:what|which)\b.*\b(?:medicine|tablets?|pills?|treatments?)\b.*\b(?:taking|take|using|use|on)\b`);
     topic("current_medicines").fallbackPatterns.push(String.raw`\bwhat else\b.*\b(?:take|taking|using|use|on)\b`, String.raw`\bare you on any (?:tablets?|pills?|treatments?)\b`, String.raw`\banything\b.*\b(?:chemist|supermarket|over the counter)\b`);
+    topic("current_medicines").fallbackPatterns.push(String.raw`\b(?:run|talk|go)\b.*\bthrough\b.*\bmedicine\b`, String.raw`\bmedicine (?:you|that you) (?:currently |usually |normally )?(?:take|use|are taking)\b`, String.raw`\bwhat\b.*\btake (?:day to day|daily|every day)\b`);
+    topic("allergies").fallbackPatterns.push(String.raw`\bmedicine\b.*\b(?:caused|given)\b.*\b(?:reaction|rash|allergy)\b`);
+    c.responseIntents.find(i => i.id === "previous_use")?.fallbackPatterns.push(String.raw`\bwhen\b.*\b(?:last|previously)\b.*\b(?:collect|supply|dispens|take|took|use)\w*\b`);
     c.responseIntents.find(i => i.id === "previous_use")?.fallbackPatterns.push(String.raw`\bis this (?:the|your) first time\b`);
     c.responseIntents.find(i => i.id === "medical_conditions")?.fallbackPatterns.push(String.raw`\b(?:health|medical) (?:issues?|problems?)\b`);
     const symptoms = c.responseIntents.find(i => i.id === "current_symptoms");
@@ -54,15 +57,15 @@ export function refineConversationCases(cases: Record<string, ConversationCase>)
         id: "explain_hold", label: "Explain the early repeat and hold supply for prescriber clarification",
         category: "clinical_counselling", critical: true,
         examples: ["The repeat is too early. I cannot supply it today until I contact your prescriber.", "I need to hold this supply and speak with your doctor because it was dispensed four days ago."],
-        fallbackPatterns: [String.raw`\b(?:early|recent|four days|4 days)\b`],
-        requiredPatternGroups: [[String.raw`\b(?:early|recent|four days|4 days)\b`], [String.raw`\b(?:hold|cannot supply|not supply|before.{0,20}supply)\b`], [String.raw`\b(?:contact|speak|call|check|clarify)\b.*\b(?:doctor|prescriber)\b`]],
+        fallbackPatterns: [String.raw`\b(?:early|too soon|ahead of schedule|recent|four days|4 days)\b`],
+        requiredPatternGroups: [[String.raw`\b(?:early|too soon|ahead of schedule|recent|four days|4 days)\b`], [String.raw`\b(?:hold|cannot (?:supply|hand (?:it|this) over)|not supply|before.{0,20}(?:supply|dispense|dispensing))\b`], [String.raw`\b(?:contact|speak|spoken|call|ring|phone|check|clarify)\b.*\b(?:doctor|prescriber)\b`]],
         patientReplies: ["I didn't realise the repeat was too early. I understand you need to check with my doctor before supplying it.", "Okay, please check the recent supply with my doctor first."],
         teachBackReply: "The repeat is too early, so you are holding it while you check with my doctor.",
       }, {
         id: "next_steps", label: "Explain the follow-up and how the patient will be updated",
         category: "communication",
         examples: ["I will contact your prescriber and update you before anything is supplied.", "We will let you know the outcome after speaking with your doctor."],
-        fallbackPatterns: [String.raw`\b(?:update you|let you know|get back to you|call you)\b`],
+        fallbackPatterns: [String.raw`\b(?:update you|let you know|get back to you|call you|phone you|keep you informed)\b`],
         requiredPatternGroups: [[String.raw`\b(?:doctor|prescriber|outcome|after|before)\b`]],
         patientReplies: ["Thank you. I'll wait to hear the outcome before collecting the repeat.", "Okay, please let me know once you have spoken to the doctor."],
         teachBackReply: "You will update me after speaking with the doctor, before anything is supplied.",

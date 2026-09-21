@@ -114,6 +114,7 @@ export function ResultOverlay({
         </div>
 
         <div className="fred-result-body">
+          {guidedTutorial && <div data-tour="result-guide-slot" />}
           <div
             className={`fred-result-summary ${result.passed ? "passed" : "failed"}`}
             aria-live="polite"

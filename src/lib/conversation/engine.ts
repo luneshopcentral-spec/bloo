@@ -17,10 +17,12 @@ export interface DialogueState {
   pendingTopicId: string | null;
   lastFactTopicId: string | null;
   fragments: Record<string, string[]>;
+  lastReply: string | null;
+  unresolvedAdviceIds: string[];
 }
 
 export function createDialogueState(): DialogueState {
-  return { turns: 0, addressed: new Set(), evidence: {}, fragments: {}, unsafeAdvice: [], concernShown: false, pendingTopicId: null, lastFactTopicId: null };
+  return { lastReply: null, unresolvedAdviceIds: [], turns: 0, addressed: new Set(), evidence: {}, fragments: {}, unsafeAdvice: [], concernShown: false, pendingTopicId: null, lastFactTopicId: null };
 }
 
 function dynamicSegment(text: string): PatientAudioSegment {
@@ -30,8 +32,8 @@ function dynamicSegment(text: string): PatientAudioSegment {
 }
 
 function contextText(c: ConversationCase, state: DialogueState, raw: string): string {
-  const text = normalizeLanguage(raw);
-  if (state.lastFactTopicId && /^(?:which (?:one|medicine)|what (?:was it|is it called)|can you tell me more|what reaction|what happened|what dose)(?: please)?[?.]*$/.test(text)) {
+  const text = normalizeLanguage(raw).replace(/^(?:sorry|and|so)[, ]+/, "");
+  if (state.lastFactTopicId && /^(?:which (?:one|medicine)(?: was (?:it|that)(?: again)?)?|what (?:was it|is it called)|can you tell me more|what reaction|what happened|what dose)(?: please)?[?.]*$/.test(text)) {
     const prompts: Record<string, string> = {
       allergies: "What medicine allergies have you had?",
       current_medicines: "What regular medicines do you take?",
@@ -85,12 +87,21 @@ function clarifyPartial(c: ConversationCase, state: DialogueState, id: string): 
   if (id === "water_upright") return missing[0]
     ? "How much water should I take it with?"
     : "Is there anything I need to do after swallowing it?";
+  if (id === "explain_hold") {
+    if (missing[0]) return "Why does this repeat need checking before I can collect it?";
+    if (missing[1]) return "Does that mean I need to wait before I can collect the medicine?";
+    if (missing[2]) return "Who will you check with to sort out the repeat?";
+  }
   return "Could you explain the rest of that for me? I want to be clear about the whole plan.";
 }
 
 /** One pure transition shared by live dialogue, resumed drafts and server grading. */
 export function advanceConversation(c: ConversationCase, previous: DialogueState, raw: string) {
-  const state: DialogueState = { ...previous, turns: previous.turns + 1, addressed: new Set(previous.addressed), evidence: { ...previous.evidence }, fragments: { ...previous.fragments }, unsafeAdvice: [...previous.unsafeAdvice] };
+  const state: DialogueState = { ...previous, turns: previous.turns + 1, addressed: new Set(previous.addressed), evidence: { ...previous.evidence }, fragments: { ...previous.fragments }, unsafeAdvice: [...previous.unsafeAdvice], unresolvedAdviceIds: [...previous.unresolvedAdviceIds] };
+  const repeatRequest = /^(?:(?:sorry|please) )?(?:(?:can|could|would) you (?:please )?)?(?:repeat (?:that|what you (?:said|just said))|say that again)(?: please)?[.!?]*$/.test(normalizeLanguage(raw));
+  if (repeatRequest && previous.lastReply) {
+    return { state, matchedTopicIds: [] as string[], reply: { text: previous.lastReply, audioSegments: [dynamicSegment(previous.lastReply)] } };
+  }
   const text = contextText(c, previous, raw);
   let matchedTopicIds = classifyWithRules(c, text).map(m => m.topicId);
   const findings = [...findUnsafeAdvice(c, raw), ...additionalSafety(c, raw)];
@@ -113,6 +124,7 @@ export function advanceConversation(c: ConversationCase, previous: DialogueState
     // dose or dangerous recommendation. Keep the original evidence for review.
     matchedTopicIds = matchedTopicIds.filter(id => c.topics.find(t => t.id === id)?.category === "information_gathering");
     for (const finding of findings) {
+      if (!state.unresolvedAdviceIds.includes(finding.id)) state.unresolvedAdviceIds.push(finding.id);
       if (!state.unsafeAdvice.some(f => f.id === finding.id && f.excerpt === finding.excerpt)) state.unsafeAdvice.push(finding);
     }
     if (findings.some(f => f.id === "unverified_dose" || f.id === "double_dose")) {
@@ -122,6 +134,21 @@ export function advanceConversation(c: ConversationCase, previous: DialogueState
       }
     }
   }
+  if (!findings.length) {
+    state.unresolvedAdviceIds = state.unresolvedAdviceIds.filter(id => {
+      if (id === "unverified_dose") return !c.doseRules?.some(rule => matchedTopicIds.includes(rule.topicId));
+      if (id === "supply_before_clarification") return !matchedTopicIds.includes("explain_hold");
+      if (id === "double_dose") return !/\b(?:do not|never|must not)\b.{0,25}\bdouble\b/.test(normalizeLanguage(raw));
+      return true;
+    });
+  }
+  const requestedTeachBack = matchedTopicIds.includes("teach_back");
+  const hasExplainedPlan = c.topics.some(topic =>
+    (topic.category === "clinical_counselling" || topic.category === "safety_netting" || topic.teachBackReply)
+    && topic.id !== "teach_back"
+    && (state.addressed.has(topic.id) || matchedTopicIds.includes(topic.id)));
+  const teachBackBlocked = requestedTeachBack && (!hasExplainedPlan || state.unresolvedAdviceIds.length > 0);
+  if (teachBackBlocked) matchedTopicIds = matchedTopicIds.filter(id => id !== "teach_back");
   for (const id of matchedTopicIds) {
     state.addressed.add(id);
     state.evidence[id] = [...new Set([...(state.evidence[id] ?? []), ...(state.fragments[id] ?? []), raw])].slice(-5);
@@ -131,21 +158,25 @@ export function advanceConversation(c: ConversationCase, previous: DialogueState
   const push = (reply: string) => {
     if (!responses.some(s => s.text === reply)) responses.push(dynamicSegment(reply));
   };
-  if (!findings.length && partialIds.length && !matchedTopicIds.length) {
+  if (!findings.length && partialIds.length) {
     const id = partialIds[0];
     state.pendingTopicId = id;
     push(clarifyPartial(c, state, id));
   }
   const facts = matchedTopicIds.filter(id => c.topics.find(t => t.id === id)?.category === "information_gathering");
-  state.lastFactTopicId = facts.at(-1) ?? null;
+  const acknowledgement = /^(?:thanks?(?: you)?(?: for (?:letting me know|telling me|sharing that))?|okay|ok|i see|understood|sorry to hear that)[.!]*$/.test(normalizeLanguage(raw));
+  state.lastFactTopicId = facts.at(-1) ?? (acknowledgement ? previous.lastFactTopicId : null);
   if (findings.length) {
     push(findings.some(f => f.id === "unverified_dose")
       ? "That dose sounds different from the plan. Could you check the prescription and explain exactly how much and how often?"
       : "I'm confused about that advice. Could you check it against the prescription and explain the safe plan before I do anything?");
   }
+  if (teachBackBlocked) push(state.unresolvedAdviceIds.length
+    ? "Before I repeat the plan, I still need you to clear up the conflicting advice. What exactly should I follow?"
+    : "Could you explain the plan first? Then I can tell you how I understand it.");
   const safeTopicIds = findings.length ? facts : matchedTopicIds;
   if (safeTopicIds.length) {
-    const unresolvedAdvice = state.unsafeAdvice.length > 0 && safeTopicIds.includes("teach_back");
+    const unresolvedAdvice = state.unresolvedAdviceIds.length > 0 && safeTopicIds.includes("teach_back");
     if (unresolvedAdvice) push("Before I repeat the plan, I still need you to clear up the conflicting advice. What exactly should I follow?");
     const result = buildPatientReply(c, safeTopicIds.filter(id => !(unresolvedAdvice && id === "teach_back")), previous.addressed, state.turns, true, null);
     if (safeTopicIds.some(id => !(unresolvedAdvice && id === "teach_back"))) responses.push(...result.audioSegments);
@@ -169,6 +200,7 @@ export function advanceConversation(c: ConversationCase, previous: DialogueState
       answeredIntents.add(historyIntent.id);
     }
   }
+  if (responses.length === 0 && acknowledgement) push("You're welcome. What else would you like to check?");
   if (responses.length === 0) {
     const intent = isMetaStatement(text) ? null : matchResponseIntent(c, text);
     if (intent && !["dosing_instruction", "affirmative_answer", "negative_answer", "wrong_dosage_form_advice"].includes(intent.id)) {
@@ -190,7 +222,8 @@ export function advanceConversation(c: ConversationCase, previous: DialogueState
     state.concernShown = true;
     state.pendingTopicId = c.concernTopicId;
   }
-  return { state, matchedTopicIds, reply: { text: responses.map(s => s.text).join(" "), audioSegments: responses } };
+  state.lastReply = responses.map(s => s.text).join(" ");
+  return { state, matchedTopicIds, reply: { text: state.lastReply, audioSegments: responses } };
 }
 
 export function replayConversation(c: ConversationCase, transcript: ConversationMessage[]): DialogueState {

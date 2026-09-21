@@ -4,6 +4,9 @@ export function normalizeLanguage(value: string): string {
     .replace(/\bcan't\b/g, "cannot").replace(/\bwon't\b/g, "will not")
     .replace(/\bdon't\b/g, "do not").replace(/\bdoesn't\b/g, "does not")
     .replace(/\bshouldn't\b/g, "should not").replace(/\bmustn't\b/g, "must not")
+    .replace(/\bhaven't\b/g, "have not").replace(/\bhasn't\b/g, "has not")
+    .replace(/\bisn't\b/g, "is not").replace(/\baren't\b/g, "are not")
+    .replace(/\bcouldn't\b/g, "could not").replace(/\bwouldn't\b/g, "would not")
     .replace(/\bi'll\b/g, "i will").replace(/\bwe'll\b/g, "we will")
     .replace(/\byou'll\b/g, "you will").replace(/\byou're\b/g, "you are")
     .replace(/\bi'm\b/g, "i am").replace(/\bit's\b/g, "it is")
@@ -17,19 +20,22 @@ export function normalizeLanguage(value: string): string {
     .replace(/(\d)([a-z])/g, "$1 $2").replace(/([a-z])(\d)/g, "$1 $2")
     .replace(/\b(?:mls|millilitres?|milliliters?)\b/g, "ml")
     .replace(/\b(?:refrigerator|refrigerated|refrigeration)\b/g, "fridge")
+    .replace(/\bover-the-counter\b/g, "over the counter")
     .replace(/[^a-z0-9%./'\s-]/g, " ").replace(/\s+/g, " ").trim();
 }
 
 /** Keep decimal points intact. Each clause retains its own question/advice context. */
 export function conversationClauses(text: string): string[] {
-  return text.split(/(?<!\d)[.!](?!\d)|[?;\n]+|\b(?:and also|also|finally|but|however)\b|,?\s+and\s+(?=(?:do|are|have|what|when|how|can|could|would|is)\s)/i)
+  return text.split(/(?<!\d)[.!](?!\d)|(?<=\?)\s*|[;\n]+|\b(?:and also|also|finally|but|however)\b|,?\s+and\s+(?=(?:do|are|have|what|when|how|can|could|would|is)\s)/i)
     .map(part => part.trim()).filter(Boolean);
 }
 
 export function isQuestion(text: string): boolean {
   const s = normalizeLanguage(text).replace(/^(?:and|also|so)[, ]+/, "");
-  return /^(?:(?:please|and|so) )?(?:what (?!this does)|which|who|whose|when (?:did|do|was|were)|where|how|any chance)\b/.test(s)
-    || /\b(?:do|does|did|are|is|have|has|were|will|would|could|can) (?:you|your|he|she|they|the patient|there|liam|noah)\b/.test(s)
+  return /\b(?:i (?:was |am )?wonder(?:ing)? (?:if|whether|what)|i would like to (?:ask|check|confirm)|let me (?:check|confirm)|may i (?:know|have))\b/.test(s)
+    || /^(?:your (?:full )?name|your (?:date of birth|birthday)|any (?:allergies|medicine)|allergic to anything)[?.!]*$/.test(s)
+    || /^(?:(?:please|and|so) )?(?:what (?!this does)|which|who|whose|when (?:did|do|was|were)|where|how|any chance)\b/.test(s)
+    || /\b(?:do|does|did|are|is|have|has|were|will|would|could|can) (?:a medicine|any medicine|you|your|he|she|they|the patient|there|liam|noah)\b/.test(s)
     || /\b(?:can|could|may|would) (?:i|we)\b/.test(s)
     || /\b(?:tell me|talk me through|mind telling|mind sharing|check with you|check your|confirm your|can i check|can i ask)\b/.test(s)
     || /^(?:any|anything|have any|has any|taking any|using any|on any|allergies|date of birth)\b/.test(s)
