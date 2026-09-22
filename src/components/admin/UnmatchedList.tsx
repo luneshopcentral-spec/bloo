@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Download } from "lucide-react";
 import { adminPost } from "@/lib/admin/client-api";
 import { formatDateTime } from "@/lib/admin/format";
 
@@ -29,7 +30,7 @@ export function UnmatchedList({ items, unreviewedOnly }: { items: UnmatchedItem[
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-1">
+      <div className="flex flex-wrap items-center gap-1">
         <Link
           href="/unmatched"
           className={`rounded-full px-3 py-1 text-sm font-medium ${unreviewedOnly ? "bg-slate-900 text-white" : "bg-white text-slate-600 hover:bg-slate-100"}`}
@@ -42,6 +43,12 @@ export function UnmatchedList({ items, unreviewedOnly }: { items: UnmatchedItem[
         >
           All
         </Link>
+        <a
+          href={`/api/admin/unmatched/export${unreviewedOnly ? "?view=unreviewed" : ""}`}
+          className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1 text-sm font-medium text-slate-700 hover:bg-slate-100"
+        >
+          <Download className="h-4 w-4" /> Export CSV
+        </a>
       </div>
 
       {items.length === 0 && (
@@ -59,7 +66,7 @@ export function UnmatchedList({ items, unreviewedOnly }: { items: UnmatchedItem[
               {item.reviewed && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-800">Reviewed</span>}
               <span className="ml-auto text-xs text-slate-400">{formatDateTime(item.createdAt)}</span>
             </div>
-            <p className="whitespace-pre-wrap break-words text-sm font-medium text-slate-900">“{item.text}”</p>
+            <p className="whitespace-pre-wrap break-words text-base font-semibold text-slate-900">“{item.text}”</p>
             {item.reply && <p className="mt-1 whitespace-pre-wrap break-words text-xs text-slate-500">Patient replied: {item.reply}</p>}
             <div className="mt-3 flex justify-end">
               <button

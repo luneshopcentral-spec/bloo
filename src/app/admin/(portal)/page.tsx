@@ -36,6 +36,13 @@ export default async function AdminOverviewPage() {
       count(() => admin.from("unmatched_utterances").select("*", { count: "exact", head: true }).eq("reviewed", false)),
     ]);
 
+  const { data: recentMissed } = await admin
+    .from("unmatched_utterances")
+    .select("id, case_id, text")
+    .eq("reviewed", false)
+    .order("created_at", { ascending: false })
+    .limit(6);
+
   return (
     <div className="space-y-8">
       <div>
@@ -55,6 +62,23 @@ export default async function AdminOverviewPage() {
         <StatCard label="Quizzes" value={CONSULTATION_QUIZ_CASES.length} hint="Consultation quiz cases" />
         <StatCard label="Unrecognised wording" value={unmatched ?? "Unavailable"} hint="Unreviewed capture — grow patterns" />
       </section>
+
+      {recentMissed && recentMissed.length > 0 && (
+        <section className="rounded-xl border border-slate-200 bg-white p-5">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="font-medium">Recent phrases the patient didn&apos;t understand</h2>
+            <Link href="/unmatched" className="text-sm font-medium text-emerald-700 hover:underline">Review all →</Link>
+          </div>
+          <ul className="space-y-2">
+            {recentMissed.map((row) => (
+              <li key={row.id} className="flex items-baseline gap-3 border-b border-slate-100 pb-2 last:border-0">
+                <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">{row.case_id}</span>
+                <span className="text-sm text-slate-800">“{row.text}”</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <QuickLink href="/users" title="Users" body="Search, inspect and manage accounts." />

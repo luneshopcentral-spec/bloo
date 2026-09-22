@@ -40,35 +40,52 @@ export function UserActions({
     <div className="rounded-xl border border-slate-200 bg-white p-5">
       <h2 className="mb-2 font-medium">Manage account</h2><p className="mb-4 text-sm text-slate-600">Grants never shorten existing access. Revoking a trial does not cancel a paid subscription. Changes are recorded in the audit log.</p>
       <div className="flex flex-wrap items-end gap-4">
-        <div className="flex items-end gap-2">
-          <div>
-            <label htmlFor="grant-days" className="mb-1 block text-xs text-slate-600">Minimum access from today (days)</label>
+        <div>
+          <span className="mb-1 block text-xs text-slate-600">Grant full access</span>
+          <div className="flex flex-wrap items-end gap-2">
+            {[
+              { label: "7 days", days: 7 },
+              { label: "30 days", days: 30 },
+              { label: "90 days", days: 90 },
+              { label: "1 year", days: 365 },
+            ].map((preset) => (
+              <Button
+                key={preset.days}
+                variant="outline"
+                disabled={busy !== null}
+                onClick={() => run("grant", { action: "grant_comp", minutes: preset.days * 1440 })}
+              >
+                {preset.label}
+              </Button>
+            ))}
+            <span className="mx-1 text-xs text-slate-400">or</span>
             <Input
               id="grant-days"
               type="number"
               min={1}
               max={365}
+              aria-label="Custom access length in days"
               value={compDays}
               onChange={(event) => setCompDays(Number(event.target.value))}
-              className="w-24"
+              className="w-20"
             />
-          </div>
-          <Button
-            variant="outline"
-            disabled={busy !== null || !Number.isInteger(compDays) || compDays < 1 || compDays > 365}
-            onClick={() => run("grant", { action: "grant_comp", minutes: compDays * 1440 })}
-          >
-            Grant access
-          </Button>
-          {compActive && (
             <Button
-              variant="ghost"
-              disabled={busy !== null}
-              onClick={() => run("revoke", { action: "revoke_comp" }, "Revoke this user's trial access now?")}
+              variant="outline"
+              disabled={busy !== null || !Number.isInteger(compDays) || compDays < 1 || compDays > 365}
+              onClick={() => run("grant", { action: "grant_comp", minutes: compDays * 1440 })}
             >
-              Revoke trial
+              Grant days
             </Button>
-          )}
+            {compActive && (
+              <Button
+                variant="ghost"
+                disabled={busy !== null}
+                onClick={() => run("revoke", { action: "revoke_comp" }, "Revoke this user's trial access now?")}
+              >
+                Revoke access
+              </Button>
+            )}
+          </div>
         </div>
 
         <div className="flex items-end gap-2">
