@@ -22,7 +22,7 @@ export default async function AdminOverviewPage() {
   const nowIso = new Date().toISOString();
   const weekAgoIso = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-  const [users, paid, comp, attempts, attempts7d, openFeedback, activeAnnouncements, activeCodes, newUsers] =
+  const [users, paid, comp, attempts, attempts7d, openFeedback, activeAnnouncements, activeCodes, newUsers, unmatched] =
     await Promise.all([
       count(() => admin.from("profiles").select("*", { count: "exact", head: true })),
       count(() => admin.from("profiles").select("*", { count: "exact", head: true }).eq("has_paid", true)),
@@ -33,6 +33,7 @@ export default async function AdminOverviewPage() {
       count(() => admin.from("announcements").select("*", { count: "exact", head: true }).eq("active", true).lte("starts_at",nowIso).or(`ends_at.is.null,ends_at.gt.${nowIso}`)),
       count(() => admin.from("access_codes").select("*", { count: "exact", head: true }).eq("active", true)),
       count(() => admin.from("profiles").select("*", { count: "exact", head: true }).gte("created_at", weekAgoIso)),
+      count(() => admin.from("unmatched_utterances").select("*", { count: "exact", head: true }).eq("reviewed", false)),
     ]);
 
   return (
@@ -52,6 +53,7 @@ export default async function AdminOverviewPage() {
         <StatCard label="Attempts (7 days)" value={attempts7d ?? "Unavailable"} />
         <StatCard label="New registrations (7 days)" value={newUsers ?? "Unavailable"} hint={`${STATIC_CASES.length} authored simulator cases`} />
         <StatCard label="Quizzes" value={CONSULTATION_QUIZ_CASES.length} hint="Consultation quiz cases" />
+        <StatCard label="Unrecognised wording" value={unmatched ?? "Unavailable"} hint="Unreviewed capture — grow patterns" />
       </section>
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

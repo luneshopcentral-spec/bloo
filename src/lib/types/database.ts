@@ -92,6 +92,12 @@ export interface Database {
         };
         Relationships: [];
       };
+      unmatched_utterances: {
+        Row: { id: string; user_id: string | null; case_id: string; stage: string | null; turn_index: number | null; text: string; patient_reply: string | null; reviewed: boolean; created_at: string };
+        Insert: { user_id?: string | null; case_id: string; stage?: string | null; turn_index?: number | null; text: string; patient_reply?: string | null };
+        Update: { reviewed?: boolean };
+        Relationships: [];
+      };
       admin_settings: {
         Row: { key: string; value: Json; updated_by: string | null; updated_at: string };
         Insert: { key: string; value: Json; updated_by?: string | null; updated_at?: string };

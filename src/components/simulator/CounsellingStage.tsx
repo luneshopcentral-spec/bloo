@@ -63,6 +63,24 @@ export function CounsellingStage({
   const [patientAudioEnabled, setPatientAudioEnabled] = useState(true);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const transcriptRef = useRef<HTMLDivElement>(null);
+  // Student wording the deterministic matcher did not recognise, flushed once at
+  // the end of the consultation to grow the topic patterns. Best-effort only.
+  const unmatchedRef = useRef<Array<{ caseId: string; stage: string; turnIndex: number; text: string; reply: string }>>([]);
+  const flushUnmatched = useRef(() => {
+    const items = unmatchedRef.current;
+    if (items.length === 0) return;
+    unmatchedRef.current = [];
+    try {
+      void fetch("/api/unmatched", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ items: items.slice(0, 30) }),
+        keepalive: true,
+      }).catch(() => {});
+    } catch {
+      // Telemetry only — never surface to the student.
+    }
+  });
   const dialogue = useMemo(() => replayConversation(conversation, messages), [conversation, messages]);
   const [messageError, setMessageError] = useState<string | null>(null);
   const usedCharacters = messages.reduce((sum, m) => sum + m.text.length, 0);
@@ -163,6 +181,15 @@ export function CounsellingStage({
       setMessageError("Please send a shorter response, or finish this consultation to review your feedback.");
       return;
     }
+    if (turn.unrecognised && !guidedTutorial) {
+      unmatchedRef.current.push({
+        caseId: conversation.caseId,
+        stage: "counselling",
+        turnIndex: studentTurns,
+        text,
+        reply: turn.reply.text,
+      });
+    }
     voice.abortListening();
     setMessageError(null);
     setInput("");
@@ -181,6 +208,11 @@ export function CounsellingStage({
   }
 
   useEffect(() => { onTranscriptChange?.(messages); }, [messages, onTranscriptChange]);
+  // Flush any remaining unrecognised wording if the student leaves without finishing.
+  useEffect(() => {
+    const flush = flushUnmatched.current;
+    return () => flush();
+  }, []);
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
       const transcript = transcriptRef.current;
@@ -196,6 +228,7 @@ export function CounsellingStage({
     const result = evaluateConversation(conversation, messages);
     setComplete(true);
     onComplete(result);
+    flushUnmatched.current();
   }
 
   return (

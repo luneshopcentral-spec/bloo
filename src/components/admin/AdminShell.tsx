@@ -16,6 +16,7 @@ import {
   LogOut,
   ShieldCheck,
   History,
+  MessagesSquare,
 } from "lucide-react";
 
 const NAV = [
@@ -24,6 +25,7 @@ const NAV = [
   { href: "/feedback", label: "Feedback", icon: MessageSquare },
   { href: "/cases", label: "Cases", icon: BookOpen },
   { href: "/quizzes", label: "Quizzes", icon: ListChecks },
+  { href: "/unmatched", label: "Unrecognised wording", icon: MessagesSquare },
   { href: "/announcements", label: "Announcements", icon: Megaphone },
   { href: "/codes", label: "Access codes", icon: Ticket },
   { href: "/audit", label: "Admin activity", icon: History },

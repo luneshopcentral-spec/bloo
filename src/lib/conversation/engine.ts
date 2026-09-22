@@ -200,6 +200,10 @@ export function advanceConversation(c: ConversationCase, previous: DialogueState
       answeredIntents.add(historyIntent.id);
     }
   }
+  // True only when the patient fell through to the generic "I don't understand"
+  // reply — i.e. the deterministic matcher recognised nothing in this turn. Used
+  // to capture real student wording that needs a pattern (pilot corpus).
+  let unrecognised = false;
   if (responses.length === 0 && acknowledgement) push("You're welcome. What else would you like to check?");
   if (responses.length === 0) {
     const intent = isMetaStatement(text) ? null : matchResponseIntent(c, text);
@@ -208,6 +212,7 @@ export function advanceConversation(c: ConversationCase, previous: DialogueState
     } else if (state.pendingTopicId && /^(?:yes|no|sure|okay|ok|with a meal)[.! ]*$/.test(normalizeLanguage(text))) {
       push("Could you explain what you mean for my medicine and what I should do? I need a little more detail.");
     } else {
+      unrecognised = !isMetaStatement(text);
       push(isQuestion(text)
         ? "I'm not sure which part of my history you mean. Could you ask me one specific question?"
         : "I'm not sure I understand the instruction. Could you explain what you want me to do, in another way?");
@@ -223,7 +228,7 @@ export function advanceConversation(c: ConversationCase, previous: DialogueState
     state.pendingTopicId = c.concernTopicId;
   }
   state.lastReply = responses.map(s => s.text).join(" ");
-  return { state, matchedTopicIds, reply: { text: state.lastReply, audioSegments: responses } };
+  return { state, matchedTopicIds, unrecognised, reply: { text: state.lastReply, audioSegments: responses } };
 }
 
 export function replayConversation(c: ConversationCase, transcript: ConversationMessage[]): DialogueState {
