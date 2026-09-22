@@ -250,7 +250,7 @@ function definitions(caseData: PracticeCase): Record<GuidedTutorialStep, Tutoria
       body:
         "You opened and transcribed a prescription, made a clinical decision, assembled the physical pack, applied labels and interacted with the patient.",
       instruction:
-        "This guided result is for learning only. Review the feedback, then try Case 1 independently from the case selector.",
+        "This guided result is for learning only. Review the feedback, then select Try this case independently to practise without the guide.",
       targets: ['[data-tour="result-dialog"]'],
       manualNext: true,
       final: true,

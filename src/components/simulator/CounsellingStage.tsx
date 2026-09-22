@@ -17,6 +17,8 @@ interface CounsellingStageProps {
   conversation: ConversationCase;
   initialTranscript?: ConversationMessage[];
   onTranscriptChange?: (messages: ConversationMessage[]) => void;
+  responseDraft: string;
+  onResponseDraftChange: (value: string) => void;
   decision: DispenseDecision | null;
   onComplete: (result: CounsellingResult) => void;
   onViewResults: () => void;
@@ -37,6 +39,8 @@ export function CounsellingStage({
   conversation,
   initialTranscript,
   onTranscriptChange,
+  responseDraft: input,
+  onResponseDraftChange: setInput,
   decision,
   onComplete,
   onViewResults,
@@ -53,7 +57,6 @@ export function CounsellingStage({
       patientAudio: [openingAudioSegment(conversation)],
     },
   ]);
-  const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
   const [complete, setComplete] = useState(false);
   const [interactionMode, setInteractionMode] = useState<"text" | "voice">("text");
@@ -402,12 +405,20 @@ export function CounsellingStage({
             </p>
             <div className="fred-chat-actions">
               <span>
-                {studentTurns < 1
+                {input.trim()
+                  ? "Send or clear your draft before finishing. Unsent text is not assessed."
+                  : studentTurns < 1
                   ? "Send at least one response before finishing the consultation."
                   : interactionMode === "voice"
                     ? "Check the transcript before sending · Enter to send, Shift+Enter for a new line"
                     : "Enter to send, Shift+Enter for a new line"}
               </span>
+              {input.length > 0 && !complete && <button
+                type="button"
+                className="fred-chat-clear"
+                disabled={pending || isListening}
+                onClick={() => { setInput(""); setMessageError(null); inputRef.current?.focus(); }}
+              >Clear draft</button>}
               <button
                 type="button"
                 className="fred-chat-send"

@@ -49,6 +49,40 @@ describe("shared patient conversation", () => {
     expect(turn.matchedTopicIds).toEqual([]);
   });
 
+  it.each(Object.keys(CONVERSATION_CASES))("understands everyday history wording in %s", id => {
+    const c = getConversationCase(id);
+    const phrases = [
+      ["Are you on anything else at the moment?", "current_medicines"],
+      ["Are you taking anything else?", "current_medicines"],
+      ["Anything else you use regularly?", "current_medicines"],
+      ["DOB please?", "confirm_age"],
+      ["Can you remind me when you were born?", "confirm_age"],
+      ["Any reactions to medication in the past?", "allergies"],
+      ["Have you had problems with tablets before?", "allergies"],
+      ["What name do you go by?", "confirm_identity"],
+    ];
+    for (const [text, topic] of phrases) {
+      const turn = advanceConversation(c, createDialogueState(), text);
+      expect(turn.matchedTopicIds, text).toContain(topic);
+      expect(turn.state.unsafeAdvice, text).toEqual([]);
+      const check = evaluateConversation(c, transcript([text])).checks.find(check => check.id === topic);
+      expect(check?.passed, text).toBe(true);
+    }
+    for (const text of ["I will not ask when you were born.", "No need to check reactions to medication.", "You are taking anything else.", "DOB checklist completed", "If you have reactions to medication, seek help.", "Have you had problems swallowing tablets?"]) {
+      const ids = advanceConversation(c, createDialogueState(), text).matchedTopicIds;
+      expect(ids.filter(id => ["confirm_identity", "confirm_age", "allergies", "current_medicines"].includes(id)), text).toEqual([]);
+    }
+  });
+
+  it.each(["Could you say that once more?", "Sorry, I didn't catch that.", "Pardon?", "Sorry?"])("repeats the last patient answer for %s without awarding extra checks", text => {
+    const c = getConversationCase("case-1");
+    const first = advanceConversation(c, createDialogueState(), "Any allergies?");
+    const next = advanceConversation(c, first.state, text);
+    expect(next.reply.text).toBe(first.reply.text);
+    expect(next.matchedTopicIds).toEqual([]);
+    expect(next.state.addressed).toEqual(first.state.addressed);
+  });
+
   it("answers symptom history without claiming counselling was given", () => {
     const turn = advanceConversation(getConversationCase("case-1"), createDialogueState(), "Are you feeling nauseous?");
     expect(turn.matchedTopicIds).not.toContain("nausea_advice");

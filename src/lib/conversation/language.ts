@@ -33,7 +33,7 @@ export function conversationClauses(text: string): string[] {
 export function isQuestion(text: string): boolean {
   const s = normalizeLanguage(text).replace(/^(?:and|also|so)[, ]+/, "");
   return /\b(?:i (?:was |am )?wonder(?:ing)? (?:if|whether|what)|i would like to (?:ask|check|confirm)|let me (?:check|confirm)|may i (?:know|have))\b/.test(s)
-    || /^(?:your (?:full )?name|your (?:date of birth|birthday)|any (?:allergies|medicine)|allergic to anything)[?.!]*$/.test(s)
+    || /^(?:your (?:full )?name|(?:your )?(?:date of birth|birthday|dob)|any (?:allergies|medicine)|allergic to anything)(?: please)?[?.!]*$/.test(s)
     || /^(?:(?:please|and|so) )?(?:what (?!this does)|which|who|whose|when (?:did|do|was|were)|where|how|any chance)\b/.test(s)
     || /\b(?:do|does|did|are|is|have|has|were|will|would|could|can) (?:a medicine|any medicine|you|your|he|she|they|the patient|there|liam|noah)\b/.test(s)
     || /\b(?:can|could|may|would) (?:i|we)\b/.test(s)

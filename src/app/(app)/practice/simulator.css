@@ -2360,6 +2360,7 @@
 .fred-root .fred-result-footer {
   padding: 8px;
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   justify-content: flex-end;
   border-top: 1px solid #c8d2e0;
@@ -3379,6 +3380,7 @@
 .fred-root .fred-chat-actions {
   margin-top: 5px;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
   gap: 6px;
@@ -3386,7 +3388,8 @@
 .fred-root .fred-chat-actions > span {
   margin-right: auto;
   color: #64748b;
-  font-size: 9px;
+  font-size: 11px;
+  line-height: 1.4;
 }
 .fred-root .fred-chat-actions button,
 .fred-root .fred-model-card button {
@@ -3407,6 +3410,10 @@
 .fred-root .fred-chat-finish {
   background: #16a34a;
   color: #fff;
+}
+.fred-root .fred-chat-clear {
+  background: #f1f5f9;
+  color: #334155;
 }
 .fred-root .fred-counselling-sidebar {
   min-height: 0;

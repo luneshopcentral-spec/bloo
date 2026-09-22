@@ -17,6 +17,7 @@ import type { DispenseResult } from "@/lib/scoring/types";
 import type { AttemptResult, CounsellingResult } from "@/lib/conversation/types";
 import { combineAttemptResults } from "@/lib/conversation/score";
 import { getConversationCase } from "@/lib/conversation/cases";
+import { MAX_CONVERSATION_MESSAGE } from "@/lib/conversation/engine";
 import type { DispenseDecision } from "@/lib/types/case";
 import type { Patient, PatientScript } from "@/lib/types/patient";
 import type { DrugRow } from "@/lib/types/drug";
@@ -88,6 +89,7 @@ export default function PracticePage() {
   const [restoring, setRestoring] = useState<PracticeDraft | null>(null);
   const [transcript, setTranscript] = useState<ConversationMessage[]>([]);
   const [initialTranscript, setInitialTranscript] = useState<ConversationMessage[]>([]);
+  const [conversationInput, setConversationInput] = useState("");
   const countedSessions = useRef(new Set<string>());
   const [stage, setStage]                         = useState<"dispensing" | "assembly" | "counselling">("dispensing");
   const [currentCaseIndex, setCurrentCaseIndex]   = useState(0);
@@ -307,6 +309,7 @@ export default function PracticePage() {
     setSessionId(null);
     setTranscript([]);
     setInitialTranscript([]);
+    setConversationInput("");
     assemblyRef.current = null; setAssemblyDraft(null);
 
     setSelectedPatient(null);
@@ -389,6 +392,17 @@ export default function PracticePage() {
     setCurrentCaseIndex((i) => (i + 1) % STATIC_CASES.length);
   }
 
+  function handleRetryCase() {
+    if (saving || queuedAttempt) return;
+    const independently = guidedTutorialActive || practiceMode === "learn" || answersRevealed;
+    setGuidedTutorialActive(false);
+    if (independently) setPracticeMode("practice");
+    handleClear();
+    showStatus(independently
+      ? "Independent practice started. Complete this case without the guide or revealed answers."
+      : "Fresh attempt started. Use your feedback to practise this case again.");
+  }
+
   function handleClear() {
     if (saving || queuedAttempt) { showStatus("Save or discard the pending attempt before leaving this case.", "error"); return; }
     // A cleared attempt is a fresh attempt: derive a new variant so the script
@@ -419,6 +433,7 @@ export default function PracticePage() {
     setTranscript([]);
     setInitialTranscript([]);
     showStatus("Form cleared. A fresh attempt with new script details has started.");
+    setConversationInput("");
   }
 
   async function handleShowAnswers() {
@@ -549,6 +564,7 @@ export default function PracticePage() {
   function handleCounsellingComplete(counsellingResult: CounsellingResult) {
     if (!pendingDispenseResult) return;
     setResultVerified(false);
+    setSaving(true);
 
     const completeResult = combineAttemptResults(pendingDispenseResult, counsellingResult);
     const countsTowardProgress = completeResult.countsTowardProgress && practiceMode !== "learn";
@@ -565,7 +581,7 @@ export default function PracticePage() {
     setOverlayOpen(true);
 
     void ensureSession().then((sessionId) => {
-      if (!sessionId) { showStatus("Result is provisional. A tracked session could not be created.", "error"); return; }
+      if (!sessionId) { setSaving(false); showStatus("Result is provisional. A tracked session could not be created. Retry saving from your results.", "error"); return; }
       void saveAttempt({
         sessionId, formState, selectedWarnings: selectedWarnings.map((set) => [...set]),
         drugSeedIds: selectedDrugs.map((drug) => drug?.seed_id ?? null),
@@ -667,7 +683,7 @@ export default function PracticePage() {
   const draft = useLocalDraft<PracticeDraft>({
     storageKey: userId ? "dispenserx-draft-v3:" + userId : null,
     enabled: (hasAttemptProgress || guidedTutorialActive) && !lastResult && !restoring,
-    value: { tutorialStep: guidedTutorialActive ? guidedTutorialStep : undefined, caseIndex: currentCaseIndex, caseVersion: editorialRecord.version, seed: attemptSeed, mode: practiceMode, stage, assisted: answersRevealed, sessionId, formState, patient: selectedPatient, drugSeedIds: selectedDrugs.map((drug) => drug?.seed_id ?? null), prescriberNumber: selectedPrescriber?.prescriber_number ?? null, prescriber: selectedPrescriber, warnings: selectedWarnings.map((w) => [...w]), decision: clinicalDecision, assembly: assemblyDraft, transcript },
+    value: { tutorialStep: guidedTutorialActive ? guidedTutorialStep : undefined, caseIndex: currentCaseIndex, caseVersion: editorialRecord.version, seed: attemptSeed, mode: practiceMode, stage, assisted: answersRevealed, sessionId, formState, patient: selectedPatient, drugSeedIds: selectedDrugs.map((drug) => drug?.seed_id ?? null), prescriberNumber: selectedPrescriber?.prescriber_number ?? null, prescriber: selectedPrescriber, warnings: selectedWarnings.map((w) => [...w]), decision: clinicalDecision, assembly: assemblyDraft, transcript, conversationInput },
   });
 
   function resumeDraft() {
@@ -691,6 +707,7 @@ export default function PracticePage() {
     assemblyRef.current = saved.assembly; setAssemblyDraft(saved.assembly); setSessionId(saved.sessionId);
     sessionRef.current = saved.sessionId ? { key: JSON.stringify([c.id, saved.seed, saved.mode]), promise: Promise.resolve(saved.sessionId) } : null;
     setTranscript(saved.transcript); setInitialTranscript(saved.transcript);
+    setConversationInput(typeof saved.conversationInput === "string" ? saved.conversationInput.slice(0, MAX_CONVERSATION_MESSAGE) : "");
     if (saved.caseIndex === 0 && saved.mode === "learn" && isGuidedTutorialStep(saved.tutorialStep)) {
       setGuidedTutorialStep(saved.tutorialStep); setGuidedTutorialActive(true);
     }
@@ -875,6 +892,7 @@ export default function PracticePage() {
                   </div>
                 ) : (
                   <WarningsBox
+                    key={`${current.id}-${attemptSeed}-${currentItem}`}
                     warnings={ALL_WARNINGS}
                     selectedWarnings={currentWarnings}
                     onToggle={handleToggleWarning}
@@ -945,6 +963,8 @@ export default function PracticePage() {
             key={current.id}
             initialTranscript={initialTranscript}
             onTranscriptChange={setTranscript}
+            responseDraft={conversationInput}
+            onResponseDraftChange={setConversationInput}
             conversation={currentConversation}
             decision={clinicalDecision}
             onComplete={handleCounsellingComplete}
@@ -966,11 +986,17 @@ export default function PracticePage() {
           sessionScore={sessionScore}
           onClose={() => setOverlayOpen(false)}
           onNext={handleNextFromOverlay}
+          onRetryCase={handleRetryCase}
+          retryIndependently={guidedTutorialActive || practiceMode === "learn" || answersRevealed}
           guidedTutorial={guidedTutorialActive}
           saving={saving}
           pendingSave={Boolean(queuedAttempt)}
           verified={resultVerified}
-          onRetrySave={() => { if (queuedAttempt) void saveAttempt(queuedAttempt); }}
+          onRetrySave={() => {
+            if (saving) return;
+            if (queuedAttempt) void saveAttempt(queuedAttempt);
+            else if (lastResult) handleCounsellingComplete(lastResult.counselling);
+          }}
         />
 
         <GuidedTutorial

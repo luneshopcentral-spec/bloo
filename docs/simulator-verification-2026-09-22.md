@@ -1,5 +1,39 @@
 # Simulator verification — 22 September 2026
 
+## Follow-up refinement pass
+
+- Unsent consultation text now survives draft resume on this device. Clear draft
+  gives an explicit way to discard it, including at the conversation limit.
+  Unsent text is never submitted for assessment.
+- Results offer a fresh attempt at the same case. Learn/tutorial/assisted results
+  offer **Try this case independently**, which resets the entry and switches to
+  Practice mode. The tutorial points directly to this action.
+- Results show Retry save even when creation of the tracked session failed.
+  Saving starts before that request; result navigation remains disabled until
+  the result is saved and verified.
+- Pending warning-label selections reset when switching prescription items,
+  preventing a choice for one medicine from carrying across to another.
+- The patient understands more everyday history wording, including “DOB
+  please?”, “Are you taking anything else?” and plural “reactions”. Requests
+  such as “Could you say that once more?” replay the last patient response
+  without awarding another assessment check.
+- Consultation action hints are larger; action/footer rows can wrap on smaller
+  laptop viewports.
+
+Validation for this pass: **362 tests across 25 files**, ESLint, TypeScript and
+the production build passed. New language tests cover all 13 cases, with
+negative examples for skipped checks and non-history statements. Actual Edge
+browser checks at 1366×768 and 1280×720 verified unsent-draft reload, exclusion
+of unsent text from submissions, save failure/retry, same-case reset, independent
+practice after the tutorial, isolated warning selections, and recovery from a
+60-turn draft with unsent text. The tutorial's final step appeared inside the
+results dialog; its scoped axe scan returned zero violations.
+
+These follow-up browser checks use prepared drafts and intercepted session/save
+responses, including deliberate 503 failures. They do not write synthetic grades
+to the shared database. Clinical facts, prescription layout and voice behavior
+are unchanged; the assessed language coverage is broader.
+
 ## Fixes
 
 - The floating prescription no longer covers directory selection buttons or

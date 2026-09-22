@@ -10,4 +10,5 @@ export interface PracticeDraft {
   prescriber?: import("@/lib/types/prescriber").Prescriber | null;
   warnings: string[][]; decision: AttemptSubmission["decision"];
   assembly: AttemptSubmission["assembly"]; transcript: ConversationMessage[];
+  conversationInput?: string;
 }

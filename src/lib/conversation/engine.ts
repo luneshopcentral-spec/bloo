@@ -98,7 +98,7 @@ function clarifyPartial(c: ConversationCase, state: DialogueState, id: string): 
 /** One pure transition shared by live dialogue, resumed drafts and server grading. */
 export function advanceConversation(c: ConversationCase, previous: DialogueState, raw: string) {
   const state: DialogueState = { ...previous, turns: previous.turns + 1, addressed: new Set(previous.addressed), evidence: { ...previous.evidence }, fragments: { ...previous.fragments }, unsafeAdvice: [...previous.unsafeAdvice], unresolvedAdviceIds: [...previous.unresolvedAdviceIds] };
-  const repeatRequest = /^(?:(?:sorry|please) )?(?:(?:can|could|would) you (?:please )?)?(?:repeat (?:that|what you (?:said|just said))|say that again)(?: please)?[.!?]*$/.test(normalizeLanguage(raw));
+  const repeatRequest = /^(?:(?:sorry|please) )?(?:(?:can|could|would) you (?:please )?)?(?:repeat (?:that|what you (?:said|just said))|say that (?:again|once more)|(?:i )?(?:did not|didn't) (?:hear|catch) that|(?:pardon|sorry)\??)(?: please)?[.!?]*$/.test(normalizeLanguage(raw));
   if (repeatRequest && previous.lastReply) {
     return { state, matchedTopicIds: [] as string[], reply: { text: previous.lastReply, audioSegments: [dynamicSegment(previous.lastReply)] } };
   }

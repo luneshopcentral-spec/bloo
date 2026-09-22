@@ -9,6 +9,10 @@ export function refineConversationCases(cases: Record<string, ConversationCase>)
     topic("confirm_identity").fallbackPatterns.push(String.raw`\b(?:what (?:you are|you re|you'?re|are you) called|who am i (?:speaking|talking) (?:to|with)|name (?:please|for the prescription))\b`);
     topic("confirm_identity").fallbackPatterns.push(String.raw`\b(?:what should i call you|may i have your name|who is (?:the prescription|the medicine|this) for)\b`);
     topic("confirm_age").fallbackPatterns.push(String.raw`\b(?:when were you born|birthdate|born on)\b`);
+    topic("confirm_identity").fallbackPatterns.push(String.raw`\bwhat (?:name do you go by|do you go by)\b`);
+    topic("confirm_age").fallbackPatterns.push(String.raw`\bwhen you were born\b`);
+    topic("allergies").fallbackPatterns.push(String.raw`\breactions?\b.*\b(?:medicine|tablets?|antibiotics?)\b`, String.raw`\bhad (?:any )?problems with (?:medicine|tablets?|antibiotics?) (?:before|in the past)\b`);
+    topic("current_medicines").fallbackPatterns.push(String.raw`\bare you (?:taking|using|on) anything else\b`, String.raw`\banything else (?:you (?:take|use|are taking|are using)|do you (?:take|use))\b`);
     topic("allergies").fallbackPatterns.push(String.raw`\b(?:bad|unusual|unwanted) reaction\b.*\b(?:medicine|tablets?|antibiotics?)\b`, String.raw`\b(?:medicine|tablets?|antibiotics?)\b.*\b(?:disagreed with|made you (?:ill|unwell)|reaction)\b`);
     topic("current_medicines").fallbackPatterns.push(String.raw`\b(?:what|which)\b.*\b(?:medicine|tablets?|pills?|treatments?)\b.*\b(?:taking|take|using|use|on)\b`);
     topic("current_medicines").fallbackPatterns.push(String.raw`\bwhat else\b.*\b(?:take|taking|using|use|on)\b`, String.raw`\bare you on any (?:tablets?|pills?|treatments?)\b`, String.raw`\banything\b.*\b(?:chemist|supermarket|over the counter)\b`);

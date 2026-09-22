@@ -9,6 +9,8 @@ interface ResultOverlayProps {
   sessionScore: { correct: number; total: number };
   onClose: () => void;
   onNext: () => void;
+  onRetryCase: () => void;
+  retryIndependently?: boolean;
   guidedTutorial?: boolean;
   saving?: boolean;
   pendingSave?: boolean;
@@ -44,6 +46,8 @@ export function ResultOverlay({
   sessionScore,
   onClose,
   onNext,
+  onRetryCase,
+  retryIndependently = false,
   guidedTutorial = false,
   saving = false,
   pendingSave = false,
@@ -127,7 +131,7 @@ export function ResultOverlay({
           {guidedTutorial && <div data-tour="result-guide-slot" />}
           <div className="fred-result-save" role="status" data-pending={!verified}>
             <span>{verified ? "Saved and checked by the server." : saving ? "Saving and checking your result…" : pendingSave ? "Not saved yet. Your result is kept on this device; retry when connected." : "Provisional result — not yet saved or checked by the server."}</span>
-            {pendingSave && onRetrySave && <button type="button" className="fred-result-btn" disabled={saving} onClick={onRetrySave}>{saving ? "Saving…" : "Retry save"}</button>}
+            {!verified && !saving && onRetrySave && <button type="button" className="fred-result-btn" onClick={onRetrySave}>Retry save</button>}
           </div>
           <div
             className={`fred-result-summary ${result.passed ? "passed" : "failed"}`}
@@ -233,8 +237,14 @@ export function ResultOverlay({
           <button className="fred-result-btn" onClick={onClose}>Review transcript</button>
           <button
             className="fred-result-btn"
-            disabled={saving || pendingSave}
-            title={saving || pendingSave ? "Save this result, or close the feedback and discard the unsaved result, before changing cases." : undefined}
+            disabled={saving || pendingSave || !verified}
+            title={saving || pendingSave || !verified ? "Save this result before starting another attempt." : "Start a fresh attempt at this case with new prescription details."}
+            onClick={onRetryCase}
+          >{retryIndependently ? "Try this case independently" : "Try this case again"}</button>
+          <button
+            className="fred-result-btn"
+            disabled={saving || pendingSave || !verified}
+            title={saving || pendingSave || !verified ? "Save this result, or close the feedback and discard the unsaved result, before changing cases." : undefined}
             onClick={() => {
               onNext();
               onClose();
