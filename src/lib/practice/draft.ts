@@ -7,6 +7,7 @@ export interface PracticeDraft {
   stage: "dispensing" | "assembly" | "counselling"; assisted: boolean; sessionId: string | null;
   formState: AttemptSubmission["formState"]; patient: AttemptSubmission["patient"];
   drugSeedIds: (string | null)[]; prescriberNumber: string | null;
+  prescriber?: import("@/lib/types/prescriber").Prescriber | null;
   warnings: string[][]; decision: AttemptSubmission["decision"];
   assembly: AttemptSubmission["assembly"]; transcript: ConversationMessage[];
 }

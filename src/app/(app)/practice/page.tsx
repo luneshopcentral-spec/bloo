@@ -51,7 +51,7 @@ import { PrescriberDirectoryModal } from "@/components/simulator/PrescriberDirec
 import { CounsellingStage }    from "@/components/simulator/CounsellingStage";
 import { ExamStopwatch }       from "@/components/simulator/ExamStopwatch";
 import { OnboardingModal }     from "@/components/simulator/OnboardingModal";
-import { AssemblyStage, type AssemblyGuidedAction } from "@/components/simulator/AssemblyStage";
+import { AssemblyStage } from "@/components/simulator/AssemblyStage";
 import { LockedCasePanel }     from "@/components/simulator/LockedCasePanel";
 import {
   GUIDED_TUTORIAL_STEPS,
@@ -60,6 +60,7 @@ import {
 } from "@/components/simulator/GuidedTutorial";
 import {
   guidedConversationStepComplete,
+  guidedAssemblyStep,
   isGuidedTutorialStep,
 } from "@/lib/practice/guided-tutorial";
 import type { StatusTone }     from "@/components/simulator/StatusBar";
@@ -82,6 +83,7 @@ export default function PracticePage() {
   const updateAssemblyDraft = useCallback((value: Case1AssemblySubmission) => { assemblyRef.current = value; setAssemblyDraft(value); }, []);
   const [queuedAttempt, setQueuedAttempt] = useState<AttemptSubmission | null>(null);
   const [saving, setSaving] = useState(false);
+  const [resultVerified, setResultVerified] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [restoring, setRestoring] = useState<PracticeDraft | null>(null);
   const [transcript, setTranscript] = useState<ConversationMessage[]>([]);
@@ -215,6 +217,7 @@ export default function PracticePage() {
     const persistence = await persistCompletedAttempt(input);
     setSaving(false);
     if (persistence.saved && persistence.result) {
+      setResultVerified(true);
       setLastResult(persistence.result);
       if (persistence.result.countsTowardProgress && !countedSessions.current.has(input.sessionId)) {
         countedSessions.current.add(input.sessionId);
@@ -272,16 +275,11 @@ export default function PracticePage() {
     showStatus("Guided tutorial closed. Your current case work has been kept.");
   }
 
-  function handleAssemblyGuidedAction(action: AssemblyGuidedAction) {
-    if (!guidedTutorialActive) return;
-    if (guidedTutorialStep === "pack" && action === "correct-pack-selected") {
-      advanceGuidedTutorial();
-    } else if (guidedTutorialStep === "main-label" && action === "main-label-safely-placed") {
-      advanceGuidedTutorial();
-    } else if (guidedTutorialStep === "warning-labels" && action === "warning-labels-ready") {
-      advanceGuidedTutorial();
+  useEffect(() => {
+    if (guidedTutorialActive && stage === "assembly") {
+      setGuidedTutorialStep(guidedAssemblyStep(assemblyDraft, current.items[0].correctWarnings));
     }
-  }
+  }, [guidedTutorialActive, stage, assemblyDraft, current.items]);
 
   // ── Reset form + patient + drug whenever the case changes ─────────
   // Reads the current attempt's variant; the handlers that change the case
@@ -361,13 +359,18 @@ export default function PracticePage() {
 
   // ── Handlers ──────────────────────────────────────────────────────
   function handleCaseChange(n: number) {
+    if (n === currentCaseIndex) return;
     if (saving || queuedAttempt) { showStatus("Save or discard the pending attempt before leaving this case.", "error"); return; }
+    if (((hasAttemptProgress && !lastResult) || draft.candidate) && !window.confirm("Change case and replace your unfinished work? Choose Cancel to keep your current case or saved draft.")) return;
+    draft.clear();
     setGuidedTutorialActive(false);
     setAttemptSeed(Date.now());
     setCurrentCaseIndex(n);
   }
   function handleModeChange(mode: PracticeMode) {
+    if (mode === practiceMode) return;
     if (saving || queuedAttempt) { showStatus("Save or discard the pending attempt before leaving this case.", "error"); return; }
+    if (((hasAttemptProgress && !lastResult) || draft.candidate) && !window.confirm("Change mode and start a fresh attempt? Choose Cancel to keep your current work or saved draft.")) return;
     setGuidedTutorialActive(false);
     setPracticeMode(mode);
     handleClear();
@@ -420,9 +423,11 @@ export default function PracticePage() {
 
   async function handleShowAnswers() {
     if (practiceMode === "exam") return;
+    const requestedKey = activeSessionKey;
     const sessionId = await ensureSession();
     if (!sessionId) { showStatus("Cannot start a tracked session. Please retry when the practice service is available.", "error"); return; }
     const response = await fetch("/api/practice-session", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId }) }).catch(() => null);
+    if (activeSessionKeyRef.current !== requestedKey) return;
     if (!response?.ok) { showStatus("Could not record assisted mode. Please retry.", "error"); return; }
     dispatch({ type: "FILL_FROM_CASE", case: current });
     setSelectedWarnings(current.items.map((item) => new Set(item.correctWarnings)));
@@ -442,6 +447,7 @@ export default function PracticePage() {
       .select("*")
       .eq("prescriber_number", current.expectedPrescriberNo ?? current.prescriberNo)
       .single();
+    if (activeSessionKeyRef.current !== requestedKey) return;
     // Fall back to the bundled directory for anything the database is missing.
     const bySeedId = new Map(((drugData as DrugRow[]) ?? []).map((drug) => [drug.seed_id, drug]));
     setSelectedDrugs(current.items.map((item) =>
@@ -508,6 +514,7 @@ export default function PracticePage() {
   }
 
   function handleAssemblyBack() {
+    if (guidedTutorialActive) setGuidedTutorialStep("patient");
     setAttemptSubmitted(false);
     setStage("dispensing");
     showStatus("Pack assembly paused. Review or update the dispensing entry, then continue again.");
@@ -541,6 +548,7 @@ export default function PracticePage() {
 
   function handleCounsellingComplete(counsellingResult: CounsellingResult) {
     if (!pendingDispenseResult) return;
+    setResultVerified(false);
 
     const completeResult = combineAttemptResults(pendingDispenseResult, counsellingResult);
     const countsTowardProgress = completeResult.countsTowardProgress && practiceMode !== "learn";
@@ -593,6 +601,7 @@ export default function PracticePage() {
   }
 
   function handleOpenDrugModal(query: string) {
+    setPrescriberModalOpen(false);
     setDrugModalQuery(query);
     setDrugModalOpen(true);
   }
@@ -609,6 +618,7 @@ export default function PracticePage() {
   }
 
   function handleOpenPrescriberModal(query: string) {
+    setDrugModalOpen(false);
     setPrescriberModalQuery(query.split(",")[0]?.trim() ?? query);
     setPrescriberModalOpen(true);
   }
@@ -657,7 +667,7 @@ export default function PracticePage() {
   const draft = useLocalDraft<PracticeDraft>({
     storageKey: userId ? "dispenserx-draft-v3:" + userId : null,
     enabled: (hasAttemptProgress || guidedTutorialActive) && !lastResult && !restoring,
-    value: { tutorialStep: guidedTutorialActive ? guidedTutorialStep : undefined, caseIndex: currentCaseIndex, caseVersion: editorialRecord.version, seed: attemptSeed, mode: practiceMode, stage, assisted: answersRevealed, sessionId, formState, patient: selectedPatient, drugSeedIds: selectedDrugs.map((drug) => drug?.seed_id ?? null), prescriberNumber: selectedPrescriber?.prescriber_number ?? null, warnings: selectedWarnings.map((w) => [...w]), decision: clinicalDecision, assembly: assemblyDraft, transcript },
+    value: { tutorialStep: guidedTutorialActive ? guidedTutorialStep : undefined, caseIndex: currentCaseIndex, caseVersion: editorialRecord.version, seed: attemptSeed, mode: practiceMode, stage, assisted: answersRevealed, sessionId, formState, patient: selectedPatient, drugSeedIds: selectedDrugs.map((drug) => drug?.seed_id ?? null), prescriberNumber: selectedPrescriber?.prescriber_number ?? null, prescriber: selectedPrescriber, warnings: selectedWarnings.map((w) => [...w]), decision: clinicalDecision, assembly: assemblyDraft, transcript },
   });
 
   function resumeDraft() {
@@ -673,7 +683,8 @@ export default function PracticePage() {
     const saved = restoring;
     const c = applyCaseVariant(STATIC_CASES[saved.caseIndex], saved.seed);
     const drugs = saved.drugSeedIds.map((id) => id ? findLocalDrugBySeedId(id) : null);
-    const prescriber = saved.prescriberNumber ? findLocalPrescriberByNumber(saved.prescriberNumber) : null;
+    const prescriber = saved.prescriberNumber ? findLocalPrescriberByNumber(saved.prescriberNumber)
+      ?? (saved.prescriber?.prescriber_number === saved.prescriberNumber ? saved.prescriber : null) : null;
     dispatch({ type: "RESTORE", state: saved.formState });
     setSelectedPatient(saved.patient); setSelectedDrugs(drugs); setSelectedPrescriber(prescriber);
     setSelectedWarnings(saved.warnings.map((w) => new Set(w))); setClinicalDecision(saved.decision); setAnswersRevealed(saved.assisted);
@@ -822,6 +833,7 @@ export default function PracticePage() {
           <div className="fred-workspace-main">
             <div className="fred-main-win">
               <PatientHeader
+                key={`patient-${current.id}-${attemptSeed}`}
                 caseData={current}
                 selectedPatient={selectedPatient}
                 onPatientSelect={handlePatientSelect}
@@ -831,6 +843,7 @@ export default function PracticePage() {
 
               <div className="grid grid-cols-[1fr_220px] gap-1 mb-1">
                 <ScriptForm
+                  key={`entry-${current.id}-${attemptSeed}`}
                   formState={formState}
                   dispatch={dispatch}
                   initialsError={initialsError}
@@ -926,8 +939,6 @@ export default function PracticePage() {
             answersRevealed={answersRevealed}
             onBack={handleAssemblyBack}
             onComplete={handleAssemblyComplete}
-            guidedTutorial={guidedTutorialActive}
-            onGuidedAction={handleAssemblyGuidedAction}
           />
         ) : (
           <CounsellingStage
@@ -956,6 +967,10 @@ export default function PracticePage() {
           onClose={() => setOverlayOpen(false)}
           onNext={handleNextFromOverlay}
           guidedTutorial={guidedTutorialActive}
+          saving={saving}
+          pendingSave={Boolean(queuedAttempt)}
+          verified={resultVerified}
+          onRetrySave={() => { if (queuedAttempt) void saveAttempt(queuedAttempt); }}
         />
 
         <GuidedTutorial

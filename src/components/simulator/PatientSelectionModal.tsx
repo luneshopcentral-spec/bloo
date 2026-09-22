@@ -22,50 +22,46 @@ export function PatientSelectionModal({
   const [query, setQuery] = useState(initialSurname);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(false);
-  const [fetchError, setFetchError] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => {
     if (open) {
       setQuery(initialSurname);
       setSelectedIndex(0);
       setPatients([]);
-      setFetchError("");
       setTimeout(() => inputRef.current?.focus(), 30);
     }
   }, [open, initialSurname]);
 
-  async function search(q: string) {
-    if (!q.trim()) {
-      setPatients([]);
-      setLoading(false);
-      setFetchError("");
-      return;
-    }
-    setLoading(true);
-    setFetchError("");
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from("patients")
-      .select("*")
-      .ilike("surname", `${q}%`)
-      .order("surname")
-      .order("firstname")
-      .limit(25);
-    setLoading(false);
-    // Bundled patients back the search so case patients are always findable.
-    setPatients(mergeWithLocal((error ? [] : (data as Patient[])) ?? [], searchLocalPatients(q), 25));
-    setSelectedIndex(0);
-  }
-
   useEffect(() => {
-    clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => search(query), 200);
-    return () => clearTimeout(debounceRef.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query]);
+    if (!open) return;
+    const safe = query.trim();
+    const bundled = searchLocalPatients(safe);
+    // Show the bundled directory immediately; delayed or failed requests cannot
+    // hide case records or replace results for a newer query.
+    setPatients(bundled);
+    setSelectedIndex(0);
+    if (!safe) { setLoading(false); return; }
+    setLoading(true);
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      try {
+        const { data, error } = await createClient().from("patients").select("*")
+          .ilike("surname", `${safe}%`).order("surname").order("firstname").limit(25).abortSignal(controller.signal);
+        if (controller.signal.aborted) return;
+        if (!error) {
+          setPatients(mergeWithLocal((data as Patient[]) ?? [], bundled, 25));
+          setSelectedIndex(0);
+        }
+      } catch {
+        // Keep the bundled results available when the network is unavailable.
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    }, 200);
+    return () => { window.clearTimeout(timer); controller.abort(); };
+  }, [open, query]);
 
   const totalRows = 1 + patients.length;
 
@@ -148,19 +144,9 @@ export function PatientSelectionModal({
             <span style={{ gridColumn: "2 / -1" }}>&lt; Add New Patient &gt;</span>
           </div>
 
-          {fetchError && (
-            <div style={{ padding: "8px 6px", color: "#cc0000", fontSize: "11px" }}>
-              Search failed — {fetchError}
-              <button
-                style={{ marginLeft: "8px", fontSize: "10px", cursor: "pointer" }}
-                onClick={() => search(query)}
-              >
-                Retry
-              </button>
-            </div>
-          )}
 
-          {!fetchError && query.trim() && !loading && patients.length === 0 && (
+
+          {query.trim() && !loading && patients.length === 0 && (
             <div className="fred-psel-empty">
               No patients found for &ldquo;{query}&rdquo;
             </div>

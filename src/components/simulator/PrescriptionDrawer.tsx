@@ -57,6 +57,13 @@ export function PrescriptionDrawer({
     if (!open || overlayOpen) return;
 
     function onKey(e: KeyboardEvent) {
+      if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
+      const target = e.target instanceof HTMLElement ? e.target : null;
+      const inPrescription = target?.closest("#presc-dialog");
+      // Typing in a form or another dialog must never zoom or close the paper.
+      if (target?.closest('input, textarea, select, [contenteditable="true"]')) return;
+      if (target?.closest('[role="dialog"]') && !inPrescription) return;
+      if (e.key !== "Escape" && !inPrescription) return;
       switch (e.key) {
         case "Escape":
           onOpenChange(false);

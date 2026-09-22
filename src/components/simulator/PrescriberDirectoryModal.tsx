@@ -60,7 +60,6 @@ export function PrescriberDirectoryModal({ open, query, onSelect, onClose }: Pro
   const [form, setForm] = useState<PrescriberFormData>(EMPTY_FORM);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const inputRef = useRef<HTMLInputElement>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => {
     if (!open) return;
@@ -73,37 +72,34 @@ export function PrescriberDirectoryModal({ open, query, onSelect, onClose }: Pro
     setTimeout(() => inputRef.current?.focus(), 30);
   }, [open, query]);
 
-  async function search(value: string) {
-    const safe = value.replace(/[^a-zA-Z0-9 '-]/g, "").trim();
-    setLoading(true);
-    setError("");
-    const supabase = createClient();
-    let request = supabase.from("prescribers").select("*");
-    if (safe) {
-      request = request.or(
-        `surname.ilike.${safe}%,firstname.ilike.${safe}%,practice_name.ilike.%${safe}%,prescriber_number.ilike.${safe}%`
-      );
-    }
-    const { data, error: fetchError } = await request
-      .order("surname")
-      .order("firstname")
-      .limit(30);
-    setLoading(false);
-    // Bundled prescribers back the search so case prescribers are always findable.
-    setPrescribers(mergeWithLocal(
-      (fetchError ? [] : (data as Prescriber[])) ?? [],
-      searchLocalPrescribers(safe),
-      30
-    ));
-    setSelectedIndex(0);
-  }
-
   useEffect(() => {
     if (!open || mode !== "directory") return;
-    clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => void search(internalQuery), 200);
-    return () => clearTimeout(debounceRef.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const safe = internalQuery.replace(/[^a-zA-Z0-9 '-]/g, "").trim();
+    const bundled = searchLocalPrescribers(safe);
+    // Show the bundled directory immediately; delayed or failed requests cannot
+    // hide case records or replace results for a newer query.
+    setPrescribers(bundled);
+    setSelectedIndex(0);
+    setError("");
+    setLoading(true);
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      try {
+        let request = createClient().from("prescribers").select("*");
+        if (safe) request = request.or(`surname.ilike.${safe}%,firstname.ilike.${safe}%,practice_name.ilike.%${safe}%,prescriber_number.ilike.${safe}%`);
+        const { data, error } = await request.order("surname").order("firstname").limit(30).abortSignal(controller.signal);
+        if (controller.signal.aborted) return;
+        if (!error) {
+          setPrescribers(mergeWithLocal((data as Prescriber[]) ?? [], bundled, 30));
+          setSelectedIndex(0);
+        }
+      } catch {
+        // Keep the bundled results available when the network is unavailable.
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    }, 200);
+    return () => { window.clearTimeout(timer); controller.abort(); };
   }, [open, internalQuery, mode]);
 
   function setField(field: keyof PrescriberFormData, value: string) {

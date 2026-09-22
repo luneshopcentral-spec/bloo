@@ -8,14 +8,11 @@ import type { DispenseDecision, PracticeCase } from "@/lib/types/case";
 import {
   ASSEMBLY_MM_PX,
   CASE1_ANCILLARY_TEXT,
-  CASE1_CORRECT_PACK_ID,
   CASE1_PACK_OPTIONS,
   CASE1_WARNING_CODES,
   FACE_PHYSICAL,
   STICKER_PHYSICAL,
-  evaluateStickerPlacement,
   stickerSizePercent,
-  stickerOverlapIssues,
   warningStickerTone,
   type Case1AssemblySubmission,
   type PackFace,
@@ -34,14 +31,7 @@ interface AssemblyStageProps {
   initialAssembly?: Case1AssemblySubmission | null;
   onDraftChange?: (draft: Case1AssemblySubmission) => void;
   onComplete: (submission: Case1AssemblySubmission) => void;
-  guidedTutorial?: boolean;
-  onGuidedAction?: (action: AssemblyGuidedAction) => void;
 }
-
-export type AssemblyGuidedAction =
-  | "correct-pack-selected"
-  | "main-label-safely-placed"
-  | "warning-labels-ready";
 
 type StickerToken = "main-label" | `warning:${string}`;
 
@@ -187,8 +177,6 @@ export function AssemblyStage({
   initialAssembly,
   onDraftChange,
   onComplete,
-  guidedTutorial = false,
-  onGuidedAction,
 }: AssemblyStageProps) {
   const [selectedPackId, setSelectedPackId] = useState<string | null>(initialAssembly?.packId || null);
   const [activeFace, setActiveFace] = useState<PackFace>("front");
@@ -226,51 +214,6 @@ export function AssemblyStage({
     if (token === "main-label") return mainLabelPlacement;
     return warningPlacements[warningOf(token)] ?? null;
   }, [mainLabelPlacement, warningPlacements]);
-
-  useEffect(() => {
-    if (!guidedTutorial || !onGuidedAction) return;
-    if (selectedPackId === CASE1_CORRECT_PACK_ID) {
-      onGuidedAction("correct-pack-selected");
-    }
-  }, [guidedTutorial, onGuidedAction, selectedPackId]);
-
-  useEffect(() => {
-    if (!guidedTutorial || !onGuidedAction || !mainLabelPlacement) return;
-    if (evaluateStickerPlacement(mainLabelPlacement, "main").safe) {
-      onGuidedAction("main-label-safely-placed");
-    }
-  }, [guidedTutorial, mainLabelPlacement, onGuidedAction]);
-
-  useEffect(() => {
-    if (!guidedTutorial || !onGuidedAction) return;
-    const expectedWarnings = caseData.items[0].correctWarnings;
-    const selectedWarnings = Object.keys(warningPlacements);
-    const exactSelection = selectedWarnings.length === expectedWarnings.length
-      && expectedWarnings.every((warning) => warningPlacements[warning]);
-    const safePlacement = expectedWarnings.every((warning) =>
-      evaluateStickerPlacement(warningPlacements[warning] ?? null, "warning").safe
-    );
-    const rotationUsed = expectedWarnings.some((warning) =>
-      normaliseRotation(warningPlacements[warning]?.rotation ?? 0) !== 0
-    );
-    const noOverlaps = Boolean(mainLabelPlacement)
-      && stickerOverlapIssues({
-        packId: selectedPackId ?? "",
-        mainLabelPlacement,
-        warningLabels: selectedWarnings,
-        warningPlacements,
-      }).length === 0;
-    if (exactSelection && safePlacement && rotationUsed && noOverlaps) {
-      onGuidedAction("warning-labels-ready");
-    }
-  }, [
-    caseData.items,
-    guidedTutorial,
-    mainLabelPlacement,
-    onGuidedAction,
-    selectedPackId,
-    warningPlacements,
-  ]);
 
   const applySticker = useCallback((token: StickerToken, placement: StickerPlacement) => {
     if (token === "main-label") {
@@ -706,8 +649,8 @@ export function AssemblyStage({
       )}
 
       <footer className="fred-assembly-actions">
-        <button type="button" className="secondary" onClick={onBack} disabled={guidedTutorial}>← Back to dispensing</button>
-        <button type="button" className="secondary" onClick={resetBench} disabled={guidedTutorial}>Reset bench</button>
+        <button type="button" className="secondary" onClick={onBack}>← Back to dispensing</button>
+        <button type="button" className="secondary" onClick={resetBench}>Reset bench</button>
         <div className="fred-assembly-ready">
           <strong>{canComplete ? "Ready for your final pack check" : "Choose a pack and apply the main label"}</strong>
           <span>Warning-label selection and all label positions are marked when you continue.</span>

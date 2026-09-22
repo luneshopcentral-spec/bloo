@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { expandAbbrevs } from "@/lib/scoring/abbreviations";
 import type { FormState, FormAction, ItemField, ScriptField } from "@/components/simulator/state";
 import { EMPTY_ITEM_FORM_STATE } from "@/components/simulator/state";
@@ -55,6 +55,7 @@ export function ScriptForm({
   const selectedDrug = selectedDrugs[currentItem] ?? null;
   const expandedDirections = expandAbbrevs(itemForm.directions);
   const drugDebounceRef  = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(drugDebounceRef.current), [currentItem, disabled, selectedDrug]);
   // An authority number is transcribed once per prescription, so offer the field
   // whenever any selected item is an authority listing (S8 controlled drugs and
   // S4 PBS authority items such as sitagliptin both qualify).
@@ -155,6 +156,13 @@ export function ScriptForm({
             <button
               type="button"
               id="drug-search"
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && itemForm.drug.trim()) {
+                  event.preventDefault();
+                  clearTimeout(drugDebounceRef.current);
+                  onOpenDrugModal(itemForm.drug.trim());
+                }
+              }}
               className="fred-drug-change-btn"
               onClick={() => !disabled && onOpenDrugModal(selectedDrug.generic_name)}
               disabled={disabled}

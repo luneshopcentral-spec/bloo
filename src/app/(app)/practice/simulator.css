@@ -5234,6 +5234,26 @@
   opacity: .58;
 }
 
+.fred-root .fred-result-save {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 12px;
+  border: 1px solid #86efac;
+  border-radius: 6px;
+  background: #f0fdf4;
+  color: #14532d;
+  font-size: 13px;
+}
+.fred-root .fred-result-save[data-pending="true"] {
+  border-color: #fcd34d;
+  background: #fffbeb;
+  color: #78350f;
+}
+.fred-root .fred-result-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
 .fred-root .fred-guided-tour-layer {
   position: fixed;
   inset: 0;

@@ -17,53 +17,47 @@ export function DrugSelectionModal({ open, query, onDrugSelected, onClose }: Pro
   const [internalQuery, setInternalQuery] = useState(query);
   const [drugs, setDrugs]         = useState<DrugRow[]>([]);
   const [loading, setLoading]     = useState(false);
-  const [fetchError, setFetchError] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const inputRef   = useRef<HTMLInputElement>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => {
     if (open) {
       setInternalQuery(query);
       setDrugs([]);
-      setFetchError("");
       setSelectedIndex(-1);
       setTimeout(() => inputRef.current?.focus(), 30);
     }
   }, [open, query]);
 
-  async function search(q: string) {
-    const safe = q.replace(/[^a-zA-Z0-9 ]/g, "").trim();
-    if (!safe) {
-      setDrugs([]);
-      setLoading(false);
-      setFetchError("");
-      return;
-    }
-    setLoading(true);
-    setFetchError("");
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from("drugs")
-      .select("*")
-      .or(`generic_name.ilike.${safe}%,brand_name.ilike.${safe}%,full_display_name.ilike.%${safe}%`)
-      .order("generic_name")
-      .order("is_generic")
-      .order("brand_name")
-      .limit(25);
-    setLoading(false);
-    // The bundled directory backs every search so case medicines stay
-    // selectable even when the database is missing rows or unreachable.
-    setDrugs(mergeWithLocal((error ? [] : (data as DrugRow[])) ?? [], searchLocalDrugs(safe), 25));
-    setSelectedIndex(-1);
-  }
-
   useEffect(() => {
-    clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => search(internalQuery), 200);
-    return () => clearTimeout(debounceRef.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [internalQuery]);
+    if (!open) return;
+    const safe = internalQuery.replace(/[^a-zA-Z0-9 ]/g, "").trim();
+    const bundled = searchLocalDrugs(safe);
+    // Show the bundled directory immediately; delayed or failed requests cannot
+    // hide case records or replace results for a newer query.
+    setDrugs(bundled);
+    setSelectedIndex(-1);
+    if (!safe) { setLoading(false); return; }
+    setLoading(true);
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      try {
+        const { data, error } = await createClient().from("drugs").select("*")
+          .or(`generic_name.ilike.${safe}%,brand_name.ilike.${safe}%,full_display_name.ilike.%${safe}%`)
+          .order("generic_name").order("is_generic").order("brand_name").limit(25).abortSignal(controller.signal);
+        if (controller.signal.aborted) return;
+        if (!error) {
+          setDrugs(mergeWithLocal((data as DrugRow[]) ?? [], bundled, 25));
+          setSelectedIndex(-1);
+        }
+      } catch {
+        // Keep the bundled results available when the network is unavailable.
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    }, 200);
+    return () => { window.clearTimeout(timer); controller.abort(); };
+  }, [open, internalQuery]);
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Escape") { onClose(); return; }
@@ -140,20 +134,15 @@ export function DrugSelectionModal({ open, query, onDrugSelected, onClose }: Pro
         </div>
 
         <div className="fred-dsel-body" role="listbox" aria-label="Matching medicine products">
-          {fetchError && (
-            <div className="fred-dsel-error">
-              Search failed — {fetchError}
-              <button className="fred-dsel-retry" onClick={() => search(internalQuery)}>Retry</button>
-            </div>
-          )}
 
-          {!fetchError && !loading && internalQuery.trim() && drugs.length === 0 && (
+
+          {!loading && internalQuery.trim() && drugs.length === 0 && (
             <div className="fred-dsel-empty">
               No matches for &ldquo;{internalQuery}&rdquo; — try a different name or spelling
             </div>
           )}
 
-          {!loading && !fetchError && drugs.map((drug, i) => {
+          {drugs.map((drug, i) => {
             const letter = LETTERS[i] ?? "";
             const isPrivate = drug.supply_type === "Private";
             const schedLetter = drug.schedule?.replace(/^S/, "").toLowerCase() ?? "";

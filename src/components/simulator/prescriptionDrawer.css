@@ -2,14 +2,14 @@
 .presc-system {
   position: fixed;
   inset: 0;
-  /* Keep the tab and floating prescription usable while directory dialogs are open. */
-  z-index: 130;
+  /* Let directories and results sit above the paper; the tab remains reachable. */
   pointer-events: none;
 }
 
 /* The tab remains available even after the prescription window has been moved. */
 .presc-trigger {
   position: fixed;
+  z-index: 130;
   top: 42%;
   right: 0;
   display: flex;
@@ -45,6 +45,7 @@
 /* The panel is deliberately smaller than the viewport so it can be dragged clear of fields. */
 .presc-panel {
   position: fixed;
+  z-index: 70;
   top: 52px;
   right: 42px;
   display: flex;

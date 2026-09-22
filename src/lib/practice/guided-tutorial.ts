@@ -1,6 +1,7 @@
 import { getConversationCase } from "@/lib/conversation/cases";
 import { replayConversation } from "@/lib/conversation/engine";
 import type { ConversationMessage } from "@/lib/conversation/types";
+import { CASE1_CORRECT_PACK_ID, evaluateStickerPlacement, stickerOverlapIssues, type Case1AssemblySubmission } from "@/lib/assembly/case1";
 
 export const GUIDED_TUTORIAL_STEPS = [
   "welcome", "prescription", "patient", "prescriber", "medicine", "label-entry",
@@ -11,6 +12,18 @@ export const GUIDED_TUTORIAL_STEPS = [
 export type GuidedTutorialStep = (typeof GUIDED_TUTORIAL_STEPS)[number];
 export function isGuidedTutorialStep(value: unknown): value is GuidedTutorialStep {
   return typeof value === "string" && (GUIDED_TUTORIAL_STEPS as readonly string[]).includes(value);
+}
+
+/** Recheck the current bench, including edits to previously completed steps. */
+export function guidedAssemblyStep(assembly: Case1AssemblySubmission | null, expectedWarnings: string[]): GuidedTutorialStep {
+  if (assembly?.packId !== CASE1_CORRECT_PACK_ID) return "pack";
+  if (!evaluateStickerPlacement(assembly.mainLabelPlacement, "main").safe) return "main-label";
+  const placedWarnings = Object.keys(assembly.warningPlacements);
+  const warningsReady = placedWarnings.length === expectedWarnings.length
+    && expectedWarnings.every(warning => evaluateStickerPlacement(assembly.warningPlacements[warning] ?? null, "warning").safe)
+    && expectedWarnings.some(warning => (assembly.warningPlacements[warning]?.rotation ?? 0) % 360 !== 0)
+    && stickerOverlapIssues(assembly).length === 0;
+  return warningsReady ? "assembly-submit" : "warning-labels";
 }
 
 const OBJECTIVES: Partial<Record<GuidedTutorialStep, Array<[string, string]>>> = {

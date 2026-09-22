@@ -19,6 +19,7 @@ export function PatientLookupField({
   const [modalOpen, setModalOpen] = useState(false);
   const [inputValue, setInputValue] = useState("");
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(debounceRef.current), []);
 
   // Reset input when selection is cleared externally (case change)
   useEffect(() => {

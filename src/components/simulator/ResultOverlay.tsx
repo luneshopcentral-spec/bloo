@@ -10,6 +10,10 @@ interface ResultOverlayProps {
   onClose: () => void;
   onNext: () => void;
   guidedTutorial?: boolean;
+  saving?: boolean;
+  pendingSave?: boolean;
+  verified?: boolean;
+  onRetrySave?: () => void;
 }
 interface ResultRowProps {
   label: string;
@@ -41,9 +45,15 @@ export function ResultOverlay({
   onClose,
   onNext,
   guidedTutorial = false,
+  saving = false,
+  pendingSave = false,
+  verified = false,
+  onRetrySave,
 }: ResultOverlayProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     if (!show) return;
@@ -51,14 +61,14 @@ export function ResultOverlay({
     closeRef.current?.focus();
 
     function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") onCloseRef.current();
       if (event.key !== "Tab" || !dialogRef.current) return;
 
       const focusable = Array.from(
         dialogRef.current.querySelectorAll<HTMLElement>(
-          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+          'button:not([disabled]), summary, [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
         )
-      );
+      ).filter(element => element.getClientRects().length > 0);
       if (focusable.length === 0) return;
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
@@ -76,7 +86,7 @@ export function ResultOverlay({
       window.removeEventListener("keydown", onKey);
       previouslyFocused?.focus();
     };
-  }, [show, onClose]);
+  }, [show]);
 
   if (!show || !result) return null;
 
@@ -115,6 +125,10 @@ export function ResultOverlay({
 
         <div className="fred-result-body">
           {guidedTutorial && <div data-tour="result-guide-slot" />}
+          <div className="fred-result-save" role="status" data-pending={!verified}>
+            <span>{verified ? "Saved and checked by the server." : saving ? "Saving and checking your result…" : pendingSave ? "Not saved yet. Your result is kept on this device; retry when connected." : "Provisional result — not yet saved or checked by the server."}</span>
+            {pendingSave && onRetrySave && <button type="button" className="fred-result-btn" disabled={saving} onClick={onRetrySave}>{saving ? "Saving…" : "Retry save"}</button>}
+          </div>
           <div
             className={`fred-result-summary ${result.passed ? "passed" : "failed"}`}
             aria-live="polite"
@@ -219,6 +233,8 @@ export function ResultOverlay({
           <button className="fred-result-btn" onClick={onClose}>Review transcript</button>
           <button
             className="fred-result-btn"
+            disabled={saving || pendingSave}
+            title={saving || pendingSave ? "Save this result, or close the feedback and discard the unsaved result, before changing cases." : undefined}
             onClick={() => {
               onNext();
               onClose();
