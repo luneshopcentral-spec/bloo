@@ -59,6 +59,23 @@ export function ResultOverlay({
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
+  // A result that finished but has not been server-verified (offline, a transient
+  // failure, or no cloud session). The student is never trapped on the results
+  // screen: they can retry the save, or continue after an explicit warning that
+  // this attempt stays on their device and won't be in their cloud progress.
+  const unsaved = !saving && !verified;
+  const continueUnlessUnsaved = (proceed: () => void) => {
+    if (
+      unsaved &&
+      !window.confirm(
+        "This result is kept on this device only — it hasn't been saved to your progress yet. Continue anyway?"
+      )
+    ) {
+      return;
+    }
+    proceed();
+  };
+
   useEffect(() => {
     if (!show) return;
     const previouslyFocused = document.activeElement as HTMLElement | null;
@@ -235,18 +252,15 @@ export function ResultOverlay({
           <button className="fred-result-btn" onClick={onClose}>Review transcript</button>
           <button
             className="fred-result-btn"
-            disabled={saving || pendingSave || !verified}
-            title={saving || pendingSave || !verified ? "Save this result before starting another attempt." : "Start a fresh attempt at this case with new prescription details."}
-            onClick={onRetryCase}
+            disabled={saving}
+            title={saving ? "Saving and checking your result…" : unsaved ? "This result is not yet saved to your progress — you can retry the save, or continue anyway." : "Start a fresh attempt at this case with new prescription details."}
+            onClick={() => continueUnlessUnsaved(onRetryCase)}
           >{retryIndependently ? "Try this case independently" : "Try this case again"}</button>
           <button
             className="fred-result-btn"
-            disabled={saving || pendingSave || !verified}
-            title={saving || pendingSave || !verified ? "Save this result, or close the feedback and discard the unsaved result, before changing cases." : undefined}
-            onClick={() => {
-              onNext();
-              onClose();
-            }}
+            disabled={saving}
+            title={saving ? "Saving and checking your result…" : unsaved ? "This result is not yet saved to your progress — you can retry the save, or continue anyway." : undefined}
+            onClick={() => continueUnlessUnsaved(() => { onNext(); onClose(); })}
           >
             Next Case →
           </button>

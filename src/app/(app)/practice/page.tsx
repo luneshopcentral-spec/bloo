@@ -38,6 +38,7 @@ import { PatientHeader }       from "@/components/simulator/PatientHeader";
 import { ScriptForm }          from "@/components/simulator/ScriptForm";
 import { DrugDetailsBox }      from "@/components/simulator/DrugDetailsBox";
 import { WarningsBox }         from "@/components/simulator/WarningsBox";
+import { MedicinesReferenceDesk } from "@/components/simulator/MedicinesReferenceDesk";
 import { LabelPreview }        from "@/components/simulator/LabelPreview";
 import { ActionButtons }       from "@/components/simulator/ActionButtons";
 import { ClinicalDecisionPanel } from "@/components/simulator/ClinicalDecisionPanel";
@@ -888,6 +889,9 @@ export default function PracticePage() {
                     <div>
                       <strong>Warning labels move to the physical pack stage</strong>
                       <small>After completing this Fred-style entry, you will choose a carton and manually apply the dispensing and warning stickers.</small>
+                      <div className="fred-warn-subtitle">
+                        <MedicinesReferenceDesk medicineName={currentDrug?.generic_name ?? formState.items[currentItem]?.drug ?? ""} />
+                      </div>
                     </div>
                   </div>
                 ) : (

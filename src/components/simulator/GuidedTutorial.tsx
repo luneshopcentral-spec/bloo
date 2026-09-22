@@ -376,6 +376,14 @@ export function GuidedTutorial({
       );
       cardTop = positionRect.bottom + gap;
       arrow = "top";
+    } else if (compactModal) {
+      // A wide, centred directory modal fits the card on no side and is too tall
+      // to sit below. Dock to the bottom-left corner so the modal's search box and
+      // top result rows (and its bottom-right action buttons) stay fully visible,
+      // instead of covering the search input at the top.
+      cardLeft = 16;
+      cardTop = viewportHeight - estimatedCardHeight - 16;
+      arrow = "none";
     } else {
       cardLeft = Math.min(
         Math.max(16, positionRect.left + positionRect.width / 2 - cardWidth / 2),
