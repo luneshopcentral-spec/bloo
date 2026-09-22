@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { X } from "lucide-react";
 
 export interface ActiveAnnouncement {
@@ -20,6 +21,7 @@ const STYLE: Record<string, string> = {
 const STORAGE_KEY = "dismissed-announcements";
 
 export function AnnouncementBanner({ announcements }: { announcements: ActiveAnnouncement[] }) {
+  const pathname = usePathname();
   const [dismissed, setDismissed] = useState<string[]>([]);
   const [ready, setReady] = useState(false);
 
@@ -44,6 +46,9 @@ export function AnnouncementBanner({ announcements }: { announcements: ActiveAnn
   }
 
   if (!ready) return null;
+  // The simulator is a fixed 100vh surface with its own chrome; a banner above it
+  // would push the action bar off-screen. Suppress it there (like the app nav).
+  if (pathname === "/practice") return null;
   const visible = announcements.filter((a) => !dismissed.includes(a.id));
   if (visible.length === 0) return null;
 

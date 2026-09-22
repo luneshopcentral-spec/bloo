@@ -45,7 +45,11 @@
 /* The panel is deliberately smaller than the viewport so it can be dragged clear of fields. */
 .presc-panel {
   position: fixed;
-  z-index: 70;
+  /* Above the patient/drug/prescriber/patient-details backdrops (80–90) so the
+     script stays visible and clickable while a directory is open, and a click on
+     it never falls through to a backdrop and closes that directory. Kept below
+     the reference desk (95) and the guided-tour layer (600). */
+  z-index: 92;
   top: 52px;
   right: 42px;
   display: flex;

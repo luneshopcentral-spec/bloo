@@ -105,6 +105,32 @@ export function DraggableDialogManager() {
       if (active && event.pointerId === active.pointerId) stopDragging();
     }
 
+    // If the viewport shrinks (window resize, or unplugging an external monitor),
+    // a dialog dragged into what is now off-screen space would be stranded. Pull
+    // every moved dialog back inside the new bounds using its current geometry.
+    function clampToViewport() {
+      document.querySelectorAll<HTMLElement>("[role='dialog']").forEach((dialog) => {
+        const stored = positions.get(dialog);
+        if (!stored || (stored.x === 0 && stored.y === 0)) return;
+        const rect = dialog.getBoundingClientRect();
+        const baseLeft = rect.left - stored.x;
+        const baseTop = rect.top - stored.y;
+        const nextX = Math.min(
+          window.innerWidth - EDGE_GAP - (baseLeft + rect.width),
+          Math.max(EDGE_GAP - baseLeft, stored.x)
+        );
+        const nextY = Math.min(
+          window.innerHeight - EDGE_GAP - (baseTop + rect.height),
+          Math.max(EDGE_GAP - baseTop, stored.y)
+        );
+        if (nextX !== stored.x || nextY !== stored.y) {
+          const next = { x: nextX, y: nextY };
+          positions.set(dialog, next);
+          dialog.style.translate = `${next.x}px ${next.y}px`;
+        }
+      });
+    }
+
     markHandles();
     const observer = new MutationObserver(() => markHandles());
     observer.observe(document.body, { childList: true, subtree: true });
@@ -112,6 +138,7 @@ export function DraggableDialogManager() {
     document.addEventListener("pointermove", onPointerMove);
     document.addEventListener("pointerup", onPointerUp);
     document.addEventListener("pointercancel", onPointerUp);
+    window.addEventListener("resize", clampToViewport);
 
     return () => {
       stopDragging();
@@ -120,6 +147,7 @@ export function DraggableDialogManager() {
       document.removeEventListener("pointermove", onPointerMove);
       document.removeEventListener("pointerup", onPointerUp);
       document.removeEventListener("pointercancel", onPointerUp);
+      window.removeEventListener("resize", clampToViewport);
     };
   }, []);
 
