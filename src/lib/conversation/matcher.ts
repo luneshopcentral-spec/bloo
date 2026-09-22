@@ -3,31 +3,14 @@ import type {
   ConversationCase,
   ConversationResponseIntent,
   ConversationTopic,
-  SemanticCandidate,
   UnsafeAdviceFinding,
 } from "./types";
 import { conversationClauses, isMetaStatement, isQuestion, negatedAction, normalizeLanguage } from "./language";
 
-// Calibrated for bge-small-en-v1.5 (see semantic-matcher.worker.ts): measured
-// true paraphrase matches score >= ~0.70 while off-topic and wrong-but-related
-// noise tops out at ~0.59, so 0.62 splits the bands with margin on both sides.
-const DEFAULT_SEMANTIC_THRESHOLD = 0.62;
-const MULTI_MATCH_MARGIN = 0.035;
 const MAX_MATCHES_PER_TURN = 20;
 
 export function normalizeConversationText(text: string): string {
   return normalizeLanguage(text);
-}
-export function splitUtterance(text: string): string[] {
-  const normalized = text.trim();
-  if (!normalized) return [];
-
-  const chunks = normalized
-    .split(/(?:[.!?;\n]+|\b(?:and also|also|as well as|plus|finally)\b)/i)
-    .map((part) => part.trim())
-    .filter((part) => part.length >= 3);
-
-  return chunks.length > 0 ? Array.from(new Set([normalized, ...chunks])) : [normalized];
 }
 
 function patternMatches(text: string, source: string): boolean {
@@ -139,40 +122,6 @@ export function classifyWithRules(
     .sort((a, b) => b.score - a.score)
     .slice(0, MAX_MATCHES_PER_TURN)
     .map(({ topic, score }) => ({ topicId: topic.id, score, source: "rules" as const }));
-}
-
-export function acceptSemanticCandidates(
-  conversation: ConversationCase,
-  text: string,
-  candidates: SemanticCandidate[]
-): AcceptedTopicMatch[] {
-  const byId = new Map(conversation.topics.map((topic) => [topic.id, topic]));
-  const rules = classifyWithRules(conversation, text);
-  const acceptedById = new Map<string, AcceptedTopicMatch>(
-    rules.map((match) => [match.topicId, match])
-  );
-  const bestScore = candidates[0]?.score ?? 0;
-
-  for (const candidate of candidates) {
-    const topic = byId.get(candidate.topicId);
-    if (!topic || !topicEvidenceIsValid(topic, text)) continue;
-
-    const threshold = topic.semanticThreshold ?? DEFAULT_SEMANTIC_THRESHOLD;
-    const isBestOrClose = candidate.score === bestScore || candidate.score >= bestScore - MULTI_MATCH_MARGIN;
-    if (candidate.score < threshold || !isBestOrClose) continue;
-
-    const existing = acceptedById.get(candidate.topicId);
-    if (!existing || candidate.score > existing.score) {
-      acceptedById.set(candidate.topicId, {
-        ...candidate,
-        source: "semantic",
-      });
-    }
-  }
-
-  return [...acceptedById.values()]
-    .sort((a, b) => b.score - a.score)
-    .slice(0, MAX_MATCHES_PER_TURN);
 }
 
 export function findUnsafeAdvice(

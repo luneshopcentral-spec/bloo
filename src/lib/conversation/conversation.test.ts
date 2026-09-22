@@ -2,11 +2,9 @@ import { describe, expect, it } from "vitest";
 import { STATIC_CASES } from "@/lib/cases/static-cases";
 import { getConversationCase } from "./cases";
 import {
-  acceptSemanticCandidates,
   classifyWithRules,
   findUnsafeAdvice,
   matchResponseIntent,
-  splitUtterance,
 } from "./matcher";
 import { combineAttemptResults, scoreCounselling } from "./score";
 import { buildPatientReply } from "./reply";
@@ -57,11 +55,6 @@ describe("conversation configuration", () => {
     }
   });
 
-  it("splits longer student utterances for multi-intent semantic matching", () => {
-    expect(splitUtterance("Hello. Take one tablet twice daily; also use sunscreen.")).toEqual(
-      expect.arrayContaining(["Hello", "Take one tablet twice daily", "use sunscreen"])
-    );
-  });
 
   it("marks patient name and age or date of birth as separate critical checks", () => {
     const conversation = getConversationCase("case-1");
@@ -332,8 +325,8 @@ describe("reported test-run conversation regressions", () => {
 
 describe("natural student phrasing across every case", () => {
   // Colloquial, contracted and reordered wording a student actually uses at the
-  // counter. Each must reach its topic through the rules matcher alone, so the
-  // conversation still works when the semantic model is unavailable.
+  // counter. Each must reach its topic through the deterministic rules matcher,
+  // which is the only matcher — matching and scoring never call a model.
   const PROBES: Array<[string, string, string]> = [
     ["case-1", "What this does is kill the bacteria causing your infection.", "purpose"],
     ["case-1", "Pop one capsule four times a day.", "directions"],
@@ -342,6 +335,9 @@ describe("natural student phrasing across every case", () => {
     ["case-1", "If your face swells up or you struggle to breathe, get to a hospital.", "allergic_reaction_safety"],
     ["case-1", "Can you tell me how you'll take these when you get home?", "teach_back"],
     ["case-1", "Any questions for me?", "invite_questions"],
+    // Shorthand/synonym normalisation: "6 hourly" and "empty tummy".
+    ["case-1", "Take one capsule 6 hourly.", "directions"],
+    ["case-1", "Take one four times a day on an empty tummy.", "nausea_advice"],
 
     ["case-2", "Just follow whatever the clinic's dosing sheet tells you.", "dose_plan"],
     ["case-2", "You'll need to keep getting your blood tested regularly.", "inr_monitoring"],
@@ -407,9 +403,8 @@ describe("natural student phrasing across every case", () => {
 });
 
 describe("safety gates hold against wrong or off-topic statements", () => {
-  // Each entry must NOT earn its topic, even if the semantic model scores it
-  // highly — acceptSemanticCandidates is given a forced 0.99 to prove the
-  // deterministic evidence gate, not the score, is what blocks it.
+  // Each entry must NOT earn its topic. The deterministic evidence gate, not a
+  // similarity score, is what blocks it.
   const NEGATIVES: Array<[string, string, string]> = [
     ["case-1", "Take two capsules twice daily.", "directions"],
     ["case-1", "You can stop them once you feel better.", "complete_course"],
@@ -428,12 +423,7 @@ describe("safety gates hold against wrong or off-topic statements", () => {
   it.each(NEGATIVES)("[%s] refuses %s credit", (caseId, utterance, mustNotMatch) => {
     const conversation = getConversationCase(caseId);
     const rules = classifyWithRules(conversation, utterance).map((match) => match.topicId);
-    const forcedSemantic = acceptSemanticCandidates(conversation, utterance, [
-      { topicId: mustNotMatch, score: 0.99 },
-    ]).map((match) => match.topicId);
-
     expect(rules).not.toContain(mustNotMatch);
-    expect(forcedSemantic).not.toContain(mustNotMatch);
   });
 });
 
@@ -449,23 +439,15 @@ describe("deterministic clinical gates", () => {
     expect(ids).toContain("complete_course");
   });
 
-  it("does not award directions for the wrong dose even with a high semantic score", () => {
+  it("does not award directions for the wrong dose", () => {
     const conversation = getConversationCase("case-1");
-    const matches = acceptSemanticCandidates(
-      conversation,
-      "Take two capsules twice daily.",
-      [{ topicId: "directions", score: 0.99 }]
-    );
-    expect(matches).toEqual([]);
+    const matches = classifyWithRules(conversation, "Take two capsules twice daily.");
+    expect(matches.some((match) => match.topicId === "directions")).toBe(false);
   });
 
   it("does not reward a leading allergy assumption as an allergy check", () => {
     const conversation = getConversationCase("case-2");
-    const matches = acceptSemanticCandidates(
-      conversation,
-      "You don't have any allergies, correct?",
-      [{ topicId: "allergies", score: 0.97 }]
-    );
+    const matches = classifyWithRules(conversation, "You don't have any allergies, correct?");
     expect(matches.some((match) => match.topicId === "allergies")).toBe(false);
   });
 
@@ -541,7 +523,7 @@ describe("combined marking", () => {
       addressedTopicIds: addressed,
       unsafeAdvice: [],
       transcript: [],
-      matcherMode: "semantic",
+      matcherMode: "rules",
     });
     expect(result.pointsEarned).toBeGreaterThanOrEqual(result.passThreshold);
     expect(result.criticalFailures).toContain("explain_hold");
@@ -559,7 +541,7 @@ describe("combined marking", () => {
       addressedTopicIds: conversation.topics.map((topic) => topic.id),
       unsafeAdvice,
       transcript: [],
-      matcherMode: "semantic",
+      matcherMode: "rules",
     });
     expect(result.criticalFailures).toContain("unsafe_advice");
     expect(result.passed).toBe(false);
@@ -572,7 +554,7 @@ describe("combined marking", () => {
       addressedTopicIds: conversation.topics.map((topic) => topic.id),
       unsafeAdvice: [],
       transcript: [],
-      matcherMode: "semantic",
+      matcherMode: "rules",
     });
     expect(combineAttemptResults(safeDispense, counselling).passed).toBe(true);
     expect(

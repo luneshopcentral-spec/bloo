@@ -6,7 +6,10 @@ export type ConversationTopicCategory =
   | "clinical_counselling"
   | "safety_netting";
 
-export type ConversationMatcherMode = "semantic" | "rules";
+// Matching and scoring are fully deterministic (rules-based). The optional
+// on-device semantic model was removed; this stays a named type so the scoring
+// result and UI can label the method without a bare string literal.
+export type ConversationMatcherMode = "rules";
 
 export interface ConversationTopic {
   id: string;
@@ -17,7 +20,6 @@ export interface ConversationTopic {
   fallbackPatterns: string[];
   requiredPatternGroups?: string[][];
   forbiddenPatterns?: string[];
-  semanticThreshold?: number;
   patientReplies: string[];
   repeatReply?: string;
   feedback?: string;
@@ -65,12 +67,9 @@ export interface ConversationCase {
   doseRules?: Array<{ topicId: string; amountPattern: string; frequencyPattern: string; medicinePattern?: string }>;
 }
 
-export interface SemanticCandidate {
+export interface AcceptedTopicMatch {
   topicId: string;
   score: number;
-}
-
-export interface AcceptedTopicMatch extends SemanticCandidate {
   source: ConversationMatcherMode;
 }
 

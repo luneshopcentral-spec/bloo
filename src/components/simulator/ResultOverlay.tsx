@@ -222,9 +222,7 @@ export function ResultOverlay({
 
           <div className="fred-result-method-note">
             <strong>Conversation assessment:</strong>{" "}
-            {result.counselling.matcherMode === "semantic"
-              ? "Local semantic matching plus deterministic clinical safety rules."
-              : "Conversation history and case-specific interpretation, shared by the patient and final marking. Safety findings remain visible even if advice is later corrected."}
+            Conversation history and case-specific interpretation, shared by the patient and final marking. Safety findings remain visible even if advice is later corrected.
             {` ${result.counselling.turns} student turn${result.counselling.turns === 1 ? "" : "s"} assessed.`}
           </div>
 

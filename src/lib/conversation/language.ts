@@ -21,6 +21,18 @@ export function normalizeLanguage(value: string): string {
     .replace(/\b(?:mls|millilitres?|milliliters?)\b/g, "ml")
     .replace(/\b(?:refrigerator|refrigerated|refrigeration)\b/g, "fridge")
     .replace(/\bover-the-counter\b/g, "over the counter")
+    // Colloquial and shorthand wording students actually type, mapped to the
+    // canonical clinical vocabulary the topic patterns already expect. These are
+    // unambiguous synonyms only — never dose numbers, medicine names or units.
+    .replace(/\btummy\b/g, "stomach")
+    .replace(/\btabs?\b/g, "tablet")
+    .replace(/\bcaps\b/g, "capsule")
+    .replace(/\btill\b/g, "until")
+    // "6 hourly"/"6-hourly" is frequency shorthand → "every 6 hours". Do this
+    // before collapsing the "hrs" abbreviation, and never touch a bare duration
+    // like "2 hours apart" or "24 hours".
+    .replace(/\b(\d+|two|three|four|six|eight|twelve)[\s-]?hourly\b/g, "every $1 hours")
+    .replace(/\bhrs?\b/g, "hours")
     .replace(/[^a-z0-9%./'\s-]/g, " ").replace(/\s+/g, " ").trim();
 }
 
