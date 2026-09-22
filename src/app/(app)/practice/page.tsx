@@ -39,6 +39,7 @@ import { ScriptForm }          from "@/components/simulator/ScriptForm";
 import { DrugDetailsBox }      from "@/components/simulator/DrugDetailsBox";
 import { WarningsBox }         from "@/components/simulator/WarningsBox";
 import { MedicinesReferenceDesk } from "@/components/simulator/MedicinesReferenceDesk";
+import { SimulatorFeedback }    from "@/components/simulator/SimulatorFeedback";
 import { LabelPreview }        from "@/components/simulator/LabelPreview";
 import { ActionButtons }       from "@/components/simulator/ActionButtons";
 import { ClinicalDecisionPanel } from "@/components/simulator/ClinicalDecisionPanel";
@@ -796,6 +797,7 @@ export default function PracticePage() {
   return (
     <>
       <DraggableDialogManager />
+      <SimulatorFeedback caseId={current.id} />
       <div className="fred-root">
         <div className="fred-narrow-banner">
           DispenseRx Practice is designed for laptops and desktops. For the
