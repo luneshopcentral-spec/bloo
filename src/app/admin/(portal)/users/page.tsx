@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireAdmin } from "@/lib/admin/guard";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { UsersTable, type AdminUserRow } from "@/components/admin/UsersTable";
+import { GrantByEmail } from "@/components/admin/GrantByEmail";
 export const dynamic = "force-dynamic";
 type Report = {
   total: number;
@@ -76,6 +77,7 @@ export default async function AdminUsersPage({
             : `${report?.total ?? 0} matching accounts · 50 per page`}
         </p>
       </div>
+      <GrantByEmail />
       {error ? (
         <p
           role="alert"
