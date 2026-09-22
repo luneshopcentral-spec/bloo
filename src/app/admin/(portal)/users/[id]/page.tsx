@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/admin/guard";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { UserActions } from "@/components/admin/UserActions";
+import { DeleteAccount } from "@/components/admin/DeleteAccount";
 import { formatDate, formatDateTime, isFuture } from "@/lib/admin/format";
 import { ArrowLeft } from "lucide-react";
 
@@ -89,6 +90,8 @@ export default async function AdminUserDetailPage({
           ))}
         </ActivityCard>
       )}
+
+      <DeleteAccount userId={profile.id} email={profile.email} isSelf={profile.id === actor.id} />
     </div>
   );
 }
