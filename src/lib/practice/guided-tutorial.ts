@@ -4,7 +4,7 @@ import type { ConversationMessage } from "@/lib/conversation/types";
 import { CASE1_CORRECT_PACK_ID, evaluateStickerPlacement, stickerOverlapIssues, type Case1AssemblySubmission } from "@/lib/assembly/case1";
 
 export const GUIDED_TUTORIAL_STEPS = [
-  "welcome", "prescription", "patient", "prescriber", "medicine", "label-entry",
+  "welcome", "prescription", "patient", "prescriber", "medicine", "label-entry", "select-warnings",
   "initials", "decision", "dispense-submit", "pack", "main-label", "warning-labels",
   "assembly-submit", "patient-question", "patient-history", "patient-explanation",
   "patient-safety-close", "patient-understanding", "finish-consultation", "results",

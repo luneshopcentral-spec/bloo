@@ -1,6 +1,6 @@
 import type { DispenseResult, CheckResult } from "@/lib/scoring/types";
 
-export type PackFace = "front" | "back" | "left" | "right" | "top" | "bottom";
+export type PackFace = "front" | "back" | "left" | "right" | "top" | "bottom" | "bag";
 
 export interface StickerPlacement {
   face: PackFace;
@@ -29,6 +29,10 @@ export interface Case1AssemblySubmission {
   mainLabelPlacement: StickerPlacement | null;
   warningLabels: string[];
   warningPlacements: Record<string, StickerPlacement>;
+}
+
+export interface AssemblySubmission {
+  items: Case1AssemblySubmission[];
 }
 
 export const CASE1_CORRECT_PACK_ID = "erythromycin-mayne-250-cap-25";
@@ -86,7 +90,7 @@ export const CASE1_PACK_OPTIONS: MedicinePackOption[] = [
  * Top and bottom are closures; the front and left carry product, batch and
  * expiry information that should remain readable in this simulated pack.
  */
-export const CASE1_CLEAR_LABEL_FACES: PackFace[] = ["back", "right"];
+export const CASE1_CLEAR_LABEL_FACES: PackFace[] = ["back", "right", "bag"];
 
 export const CASE1_WARNING_TONES: Record<string, WarningStickerTone> = {
   "Take with food or milk": "blue",
@@ -124,6 +128,7 @@ export const FACE_PHYSICAL: Record<PackFace, PhysicalSize> = {
   right: { w: 20, h: 40 },
   top: { w: 60, h: 20 },
   bottom: { w: 60, h: 20 },
+  bag: { w: 80, h: 70 },
 };
 
 export const STICKER_PHYSICAL: Record<StickerKind, PhysicalSize> = {
@@ -198,6 +203,7 @@ const PROTECTED_ZONES: Record<PackFace, ProtectedZone[]> = {
   bottom: [
     { x: 0, y: 0, width: 100, height: 100, label: "carton seal and closure" },
   ],
+  bag: [],
 };
 
 export function warningStickerTone(warning: string): WarningStickerTone {
@@ -223,7 +229,7 @@ export function evaluateStickerPlacement(
   if (kind === "main" && !CASE1_CLEAR_LABEL_FACES.includes(placement.face)) {
     return {
       safe: false,
-      issue: "the main label is not on the broad clear back or right-side panel",
+      issue: "the main label is not on the clear back, right-side or outer-bag panel",
     };
   }
 
@@ -242,7 +248,19 @@ export function addCase1AssemblyChecks(
   result: DispenseResult,
   submission: Case1AssemblySubmission
 ): DispenseResult {
-  const packPassed = submission.packId === CASE1_CORRECT_PACK_ID;
+  return addPackAssemblyChecks(result, submission, CASE1_CORRECT_PACK_ID, CASE1_PACK_OPTIONS);
+}
+
+export function addPackAssemblyChecks(
+  result: DispenseResult,
+  submission: Case1AssemblySubmission,
+  expectedPackId: string,
+  options: MedicinePackOption[],
+  itemIndex?: number,
+  selectedWarnings?: string[]
+): DispenseResult {
+  const packPassed = submission.packId === expectedPackId;
+  const prefix = itemIndex === undefined ? "" : `Item ${itemIndex + 1}: `;
   const mainPlacement = evaluateStickerPlacement(submission.mainLabelPlacement, "main");
   const warningPlacementIssues = Object.entries(submission.warningPlacements)
     .map(([warning, placement]) => ({ warning, result: evaluateStickerPlacement(placement, "warning") }))
@@ -250,24 +268,34 @@ export function addCase1AssemblyChecks(
   const overlapIssues = stickerOverlapIssues(submission);
   const placementPassed = mainPlacement.safe
     && warningPlacementIssues.length === 0
-    && overlapIssues.length === 0;
+    && overlapIssues.length === 0
+    && submission.warningLabels.length === Object.keys(submission.warningPlacements).length
+    && submission.warningLabels.every((warning) => Boolean(submission.warningPlacements[warning]))
+    && (!selectedWarnings || (
+      selectedWarnings.length === Object.keys(submission.warningPlacements).length
+      && selectedWarnings.every((warning) => Boolean(submission.warningPlacements[warning]))
+    ));
   const placementIssues = [
     ...(!mainPlacement.safe && mainPlacement.issue ? [mainPlacement.issue] : []),
     ...warningPlacementIssues.map(({ warning, result: placementResult }) =>
       `${warning}: ${placementResult.issue ?? "unsafe position"}`
     ),
     ...overlapIssues,
+    ...(selectedWarnings && selectedWarnings.some((warning) => !submission.warningPlacements[warning])
+      ? ["Selected warning labels are missing from the physical pack."] : []),
   ];
 
   const assemblyChecks: CheckResult[] = [
     {
       category: "assembly_pack",
-      label: "Physical medicine pack",
+      label: `${prefix}Physical medicine pack`,
       passed: packPassed,
       isCritical: true,
-      expected: "Mayne Pharma erythromycin 250 mg capsules, pack of 25",
-      actual: CASE1_PACK_OPTIONS.find((pack) => pack.id === submission.packId)
-        ? describePack(CASE1_PACK_OPTIONS.find((pack) => pack.id === submission.packId)!)
+      expected: options.find((pack) => pack.id === expectedPackId)
+        ? describePack(options.find((pack) => pack.id === expectedPackId)!)
+        : expectedPackId,
+      actual: options.find((pack) => pack.id === submission.packId)
+        ? describePack(options.find((pack) => pack.id === submission.packId)!)
         : "No pack selected",
       detail: packPassed
         ? "The selected carton matches the prescribed medicine, manufacturer, strength, dose form and pack size."
@@ -275,7 +303,7 @@ export function addCase1AssemblyChecks(
     },
     {
       category: "label_placement",
-      label: "Dispensing label placement",
+      label: `${prefix}Dispensing label placement`,
       passed: placementPassed,
       isCritical: true,
       expected: "Labels positioned without covering medicine, batch, expiry, barcode or closure information",

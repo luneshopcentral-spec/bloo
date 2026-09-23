@@ -4,7 +4,7 @@ import { applyCaseVariant } from "@/lib/cases/variants";
 import { findLocalDrugBySeedId, findLocalPrescriberByNumber } from "@/lib/directory/local-fallback";
 import { ALL_PATIENTS } from "../../../supabase/seeds/patient-library";
 import { validateDispense } from "@/lib/scoring/validate";
-import { addCase1AssemblyChecks } from "@/lib/assembly/case1";
+import { addAssemblyChecks } from "@/lib/assembly/all-cases";
 import { getConversationCase } from "@/lib/conversation/cases";
 import { evaluateConversation, MAX_CONVERSATION_MESSAGE, MAX_CONVERSATION_TURNS, MAX_CONVERSATION_CHARACTERS } from "@/lib/conversation/engine";
 import { combineAttemptResults } from "@/lib/conversation/score";
@@ -15,7 +15,8 @@ const optionalText = text.nullish();
 // Rotation is around the sticker centre, so its unrotated top-left can be
 // negative even when the rotated label fits. The geometry grader checks fit.
 const coordinate = z.number().finite().min(-1000).max(1000);
-const placement = z.object({ face: z.enum(["front", "back", "left", "right", "top", "bottom"]), x: coordinate, y: coordinate, rotation: z.number().finite().min(-360).max(360) });
+const placement = z.object({ face: z.enum(["front", "back", "left", "right", "top", "bottom", "bag"]), x: coordinate, y: coordinate, rotation: z.number().finite().min(-360).max(360) });
+const assemblyItem = z.object({ packId: text, mainLabelPlacement: placement.nullable(), warningLabels: z.array(text).max(30), warningPlacements: z.record(placement) });
 export const submissionSchema = z.object({
   sessionId: z.string().uuid(),
   formState: z.object({ scriptDate: text, scriptType: text, doctor: text, prescriberNo: text, authorityNumber: text, pharmacistInitials: text, items: z.array(z.object({ drug: text, directions: text, repeats: text, qty: text, price: text })).min(1).max(5) }),
@@ -24,7 +25,7 @@ export const submissionSchema = z.object({
   prescriberNumber: text.nullable(),
   patient: z.object({ id: text, seed_id: optionalText, surname: text, firstname: text, title: optionalText, sex: optionalText, date_of_birth: optionalText, address: optionalText, suburb: optionalText, postcode: optionalText, medicare_card: optionalText, medicare_valid_to: optionalText, concession_type: optionalText, concession_number: optionalText }).nullable(),
   decision: z.enum(["dispense", "hold_contact_prescriber", "do_not_supply"]).nullable(),
-  assembly: z.object({ packId: text, mainLabelPlacement: placement.nullable(), warningLabels: z.array(text).max(30), warningPlacements: z.record(placement) }).nullable(),
+  assembly: z.union([z.object({ items: z.array(assemblyItem).min(1).max(5) }), assemblyItem]).nullable(),
   transcript: z.array(z.object({ id: text, role: z.enum(["patient", "student", "system"]), text: z.string().max(MAX_CONVERSATION_MESSAGE) }))
     .max(MAX_CONVERSATION_TURNS * 2 + 1)
     .refine(turns => turns.filter(t => t.role === "student").length <= MAX_CONVERSATION_TURNS, "Conversation turn limit reached")
@@ -46,9 +47,7 @@ export function gradeSubmission(input: AttemptSubmission, session: PracticeSessi
     selectedWarnings: input.selectedWarnings.map((values) => new Set(values)),
     decision: input.decision, assisted: session.assisted || session.mode === "learn",
   });
-  if (caseData.id === "case-1") {
-    dispense = addCase1AssemblyChecks(dispense, input.assembly ?? { packId: "", mainLabelPlacement: null, warningLabels: [], warningPlacements: {} });
-  }
+  dispense = addAssemblyChecks(dispense, caseData, input.assembly, input.selectedWarnings);
   const conversation = getConversationCase(caseData.id);
   // Browser matches, check results and numeric scores are never accepted.
   const counselling = evaluateConversation(conversation, input.transcript);

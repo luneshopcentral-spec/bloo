@@ -3,18 +3,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { expandAbbrevs } from "@/lib/scoring/abbreviations";
 import type { FormState } from "@/components/simulator/state";
+import { ALL_WARNINGS } from "@/lib/cases/static-cases";
+import { assemblyItems, packOptionsFor } from "@/lib/assembly/all-cases";
 import { MedicinesReferenceDesk } from "@/components/simulator/MedicinesReferenceDesk";
 import type { DispenseDecision, PracticeCase } from "@/lib/types/case";
 import {
   ASSEMBLY_MM_PX,
   CASE1_ANCILLARY_TEXT,
-  CASE1_PACK_OPTIONS,
   CASE1_WARNING_CODES,
   FACE_PHYSICAL,
   STICKER_PHYSICAL,
   stickerSizePercent,
   warningStickerTone,
   type Case1AssemblySubmission,
+  type AssemblySubmission,
+  type MedicinePackOption,
   type PackFace,
   type StickerKind,
   type StickerPlacement,
@@ -25,27 +28,29 @@ interface AssemblyStageProps {
   formState: FormState;
   patientName: string;
   decision: DispenseDecision | null;
+  initialWarnings: Set<string>[];
+  onBack: () => void;
+  initialAssembly?: AssemblySubmission | Case1AssemblySubmission | null;
+  onDraftChange?: (draft: AssemblySubmission) => void;
+  onComplete: (submission: AssemblySubmission) => void;
+}
+
+interface AssemblyItemBenchProps {
+  caseData: PracticeCase;
+  itemIndex: number;
+  formState: FormState;
+  patientName: string;
+  decision: DispenseDecision | null;
   initialWarnings: Set<string>;
-  answersRevealed: boolean;
   onBack: () => void;
   initialAssembly?: Case1AssemblySubmission | null;
-  onDraftChange?: (draft: Case1AssemblySubmission) => void;
+  onDraftChange: (draft: Case1AssemblySubmission) => void;
   onComplete: (submission: Case1AssemblySubmission) => void;
 }
 
 type StickerToken = "main-label" | `warning:${string}`;
 
-const PACK_FACES: PackFace[] = ["front", "right", "back", "left", "top", "bottom"];
-const PROTOTYPE_WARNINGS = [
-  "Take with food or milk",
-  "Complete the full course",
-  "May cause nausea",
-  "May cause drowsiness",
-  "Avoid alcohol",
-  "Take with a full glass of water",
-  "Keep refrigerated",
-];
-
+const PACK_FACES: PackFace[] = ["front", "right", "back", "left", "top", "bottom", "bag"];
 const DRAG_THRESHOLD = 4;
 
 function decisionLabel(decision: DispenseDecision | null): string {
@@ -56,6 +61,7 @@ function decisionLabel(decision: DispenseDecision | null): string {
 }
 
 function faceLabel(face: PackFace): string {
+  if (face === "bag") return "Outer bag";
   return `${face.charAt(0).toUpperCase()}${face.slice(1)}`;
 }
 
@@ -150,41 +156,64 @@ function stickerPixelSize(kind: StickerKind): { width: number; height: number } 
   };
 }
 
-function initialWarningPlacements(
-  initialWarnings: Set<string>,
-  answersRevealed: boolean
-): Record<string, StickerPlacement> {
-  if (!answersRevealed) return {};
-  const positions = [
-    { x: 4, y: 55 },
-    { x: 42, y: 55 },
-    { x: 4, y: 74 },
-  ];
-  return Object.fromEntries(Array.from(initialWarnings).map((warning, index) => [
-    warning,
-    { face: "back" as PackFace, ...(positions[index] ?? { x: 42, y: 74 }), rotation: 0 },
-  ]));
+export function AssemblyStage({
+  caseData, formState, patientName, decision, initialWarnings,
+  onBack, initialAssembly, onDraftChange, onComplete,
+}: AssemblyStageProps) {
+  const [activeItem, setActiveItem] = useState(0);
+  const [items, setItems] = useState<Case1AssemblySubmission[]>(() => assemblyItems(initialAssembly).map((item, index) => {
+    const placements = Object.fromEntries(Object.entries(item.warningPlacements)
+      .filter(([warning]) => initialWarnings[index]?.has(warning)));
+    return { ...item, warningLabels: Object.keys(placements), warningPlacements: placements };
+  }));
+  const updateItem = useCallback((draft: Case1AssemblySubmission) => {
+    setItems((previous) => {
+      const next = [...previous];
+      next[activeItem] = draft;
+      return next;
+    });
+  }, [activeItem]);
+  useEffect(() => { onDraftChange?.({ items }); }, [items, onDraftChange]);
+  return (
+    <AssemblyItemBench
+      key={`${caseData.id}-${activeItem}`}
+      caseData={caseData}
+      itemIndex={activeItem}
+      formState={formState}
+      patientName={patientName}
+      decision={decision}
+      initialWarnings={initialWarnings[activeItem] ?? new Set<string>()}
+      initialAssembly={items[activeItem]}
+      onDraftChange={updateItem}
+      onBack={activeItem === 0 ? onBack : () => setActiveItem(activeItem - 1)}
+      onComplete={(submission) => {
+        const next = [...items];
+        next[activeItem] = submission;
+        setItems(next);
+        if (activeItem + 1 < caseData.items.length) setActiveItem(activeItem + 1);
+        else onComplete({ items: next });
+      }}
+    />
+  );
 }
 
-export function AssemblyStage({
+function AssemblyItemBench({
   caseData,
+  itemIndex,
   formState,
   patientName,
   decision,
   initialWarnings,
-  answersRevealed,
   onBack,
   initialAssembly,
   onDraftChange,
   onComplete,
-}: AssemblyStageProps) {
+}: AssemblyItemBenchProps) {
   const [selectedPackId, setSelectedPackId] = useState<string | null>(initialAssembly?.packId || null);
   const [activeFace, setActiveFace] = useState<PackFace>("front");
   const [armedSticker, setArmedSticker] = useState<StickerToken | null>(null);
   const [mainLabelPlacement, setMainLabelPlacement] = useState<StickerPlacement | null>(initialAssembly?.mainLabelPlacement ?? null);
-  const [warningPlacements, setWarningPlacements] = useState<Record<string, StickerPlacement>>(() =>
-    initialAssembly?.warningPlacements ?? initialWarningPlacements(initialWarnings, answersRevealed)
-  );
+  const [warningPlacements, setWarningPlacements] = useState<Record<string, StickerPlacement>>(() => initialAssembly?.warningPlacements ?? {});
   const [dragToken, setDragToken] = useState<StickerToken | null>(null);
   const [ghost, setGhost] = useState<{ x: number; y: number } | null>(null);
 
@@ -194,10 +223,11 @@ export function AssemblyStage({
   const dragState = useRef<{ token: StickerToken; startX: number; startY: number; moved: boolean } | null>(null);
   const suppressClick = useRef(false);
 
-  const selectedPack = CASE1_PACK_OPTIONS.find((pack) => pack.id === selectedPackId) ?? null;
-  const item = formState.items[0];
+  const packOptions = useMemo(() => packOptionsFor(caseData, itemIndex), [caseData, itemIndex]);
+  const selectedPack = packOptions.find((pack) => pack.id === selectedPackId) ?? null;
+  const item = formState.items[itemIndex];
   const placedWarningCount = Object.keys(warningPlacements).length;
-  const canComplete = Boolean(selectedPackId && mainLabelPlacement);
+  const canComplete = Boolean(selectedPackId && mainLabelPlacement && Array.from(initialWarnings).every((warning) => warningPlacements[warning]));
   const armedWarning = armedSticker && armedSticker !== "main-label" ? warningOf(armedSticker) : null;
   const armedPlacement = armedSticker === "main-label"
     ? mainLabelPlacement
@@ -205,10 +235,7 @@ export function AssemblyStage({
       ? warningPlacements[armedWarning] ?? null
       : null;
 
-  const warningOptions = useMemo(() => {
-    const unique = new Set([...PROTOTYPE_WARNINGS, ...caseData.items[0].correctWarnings]);
-    return Array.from(unique);
-  }, [caseData]);
+  const warningOptions = useMemo(() => Array.from(initialWarnings), [initialWarnings]);
 
   const placementOf = useCallback((token: StickerToken): StickerPlacement | null => {
     if (token === "main-label") return mainLabelPlacement;
@@ -328,7 +355,7 @@ export function AssemblyStage({
     setActiveFace("front");
     setArmedSticker(null);
     setMainLabelPlacement(null);
-    setWarningPlacements(initialWarningPlacements(initialWarnings, answersRevealed));
+    setWarningPlacements({});
   }
 
   function removeMainLabel() {
@@ -365,7 +392,7 @@ export function AssemblyStage({
   }
 
   function submitAssembly() {
-    if (!selectedPackId || !mainLabelPlacement) return;
+    if (!canComplete || !selectedPackId || !mainLabelPlacement) return;
     onComplete({
       packId: selectedPackId,
       mainLabelPlacement,
@@ -386,7 +413,7 @@ export function AssemblyStage({
     <section aria-label="Pack assembly" className="fred-assembly-stage">
       <header className="fred-assembly-header">
         <div>
-          <div className="fred-stage-kicker">Stage 2 of 3 · Physical pack assembly · Case 1 prototype</div>
+          <div className="fred-stage-kicker">Stage 2 of 3 · Physical pack assembly{caseData.items.length > 1 ? ` · Item ${itemIndex + 1} of ${caseData.items.length}` : ""}</div>
           <h1>Choose, check and label the medicine pack</h1>
           <p>Match every product detail, turn to each panel, then place the dispensing and warning labels yourself.</p>
         </div>
@@ -397,13 +424,13 @@ export function AssemblyStage({
       </header>
 
       <div className="fred-assembly-safety-note" role="note">
-        <strong>Prototype note:</strong> Case 1 still assesses the early-repeat hold decision. This bench separately tests
-        physical product and label handling; a held pack must not be handed to the patient in real practice.
+        <strong>Training pack:</strong> Select the exact product and place labels without covering required carton information.
+        {decision !== "dispense" && " Your clinical decision is to hold supply; do not hand this pack to the patient."}
       </div>
 
       <section className="fred-assembly-order" aria-label="Prescription order to assemble">
         <span>Prescription order</span>
-        <strong>{caseData.items[0].drug}</strong>
+        <strong>{caseData.items[itemIndex].drug}</strong>
         <span>{expandAbbrevs(item.directions)} · Qty {item.qty} · {item.repeats} repeat</span>
       </section>
 
@@ -418,7 +445,7 @@ export function AssemblyStage({
           </div>
 
           <div className="fred-pack-options">
-            {CASE1_PACK_OPTIONS.map((pack) => {
+            {packOptions.map((pack) => {
               const selected = pack.id === selectedPackId;
               return (
                 <button
@@ -595,10 +622,11 @@ export function AssemblyStage({
 
           <div className="fred-sticker-group warning-group" data-tour="warning-label-tray">
             <div className="fred-sticker-group-title">
-              <strong>Warning label roll</strong>
-              <span>Choose all that apply</span>
+              <strong>Selected warning labels</strong>
+              <span>Chosen during dispensing</span>
             </div>
             <div className="fred-warning-chip-roll">
+              {warningOptions.length === 0 && <p>No warning labels selected. Go back to dispensing to choose any that apply.</p>}
               {warningOptions.map((warning) => {
                 const token: StickerToken = `warning:${warning}`;
                 const placement = warningPlacements[warning];
@@ -649,11 +677,11 @@ export function AssemblyStage({
       )}
 
       <footer className="fred-assembly-actions">
-        <button type="button" className="secondary" onClick={onBack}>← Back to dispensing</button>
+        <button type="button" className="secondary" onClick={onBack}>{itemIndex === 0 ? "← Back to dispensing" : "← Previous medicine"}</button>
         <button type="button" className="secondary" onClick={resetBench}>Reset bench</button>
         <div className="fred-assembly-ready">
-          <strong>{canComplete ? "Ready for your final pack check" : "Choose a pack and apply the main label"}</strong>
-          <span>Warning-label selection and all label positions are marked when you continue.</span>
+          <strong>{canComplete ? "Ready for your final pack check" : !selectedPackId || !mainLabelPlacement ? "Choose a pack and apply the main label" : "Place each selected warning label"}</strong>
+          <span>Place all selected warning labels before continuing. Their positions are assessed.</span>
         </div>
         <button
           type="button"
@@ -662,7 +690,7 @@ export function AssemblyStage({
           onClick={submitAssembly}
           data-tour="assembly-submit"
         >
-          Continue to patient consultation →
+          {itemIndex + 1 < caseData.items.length ? "Next medicine →" : "Continue to patient consultation →"}
         </button>
       </footer>
     </section>
@@ -746,7 +774,7 @@ function DispensingLabelContent({
 function WarningLabelContent({ warning }: { warning: string }) {
   return (
     <span className="fred-label-render warning">
-      <b className="fred-warning-code">{CASE1_WARNING_CODES[warning] ?? "P"}</b>
+      <b className="fred-warning-code">{ALL_WARNINGS.find((entry) => entry.text === warning)?.lbl ?? CASE1_WARNING_CODES[warning] ?? "P"}</b>
       <span className="fred-warning-text">{CASE1_ANCILLARY_TEXT[warning] ?? warning}</span>
     </span>
   );
@@ -757,7 +785,7 @@ function CartonFaceContent({
   pack,
 }: {
   face: PackFace;
-  pack: (typeof CASE1_PACK_OPTIONS)[number];
+  pack: MedicinePackOption;
 }) {
   if (face === "front") {
     return (
@@ -804,6 +832,9 @@ function CartonFaceContent({
   }
   if (face === "top") {
     return <div className="fred-carton-print end-print"><strong>{pack.generic}</strong><span>{pack.strength} · {pack.form}</span><b>OPEN HERE</b></div>;
+  }
+  if (face === "bag") {
+    return <div className="fred-carton-print bag-print"><strong>PHARMACY DISPENSING BAG</strong><span>Training case · {pack.generic} {pack.strength}</span><small>Place selected warning labels here if the carton has insufficient clear space.</small></div>;
   }
   return <div className="fred-carton-print end-print"><strong>{pack.brand}</strong><span>{pack.packSize}</span><b>SEALED END</b></div>;
 }

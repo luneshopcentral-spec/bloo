@@ -132,6 +132,13 @@ function definitions(caseData: PracticeCase): Record<GuidedTutorialStep, Tutoria
         `Directions: “${item.directions}” · Repeats: ${item.repeats} · Quantity: ${item.qty}. Price is optional and not assessed.`,
       targets: ['[data-tour="label-entry-fields"]'],
     },
+    "select-warnings": {
+      eyebrow: "Stage 1 · Dispensing",
+      title: "Choose warning labels for the prescription",
+      body: "Select the applicable warnings from the dropdown now. These choices become the only warning labels available when you assemble the pack.",
+      instruction: "Add Complete the full course and May cause nausea. You will place both labels on the physical pack next.",
+      targets: ['.fred-warn-box'],
+    },
     initials: {
       eyebrow: "Stage 1 · Dispensing",
       title: "Enter your pharmacist initials",

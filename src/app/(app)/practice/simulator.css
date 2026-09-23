@@ -1331,7 +1331,7 @@
 }
 .fred-root .fred-carton-controls {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(7, 1fr);
   gap: 4px;
   margin-top: 7px;
 }
@@ -3411,6 +3411,11 @@
   background: #16a34a;
   color: #fff;
 }
+.fred-root .fred-titlebar-btns {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 .fred-root .fred-chat-clear {
   background: #f1f5f9;
   color: #334155;
@@ -5013,7 +5018,29 @@
    and return planes restore the physical-carton depth lost in the flat editor. */
 .fred-root .fred-face-viewport {
   padding: 42px 58px 48px 34px;
+  overflow: auto;
 }
+.fred-root .fred-carton-model.view-bag {
+  --carton-depth: 0px;
+  filter: drop-shadow(5px 12px 16px rgba(36, 52, 77, 0.16));
+}
+.fred-root .fred-carton-model.view-bag::before,
+.fred-root .fred-carton-model.view-bag::after,
+.fred-root .fred-carton-model.view-bag .fred-face-panel::before {
+  display: none;
+}
+.fred-root .fred-carton-model.view-bag .fred-face-panel {
+  border: 2px solid #d8c9a9;
+  background: #fffdf7;
+}
+.fred-root .fred-carton-print.bag-print {
+  padding: 16px;
+  color: #7a6b4f;
+  pointer-events: none;
+}
+.fred-root .fred-carton-print.bag-print strong { font-size: 12px; letter-spacing: .08em; }
+.fred-root .fred-carton-print.bag-print span,
+.fred-root .fred-carton-print.bag-print small { margin-top: 5px; font-size: 9px; }
 .fred-root .fred-carton-model {
   --carton-depth: 18px;
   --carton-edge: #d6dde7;

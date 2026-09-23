@@ -29,7 +29,8 @@ import { getCaseEditorialRecord } from "@/lib/governance/editorial";
 import type { PracticeMode } from "@/lib/practice/modes";
 import type { AttemptSubmission } from "@/lib/attempts/grade";
 import { persistCompletedAttempt } from "@/lib/attempts/persist";
-import { addCase1AssemblyChecks, type Case1AssemblySubmission } from "@/lib/assembly/case1";
+import { type AssemblySubmission } from "@/lib/assembly/case1";
+import { addAssemblyChecks, assemblyItems } from "@/lib/assembly/all-cases";
 import { canPlayCase, type CaseEntitlement } from "@/lib/entitlement/entitlement";
 
 import { TitleBar }            from "@/components/simulator/TitleBar";
@@ -38,7 +39,6 @@ import { PatientHeader }       from "@/components/simulator/PatientHeader";
 import { ScriptForm }          from "@/components/simulator/ScriptForm";
 import { DrugDetailsBox }      from "@/components/simulator/DrugDetailsBox";
 import { WarningsBox }         from "@/components/simulator/WarningsBox";
-import { MedicinesReferenceDesk } from "@/components/simulator/MedicinesReferenceDesk";
 import { SimulatorFeedback }    from "@/components/simulator/SimulatorFeedback";
 import { LabelPreview }        from "@/components/simulator/LabelPreview";
 import { ActionButtons }       from "@/components/simulator/ActionButtons";
@@ -81,9 +81,9 @@ function normaliseTutorialEntry(value: string): string {
 export default function PracticePage() {
   const [userId, setUserId] = useState<string | null>(null);
   const sessionRef = useRef<{ key: string; promise: Promise<string | null> } | null>(null);
-  const assemblyRef = useRef<Case1AssemblySubmission | null>(null);
-  const [assemblyDraft, setAssemblyDraft] = useState<Case1AssemblySubmission | null>(null);
-  const updateAssemblyDraft = useCallback((value: Case1AssemblySubmission) => { assemblyRef.current = value; setAssemblyDraft(value); }, []);
+  const assemblyRef = useRef<AssemblySubmission | null>(null);
+  const [assemblyDraft, setAssemblyDraft] = useState<AssemblySubmission | null>(null);
+  const updateAssemblyDraft = useCallback((value: AssemblySubmission) => { assemblyRef.current = value; setAssemblyDraft(value); }, []);
   const [queuedAttempt, setQueuedAttempt] = useState<AttemptSubmission | null>(null);
   const [saving, setSaving] = useState(false);
   const [resultVerified, setResultVerified] = useState(false);
@@ -153,7 +153,6 @@ export default function PracticePage() {
   );
   const currentConversation = getConversationCase(current.id);
   const editorialRecord = getCaseEditorialRecord(current.id);
-  const isCase1AssemblyPrototype = current.id === "case-1";
   const currentCaseLocked = !canPlayCase(current, entitlement);
   const activeSessionKey = JSON.stringify([current.id, attemptSeed, practiceMode]);
   const activeSessionKeyRef = useRef(activeSessionKey);
@@ -281,7 +280,7 @@ export default function PracticePage() {
 
   useEffect(() => {
     if (guidedTutorialActive && stage === "assembly") {
-      setGuidedTutorialStep(guidedAssemblyStep(assemblyDraft, current.items[0].correctWarnings));
+      setGuidedTutorialStep(guidedAssemblyStep(assemblyItems(assemblyDraft)[0] ?? null, current.items[0].correctWarnings));
     }
   }, [guidedTutorialActive, stage, assemblyDraft, current.items]);
 
@@ -504,30 +503,10 @@ export default function PracticePage() {
       return;
     }
 
-    if (isCase1AssemblyPrototype) {
-      setAttemptSubmitted(true);
-      setDrawerOpen(false);
-      showStatus("Dispensing entry complete. Select the physical pack and apply its labels.");
-      setStage("assembly");
-      return;
-    }
-
-    const result = validateDispense({
-      formState,
-      selectedWarnings,
-      caseData: current,
-      selectedPatient,
-      selectedDrugs,
-      selectedPrescriber,
-      decision: clinicalDecision,
-      assisted: answersRevealed,
-    });
-
-    setPendingDispenseResult(result);
     setAttemptSubmitted(true);
     setDrawerOpen(false);
-    showStatus("Dispensing stage submitted. Complete the patient interaction to receive your result.");
-    setStage("counselling");
+    showStatus("Dispensing entry complete. Check each physical pack and place the selected warning labels.");
+    setStage("assembly");
   }
 
   function handleAssemblyBack() {
@@ -537,15 +516,12 @@ export default function PracticePage() {
     showStatus("Pack assembly paused. Review or update the dispensing entry, then continue again.");
   }
 
-  function handleAssemblyComplete(submission: Case1AssemblySubmission) {
+  function handleAssemblyComplete(submission: AssemblySubmission) {
     if (guidedTutorialActive && guidedTutorialStep !== "assembly-submit") { showStatus("Finish the highlighted pack checks before continuing.", "info"); return; }
     assemblyRef.current = submission;
-    const assembledWarnings = current.items.map((_, index) =>
-      index === 0 ? new Set(submission.warningLabels) : selectedWarnings[index] ?? new Set<string>()
-    );
     const dispensingResult = validateDispense({
       formState,
-      selectedWarnings: assembledWarnings,
+      selectedWarnings,
       caseData: current,
       selectedPatient,
       selectedDrugs,
@@ -553,9 +529,8 @@ export default function PracticePage() {
       decision: clinicalDecision,
       assisted: answersRevealed,
     });
-    const result = addCase1AssemblyChecks(dispensingResult, submission);
+    const result = addAssemblyChecks(dispensingResult, current, submission, selectedWarnings.map((set) => [...set]));
 
-    setSelectedWarnings(assembledWarnings);
     setPendingDispenseResult(result);
     setAttemptSubmitted(true);
     setDrawerOpen(false);
@@ -706,7 +681,8 @@ export default function PracticePage() {
     dispatch({ type: "RESTORE", state: saved.formState });
     setSelectedPatient(saved.patient); setSelectedDrugs(drugs); setSelectedPrescriber(prescriber);
     setSelectedWarnings(saved.warnings.map((w) => new Set(w))); setClinicalDecision(saved.decision); setAnswersRevealed(saved.assisted);
-    assemblyRef.current = saved.assembly; setAssemblyDraft(saved.assembly); setSessionId(saved.sessionId);
+    const restoredAssembly = saved.assembly ? { items: assemblyItems(saved.assembly) } : null;
+    assemblyRef.current = restoredAssembly; setAssemblyDraft(restoredAssembly); setSessionId(saved.sessionId);
     sessionRef.current = saved.sessionId ? { key: JSON.stringify([c.id, saved.seed, saved.mode]), promise: Promise.resolve(saved.sessionId) } : null;
     setTranscript(saved.transcript); setInitialTranscript(saved.transcript);
     setConversationInput(typeof saved.conversationInput === "string" ? saved.conversationInput.slice(0, MAX_CONVERSATION_MESSAGE) : "");
@@ -715,7 +691,7 @@ export default function PracticePage() {
     }
     if (saved.stage === "counselling") {
       let result = validateDispense({ caseData: c, formState: saved.formState, selectedPatient: saved.patient, selectedDrugs: drugs, selectedPrescriber: prescriber, selectedWarnings: saved.warnings.map((w) => new Set(w)), decision: saved.decision, assisted: saved.assisted });
-      if (c.id === "case-1" && saved.assembly) result = addCase1AssemblyChecks(result, saved.assembly);
+      result = addAssemblyChecks(result, c, saved.assembly, saved.warnings);
       setPendingDispenseResult(result); setAttemptSubmitted(true);
     }
     setStage(saved.stage); setRestoring(null); showStatus("Draft restored on this device.", "success");
@@ -747,6 +723,10 @@ export default function PracticePage() {
           && directionsMatch(expectedItem.directions, item.directions)
           && normaliseTutorialEntry(item.repeats) === normaliseTutorialEntry(expectedItem.repeats)
           && normaliseTutorialEntry(item.qty) === normaliseTutorialEntry(String(expectedItem.qty));
+        break;
+      case "select-warnings":
+        completed = current.items[0].correctWarnings.length === selectedWarnings[0].size
+          && current.items[0].correctWarnings.every((warning) => selectedWarnings[0].has(warning));
         break;
       case "initials":
         completed = formState.pharmacistInitials.trim().length >= 2;
@@ -789,6 +769,7 @@ export default function PracticePage() {
     lastResult,
     overlayOpen,
     selectedDrugs,
+    selectedWarnings,
     selectedPatient,
     selectedPrescriber,
     stage,
@@ -797,7 +778,6 @@ export default function PracticePage() {
   return (
     <>
       <DraggableDialogManager />
-      <SimulatorFeedback caseId={current.id} />
       <div className="fred-root">
         <div className="fred-narrow-banner">
           DispenseRx Practice is designed for laptops and desktops. For the
@@ -813,7 +793,7 @@ export default function PracticePage() {
 
         {queuedAttempt && <div className="fred-training-banner" role="status"><span>An attempt is waiting to save on this device.</span><button type="button" disabled={saving} onClick={() => void saveAttempt(queuedAttempt)}>{saving ? "Saving…" : "Retry save"}</button><button type="button" disabled={saving} onClick={() => { if (window.confirm("Discard this unsaved result? It will not appear in your cloud progress.")) { setQueuedAttempt(null); try { localStorage.removeItem("dispenserx-pending-v2:" + userId); } catch {} } }}>Discard unsaved result</button></div>}
         {draft.candidate && <div className="fred-training-banner" role="status"><span>{draft.candidate.tutorialStep ? "Your guided tutorial is saved. Resume at your last step." : "You have an unfinished practice session on this device."}</span><button type="button" onClick={resumeDraft}>Resume draft</button><button type="button" onClick={draft.clear}>Discard draft</button></div>}
-        <TitleBar />
+        <TitleBar action={<SimulatorFeedback caseId={current.id} />} />
         {practiceMode === "exam" && (
           <ExamStopwatch resetKey={`${current.id}-${attemptResetCounter}`} />
         )}
@@ -885,30 +865,17 @@ export default function PracticePage() {
               </div>
 
               <div className="fred-warnings-label-grid gap-1 mb-1">
-                {isCase1AssemblyPrototype ? (
-                  <div className="fred-case1-assembly-notice" role="note">
-                    <span>2</span>
-                    <div>
-                      <strong>Warning labels move to the physical pack stage</strong>
-                      <small>After completing this Fred-style entry, you will choose a carton and manually apply the dispensing and warning stickers.</small>
-                      <div className="fred-warn-subtitle">
-                        <MedicinesReferenceDesk medicineName={currentDrug?.generic_name ?? formState.items[currentItem]?.drug ?? ""} />
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <WarningsBox
+                <WarningsBox
                     key={`${current.id}-${attemptSeed}-${currentItem}`}
                     warnings={ALL_WARNINGS}
                     selectedWarnings={currentWarnings}
                     onToggle={handleToggleWarning}
                     medicineName={currentDrug?.generic_name ?? formState.items[currentItem]?.drug ?? ""}
                   />
-                )}
                 <LabelPreview
                   caseData={current}
                   formState={formState}
-                  selectedWarnings={isCase1AssemblyPrototype ? new Set<string>() : currentWarnings}
+                  selectedWarnings={currentWarnings}
                   patientName={patientName}
                   itemIndex={currentItem}
                   itemCount={current.items.length}
@@ -934,7 +901,7 @@ export default function PracticePage() {
                   readinessIssues={readinessIssues}
                   hasProgress={hasAttemptProgress}
                   guidedTutorial={guidedTutorialActive}
-                  submitLabelOverride={isCase1AssemblyPrototype ? "Complete dispensing → Pack assembly" : undefined}
+                  submitLabelOverride="Complete dispensing → Pack assembly"
                 />
               </div>
 
@@ -959,8 +926,7 @@ export default function PracticePage() {
             decision={clinicalDecision}
             initialAssembly={assemblyDraft}
             onDraftChange={updateAssemblyDraft}
-            initialWarnings={currentWarnings}
-            answersRevealed={answersRevealed}
+            initialWarnings={selectedWarnings}
             onBack={handleAssemblyBack}
             onComplete={handleAssemblyComplete}
           />
@@ -978,9 +944,7 @@ export default function PracticePage() {
             mode={practiceMode}
             guidedTutorial={guidedTutorialActive}
             guidedCanFinish={!guidedTutorialActive || guidedTutorialStep === "finish-consultation" || guidedTutorialStep === "results"}
-            stageLabel={isCase1AssemblyPrototype
-              ? "Stage 3 of 3 · Patient consultation"
-              : "Stage 2 of 2 · Patient consultation"}
+            stageLabel="Stage 3 of 3 · Patient consultation"
           />
         )}
 

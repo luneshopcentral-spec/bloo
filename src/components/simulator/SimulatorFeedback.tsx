@@ -12,12 +12,8 @@ const KINDS: Array<{ value: Kind; label: string }> = [
 ];
 
 /**
- * Always-visible "Report a problem" control for the simulator. Fixed at z-index
- * 140 so it stays above every simulator surface (directory modals ~80–95, the
- * result overlay 100, the prescription tab 130) but below the guided-tour layer
- * (600). Submits straight to /api/feedback — the same store the admin portal
- * reads — without leaving the current screen. Purely an overlay: it does not
- * change the FRED simulator layout.
+ * Report control lives in the title bar, so it cannot cover simulator actions.
+ * Its dialog still overlays the workspace when deliberately opened.
  */
 export function SimulatorFeedback({ caseId }: { caseId: string }) {
   const [open, setOpen] = useState(false);
@@ -75,7 +71,7 @@ export function SimulatorFeedback({ caseId }: { caseId: string }) {
         type="button"
         onClick={() => { setOpen(true); setStatus(null); }}
         aria-haspopup="dialog"
-        className="fixed bottom-4 left-4 z-[140] inline-flex items-center gap-2 rounded-full bg-amber-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg ring-1 ring-black/10 transition hover:bg-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
+        className="inline-flex items-center gap-1 rounded-md border border-white/30 bg-amber-500 px-2.5 py-1 text-xs font-semibold text-white transition hover:bg-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
       >
         <Flag className="h-4 w-4" aria-hidden="true" />
         Report a problem
