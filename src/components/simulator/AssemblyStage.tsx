@@ -51,7 +51,26 @@ interface AssemblyItemBenchProps {
 type StickerToken = "main-label" | `warning:${string}`;
 
 const PACK_FACES: PackFace[] = ["front", "right", "back", "left", "top", "bottom", "bag"];
+const CARTON_FACES: PackFace[] = PACK_FACES.filter((face) => face !== "bag");
 const DRAG_THRESHOLD = 4;
+const TURN_DURATION_MS = 650;
+
+function nearestTurn(current: number, target: number): number {
+  return target + Math.round((current - target) / 360) * 360;
+}
+
+function cartonRotation(face: PackFace, current: { x: number; y: number }): { x: number; y: number } {
+  const angles: Record<Exclude<PackFace, "bag">, { x: number; y: number }> = {
+    front: { x: 0, y: 0 },
+    right: { x: 0, y: -90 },
+    back: { x: 0, y: -180 },
+    left: { x: 0, y: 90 },
+    top: { x: -90, y: 0 },
+    bottom: { x: 90, y: 0 },
+  };
+  if (face === "bag") return current;
+  return { x: nearestTurn(current.x, angles[face].x), y: nearestTurn(current.y, angles[face].y) };
+}
 
 function decisionLabel(decision: DispenseDecision | null): string {
   if (decision === "dispense") return "Dispense after final check";
@@ -97,14 +116,15 @@ function placementFromPoint(
   rotation: number
 ): StickerPlacement {
   const size = stickerSizePercent(face, kind);
-  const stickerPx = stickerPixelSize(kind);
+  const sticker = STICKER_PHYSICAL[kind];
+  const faceSize = FACE_PHYSICAL[face];
   const radians = (rotation * Math.PI) / 180;
-  const rotatedWidthPx = Math.abs(stickerPx.width * Math.cos(radians))
-    + Math.abs(stickerPx.height * Math.sin(radians));
-  const rotatedHeightPx = Math.abs(stickerPx.width * Math.sin(radians))
-    + Math.abs(stickerPx.height * Math.cos(radians));
-  const halfW = (rotatedWidthPx / faceRect.width) * 50;
-  const halfH = (rotatedHeightPx / faceRect.height) * 50;
+  const rotatedWidth = Math.abs(sticker.w * Math.cos(radians))
+    + Math.abs(sticker.h * Math.sin(radians));
+  const rotatedHeight = Math.abs(sticker.w * Math.sin(radians))
+    + Math.abs(sticker.h * Math.cos(radians));
+  const halfW = (rotatedWidth / faceSize.w) * 50;
+  const halfH = (rotatedHeight / faceSize.h) * 50;
   const pointerX = ((clientX - faceRect.left) / faceRect.width) * 100;
   const pointerY = ((clientY - faceRect.top) / faceRect.height) * 100;
   const centreX = halfW > 50 ? 50 : clamp(pointerX, halfW, 100 - halfW);
@@ -211,6 +231,9 @@ function AssemblyItemBench({
 }: AssemblyItemBenchProps) {
   const [selectedPackId, setSelectedPackId] = useState<string | null>(initialAssembly?.packId || null);
   const [activeFace, setActiveFace] = useState<PackFace>("front");
+  const [rotation, setRotation] = useState({ x: 0, y: 0 });
+  const [isTurning, setIsTurning] = useState(false);
+  const turnTimer = useRef<number | null>(null);
   const [armedSticker, setArmedSticker] = useState<StickerToken | null>(null);
   const [mainLabelPlacement, setMainLabelPlacement] = useState<StickerPlacement | null>(initialAssembly?.mainLabelPlacement ?? null);
   const [warningPlacements, setWarningPlacements] = useState<Record<string, StickerPlacement>>(() => initialAssembly?.warningPlacements ?? {});
@@ -304,17 +327,34 @@ function AssemblyItemBench({
   };
 
   const beginDrag = useCallback((event: React.PointerEvent, token: StickerToken) => {
-    if (!selectedPack) return;
+    if (!selectedPack || isTurning) return;
     event.preventDefault();
     dragState.current = { token, startX: event.clientX, startY: event.clientY, moved: false };
     window.addEventListener("pointermove", stableMove);
     window.addEventListener("pointerup", stableUp);
-  }, [selectedPack, stableMove, stableUp]);
+  }, [selectedPack, isTurning, stableMove, stableUp]);
 
   useEffect(() => () => {
     window.removeEventListener("pointermove", stableMove);
     window.removeEventListener("pointerup", stableUp);
+    if (turnTimer.current) window.clearTimeout(turnTimer.current);
   }, [stableMove, stableUp]);
+
+  function turnTo(face: PackFace) {
+    if (face === activeFace) return;
+    stopDrag();
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    setIsTurning(!reducedMotion);
+    if (turnTimer.current) window.clearTimeout(turnTimer.current);
+    setRotation((current) => cartonRotation(face, current));
+    setActiveFace(face);
+    if (!reducedMotion) {
+      turnTimer.current = window.setTimeout(() => {
+        setIsTurning(false);
+        turnTimer.current = null;
+      }, TURN_DURATION_MS);
+    }
+  }
 
   function handleFaceClick(event: React.MouseEvent<HTMLDivElement>) {
     if (suppressClick.current || !armedSticker) return;
@@ -328,7 +368,7 @@ function AssemblyItemBench({
   }
 
   function keyboardSticker(event: React.KeyboardEvent, token: StickerToken) {
-    if (!selectedPack || (event.target as HTMLElement).tagName === "BUTTON") return;
+    if (!selectedPack || isTurning || (event.target as HTMLElement).tagName === "BUTTON") return;
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault(); event.stopPropagation(); setArmedSticker(token); faceRef.current?.focus();
     }
@@ -353,6 +393,9 @@ function AssemblyItemBench({
     if (packId === selectedPackId) return;
     setSelectedPackId(packId);
     setActiveFace("front");
+    setRotation({ x: 0, y: 0 });
+    setIsTurning(false);
+    if (turnTimer.current) window.clearTimeout(turnTimer.current);
     setArmedSticker(null);
     setMainLabelPlacement(null);
     setWarningPlacements({});
@@ -386,6 +429,9 @@ function AssemblyItemBench({
   function resetBench() {
     setSelectedPackId(null);
     setActiveFace("front");
+    setRotation({ x: 0, y: 0 });
+    setIsTurning(false);
+    if (turnTimer.current) window.clearTimeout(turnTimer.current);
     setArmedSticker(null);
     setMainLabelPlacement(null);
     setWarningPlacements({});
@@ -401,7 +447,9 @@ function AssemblyItemBench({
     });
   }
 
-  const facePx = facePixelSize(activeFace);
+  const frontSize = facePixelSize("front");
+  const depth = facePixelSize("right").width;
+  const bagSize = facePixelSize("bag");
   const dispensingContext = {
     item,
     patientName: patientName || caseData.patientLookup.prescriptionPatient.name,
@@ -485,72 +533,111 @@ function AssemblyItemBench({
             <>
               <div className="fred-face-viewport">
                 <div
-                  key={activeFace}
-                  className={`fred-carton-model view-${activeFace} colour-${selectedPack.colour}`}
-                  style={{ width: `${facePx.width}px`, height: `${facePx.height}px` }}
+                  className={`fred-carton-scene-new colour-${selectedPack.colour}${activeFace === "bag" ? " showing-bag" : ""}${isTurning ? " is-turning" : ""}`}
+                  style={{
+                    width: `${frontSize.width}px`, height: `${frontSize.height}px`,
+                    "--carton-width": `${frontSize.width}px`, "--carton-height": `${frontSize.height}px`,
+                    "--carton-depth": `${depth}px`,
+                    "--bag-width": `${bagSize.width}px`, "--bag-height": `${bagSize.height}px`,
+                    "--turn-x": `${rotation.x}deg`, "--turn-y": `${rotation.y}deg`,
+                  } as React.CSSProperties}
                 >
-                  <div
-                    ref={faceRef}
-                    tabIndex={0}
-                    role="group"
-                    onKeyDown={keyboardFace}
-                    className={`fred-face-panel colour-${selectedPack.colour}`}
-                    onClick={handleFaceClick}
-                    aria-label={`${faceLabel(activeFace)} panel of the ${selectedPack.generic} carton`}
-                  >
-                    <CartonFaceContent face={activeFace} pack={selectedPack} />
-
-                    {mainLabelPlacement?.face === activeFace && (
-                      <PlacedLabel
-                        token="main-label"
-                        placement={mainLabelPlacement}
-                        selected={armedSticker === "main-label"}
-                        onKeyDown={(event) => keyboardSticker(event, "main-label")}
-              onPointerDown={(event) => beginDrag(event, "main-label")}
-                        onRemove={removeMainLabel}
-                      >
-                        <DispensingLabelContent {...dispensingContext} />
-                      </PlacedLabel>
-                    )}
-
-                    {Object.entries(warningPlacements)
-                      .filter(([, placement]) => placement.face === activeFace)
-                      .map(([warning, placement]) => {
-                        const token: StickerToken = `warning:${warning}`;
-                        return (
-                          <PlacedLabel
-                            key={warning}
-                            token={token}
-                            placement={placement}
-                            selected={armedSticker === token}
-                            tone={warningStickerTone(warning)}
-                            onKeyDown={(event) => keyboardSticker(event, token)}
-                    onPointerDown={(event) => beginDrag(event, token)}
-                            onRemove={() => removeWarning(warning)}
-                          >
-                            <WarningLabelContent warning={warning} />
-                          </PlacedLabel>
-                        );
-                      })}
+                  <div className="fred-carton-cube-new">
+                    {CARTON_FACES.map((face) => {
+                      const size = facePixelSize(face);
+                      const active = activeFace === face && !isTurning;
+                      return (
+                        <div
+                          key={face}
+                          ref={activeFace === face ? faceRef : undefined}
+                          tabIndex={active ? 0 : -1}
+                          role="group"
+                          inert={!active}
+                          onKeyDown={active ? keyboardFace : undefined}
+                          className={`fred-face-panel fred-cube-face face-${face} colour-${selectedPack.colour}`}
+                          style={{ width: `${size.width}px`, height: `${size.height}px` }}
+                          onClick={active ? handleFaceClick : undefined}
+                          aria-label={`${faceLabel(face)} panel of the ${selectedPack.generic} carton`}
+                          aria-hidden={activeFace !== face}
+                        >
+                          <CartonFaceContent face={face} pack={selectedPack} />
+                          {mainLabelPlacement?.face === face && (
+                            <PlacedLabel token="main-label" placement={mainLabelPlacement}
+                              selected={armedSticker === "main-label"}
+                              onKeyDown={(event) => keyboardSticker(event, "main-label")}
+                              onPointerDown={(event) => beginDrag(event, "main-label")}
+                              onRemove={removeMainLabel}>
+                              <DispensingLabelContent {...dispensingContext} />
+                            </PlacedLabel>
+                          )}
+                          {Object.entries(warningPlacements)
+                            .filter(([, placement]) => placement.face === face)
+                            .map(([warning, placement]) => {
+                              const token: StickerToken = `warning:${warning}`;
+                              return (
+                                <PlacedLabel key={warning} token={token} placement={placement}
+                                  selected={armedSticker === token} tone={warningStickerTone(warning)}
+                                  onKeyDown={(event) => keyboardSticker(event, token)}
+                                  onPointerDown={(event) => beginDrag(event, token)}
+                                  onRemove={() => removeWarning(warning)}>
+                                  <WarningLabelContent warning={warning} />
+                                </PlacedLabel>
+                              );
+                            })}
+                        </div>
+                      );
+                    })}
                   </div>
-                  <span className="fred-carton-face-name" aria-hidden="true">
-                    {faceLabel(activeFace)} face
-                  </span>
+                  <div className="fred-carton-bag" aria-hidden={activeFace !== "bag"}>
+                    <div ref={activeFace === "bag" ? faceRef : undefined}
+                      tabIndex={activeFace === "bag" && !isTurning ? 0 : -1}
+                      role="group" inert={activeFace !== "bag" || isTurning}
+                      onKeyDown={activeFace === "bag" && !isTurning ? keyboardFace : undefined}
+                      className="fred-face-panel fred-bag-panel" onClick={activeFace === "bag" && !isTurning ? handleFaceClick : undefined}
+                      aria-label={`Outer dispensing bag for ${selectedPack.generic}`}>
+                      <CartonFaceContent face="bag" pack={selectedPack} />
+                      {mainLabelPlacement?.face === "bag" && (
+                        <PlacedLabel token="main-label" placement={mainLabelPlacement}
+                          selected={armedSticker === "main-label"}
+                          onKeyDown={(event) => keyboardSticker(event, "main-label")}
+                          onPointerDown={(event) => beginDrag(event, "main-label")}
+                          onRemove={removeMainLabel}>
+                          <DispensingLabelContent {...dispensingContext} />
+                        </PlacedLabel>
+                      )}
+                      {Object.entries(warningPlacements).filter(([, placement]) => placement.face === "bag")
+                        .map(([warning, placement]) => {
+                          const token: StickerToken = `warning:${warning}`;
+                          return (
+                            <PlacedLabel key={warning} token={token} placement={placement}
+                              selected={armedSticker === token} tone={warningStickerTone(warning)}
+                              onKeyDown={(event) => keyboardSticker(event, token)}
+                              onPointerDown={(event) => beginDrag(event, token)}
+                              onRemove={() => removeWarning(warning)}>
+                              <WarningLabelContent warning={warning} />
+                            </PlacedLabel>
+                          );
+                        })}
+                    </div>
+                  </div>
                 </div>
+                <span className="fred-carton-face-name" aria-live="polite">{faceLabel(activeFace)} {activeFace === "bag" ? "" : "face"}</span>
               </div>
 
-              <div className="fred-carton-controls" aria-label="Carton panel controls">
-                {PACK_FACES.map((face) => (
-                  <button
-                    key={face}
-                    type="button"
-                    className={activeFace === face ? "active" : ""}
-                    aria-pressed={activeFace === face}
-                    onClick={() => setActiveFace(face)}
-                  >
-                    {faceLabel(face)}
-                  </button>
-                ))}
+              <div className="fred-carton-controls" aria-label="Pack view controls">
+                <div className="fred-carton-turn-controls" role="group" aria-label="Turn carton">
+                  {CARTON_FACES.map((face) => (
+                    <button key={face} type="button"
+                      className={activeFace === face ? "active" : ""}
+                      aria-pressed={activeFace === face} onClick={() => turnTo(face)}>
+                      {faceLabel(face)}
+                    </button>
+                  ))}
+                </div>
+                <button type="button" className={`fred-bag-view-button${activeFace === "bag" ? " active" : ""}`}
+                  aria-pressed={activeFace === "bag"} onClick={() => turnTo("bag")}>
+                  Outer bag
+                </button>
               </div>
 
               {armedSticker && armedPlacement && (
