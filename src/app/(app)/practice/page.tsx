@@ -787,7 +787,7 @@ export default function PracticePage() {
         <div className="fred-training-banner" role="note">
           <span>Simulated encounter: {current.date}. Dates and history belong to this fictional case. Use current references in practice.</span>
           <span className="fred-editorial-status">
-            Case {editorialRecord.version} · <a href="/account#report" target="_blank" rel="noreferrer">Report a problem</a>
+            Case {editorialRecord.version}
           </span>
         </div>
 

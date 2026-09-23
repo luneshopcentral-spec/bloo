@@ -57,7 +57,7 @@ export function WarningsBox({
         }}
       >
         <label htmlFor="warning-label-entry">Available warning labels</label>
-        <div>
+        <div className="fred-warn-entry-controls">
           <select
             id="warning-label-entry"
             value={selectedOption}
@@ -74,7 +74,7 @@ export function WarningsBox({
               </option>
             ))}
           </select>
-          <button type="submit" disabled={!selectedOption}>Add label</button>
+          <button type="submit" disabled={!selectedOption}><span aria-hidden="true">＋</span> Add label</button>
         </div>
         {pendingLabel && (
           <div className="fred-warn-choice-preview" aria-label="Selected warning label">
@@ -90,6 +90,10 @@ export function WarningsBox({
       </form>
 
       <div className="fred-warn-selected" aria-label="Labels added to the dispensing label">
+        <div className="fred-warn-selected-heading">
+          <strong>Chosen for this medicine</strong>
+          <span>{selectedLabels.length}</span>
+        </div>
         {selectedLabels.length === 0 ? (
           <p>No warning labels added.</p>
         ) : (
@@ -98,7 +102,7 @@ export function WarningsBox({
               <span className="fred-warn-lbl">{warning.lbl}</span>
               <span className="fred-warn-sig">{warning.sig}</span>
               <span>{warning.text}</span>
-              <button type="button" onClick={() => onToggle(warning.text)} aria-label={`Remove ${warning.text}`}>×</button>
+              <button type="button" onClick={() => onToggle(warning.text)} aria-label={`Remove ${warning.text}`} title={`Remove ${warning.text}`}>×</button>
             </div>
           ))
         )}

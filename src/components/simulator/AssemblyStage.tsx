@@ -671,7 +671,7 @@ function AssemblyItemBench({
           )}
         </section>
 
-        <aside className="fred-sticker-tray" aria-labelledby="sticker-tray-title">
+        <section className="fred-sticker-tray" aria-labelledby="sticker-tray-title">
           <div className="fred-assembly-section-heading">
             <span>3</span>
             <div>
@@ -742,7 +742,7 @@ function AssemblyItemBench({
             <p>Do not cover the medicine name, strength, dose form, barcode, batch, expiry or carton openings.</p>
             <p>To move a label, drag it again or select it and click a new spot. Use × only to remove it.</p>
           </div>
-        </aside>
+        </section>
       </div>
 
       {dragToken && ghost && (

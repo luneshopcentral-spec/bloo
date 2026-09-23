@@ -240,7 +240,7 @@ export function ScriptForm({
           <label className="fred-field-label" htmlFor="repeats">Repeats</label>
           <input id="repeats" className="fred-dir-col-input" placeholder="0" inputMode="numeric"
             value={itemForm.repeats} onChange={onItemChangeField(dispatch, currentItem, "repeats")} disabled={disabled} />
-          <div style={{ fontSize: "9px", color: "#888" }}>Max —</div>
+          <div style={{ fontSize: "9px", color: "#475569" }}>Max —</div>
         </div>
         <div className="flex flex-col gap-0.5">
           <label className="fred-field-label" htmlFor="quantity">Quantity</label>

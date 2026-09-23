@@ -71,7 +71,7 @@ export function SimulatorFeedback({ caseId }: { caseId: string }) {
         type="button"
         onClick={() => { setOpen(true); setStatus(null); }}
         aria-haspopup="dialog"
-        className="inline-flex items-center gap-1 rounded-md border border-white/30 bg-amber-500 px-2.5 py-1 text-xs font-semibold text-white transition hover:bg-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
+        className="inline-flex items-center gap-1 rounded-md border border-white/30 bg-amber-700 px-2.5 py-1 text-xs font-semibold text-white transition hover:bg-amber-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
       >
         <Flag className="h-4 w-4" aria-hidden="true" />
         Report a problem
