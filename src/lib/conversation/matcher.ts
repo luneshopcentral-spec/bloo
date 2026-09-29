@@ -5,7 +5,8 @@ import type {
   ConversationTopic,
   UnsafeAdviceFinding,
 } from "./types";
-import { conversationClauses, isMetaStatement, isQuestion, negatedAction, normalizeLanguage } from "./language";
+import { conversationClauses, isConditionalAdvice, isMetaStatement, isQuestion, negatedAction, normalizeLanguage } from "./language";
+import { nearestTopic } from "./nearest";
 
 const MAX_MATCHES_PER_TURN = 20;
 
@@ -21,14 +22,20 @@ function patternMatches(text: string, source: string): boolean {
   }
 }
 
+// Dismissing a risk is never counselling about it, whatever else it names:
+// "Mouth ulcers are nothing to worry about" is not red-flag advice.
+const DISMISSAL = /\b(?:nothing to worry about|perfectly safe|(?:will|would) not (?:get|have) any side effects|(?:fine|safe|okay|ok) to (?:keep taking|continue|keep using|combine)|does not matter (?:whether|if)|no need to (?:see|go|call|contact|bother|worry)\b(?!.*\b(?:unless|if|but|until)\b))/;
+
 export function topicEvidenceIsValid(topic: ConversationTopic, text: string): boolean {
   const normalized = normalizeConversationText(text);
   if (isMetaStatement(text)) return false;
+  if ((topic.category === "clinical_counselling" || topic.category === "safety_netting") && DISMISSAL.test(normalized)) return false;
   if (/directions|dose|admin/.test(topic.id)
     && /\b(?:do not|never|should not|must not) (?:take|give|use) (?:one|two|three|four|\d+)\b/.test(normalized)) return false;
   if (topic.id === "complete_course" && /\b(?:do not|never|should not) (?:finish|complete|continue|keep)\b/.test(normalized)) return false;
   if (topic.category === "information_gathering" && !isQuestion(text)) return false;
   if ((topic.category === "clinical_counselling" || topic.category === "safety_netting")
+    && !isConditionalAdvice(text)
     && /^(?:(?:please|so|and) )?(?:are you|have you|do you|did you|does |is there|any |what (?!this does)|how (?:are|do|did|have)|when (?:did|do|was)|which )/.test(normalized)) return false;
   if ((topic.category === "clinical_counselling" || topic.category === "safety_netting")
     && /^(?:(?:can|could|would) you (?:please )?(?:tell me|confirm|explain)|i (?:was |am )?wonder(?:ing)? (?:if|whether)|i would like to (?:ask|check|confirm)|let me (?:check|confirm))\b/.test(normalized)) return false;
@@ -112,7 +119,9 @@ export function classifyWithRules(
     .map((topic) => {
       const eligible = clauses.filter(part => topicEvidenceIsValid({ ...topic, requiredPatternGroups: [] }, part));
       const candidates = [...eligible, eligible.join(". ")].filter(part => topicEvidenceIsValid(topic, part));
-      const explicit = candidates.some(part => hasRuleSignal(topic, part));
+      // A rule, or the closest wording in the phrasing bank, says what the
+      // clause is about; the topic's required facts must still hold.
+      const explicit = candidates.some(part => hasRuleSignal(topic, part) || nearestTopic(conversation.caseId, part)?.topicId === topic.id);
       const score = explicit ? 1 : Math.max(0, ...candidates.map(part => exampleOverlap(topic, part)));
       return { topic, score, explicit, valid: candidates.length > 0 };
     })

@@ -1,3 +1,4 @@
+import { widenCoverage } from "./coverage";
 import { GROUNDED_TOPICS } from "./grounded-replies";
 import type { ConversationCase } from "./types";
 import { STATIC_CASES } from "@/lib/cases/static-cases";
@@ -180,7 +181,7 @@ export function refineConversationCases(cases: Record<string, ConversationCase>)
       // Keep the water requirement; correct the incomplete example instead of
       // giving full credit for only half of this safety-critical instruction.
       topic("water_upright").examples[1] = "Use a full glass of water and do not lie down for 30 minutes after taking doxycycline.";
-      c.doseRules = [{ topicId: "directions", amountPattern: String.raw`\b(?:one|1) tablet`, frequencyPattern: String.raw`\b(?:twice (?:a|per) day|twice daily|every (?:twelve|12) hours|bd|morning and (?:night|evening))\b` }];
+      c.doseRules = [{ topicId: "directions", amountPattern: String.raw`\b(?:one|1) tablet`, frequencyPattern: String.raw`\b(?:twice (?:a|per) day|twice daily|every (?:twelve|12) hours|bd|morning and (?:night|evening)|(?:two|2) times (?:a|per|each|every) day|(?:two|2) times daily)\b` }];
     }
     // Hold cases whose concern is about taking the medicine home today. Before
     // the student has mentioned any hold, the patient asks whether it is ready;
@@ -221,6 +222,8 @@ export function refineConversationCases(cases: Record<string, ConversationCase>)
       delete grounded.repeatReply;
     }
     if (c.caseId === "case-3") c.doseRules = [{ topicId: "directions", amountPattern: String.raw`\b(?:ten|10)\s*ml\b`, frequencyPattern: String.raw`\b(?:three times (?:a|per) day|three times daily|every (?:eight|8) hours|tds)\b` }];
-    if (c.caseId === "case-7") c.doseRules = [{ topicId: "directions_mr", amountPattern: String.raw`\b(?:one|1) (?:20 (?:mg|milligram) )?tablet`, frequencyPattern: String.raw`\b(?:twice (?:a|per) day|twice daily|every (?:twelve|12) hours|bd)\b` }];
+    if (c.caseId === "case-7") c.doseRules = [{ topicId: "directions_mr", amountPattern: String.raw`\b(?:one|1) (?:20 (?:mg|milligram) )?tablet`, frequencyPattern: String.raw`\b(?:twice (?:a|per) day|twice daily|every (?:twelve|12) hours|bd|(?:two|2) times (?:a|per|each|every) day|(?:two|2) times daily)\b` }];
+    // Wordings the phrasing bank showed the rules missing (coverage.ts).
+    widenCoverage(c);
   }
 }

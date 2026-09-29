@@ -77,7 +77,7 @@ const CONDITIONAL = /\b(?:if|after|once|until|before|when|unless|confirm(?:s|ed)
 
 const HOLD_PATTERNS = [
   /\b(?:cannot|can not|unable to|not able to|will not|not going to|not allowed to)\s+(?:be able to\s+)?(?:give|supply|dispense|hand|release|let you (?:have|take))\b/,
-  /\b(?:holding (?:it|this|them|onto|on to|the|your)|hold (?:it|this|them|onto|on to|the|your|off)|on hold|hang on to (?:it|this|them|the|your))\b/,
+  /\b(?:holding (?:it|this|them|onto|on to|the|your|off)|hold (?:it|this|them|onto|on to|the|your|off)|on hold|hang on to (?:it|this|them|the|your)|withhold\w*)\b/,
   /\b(?:too early|too soon|ahead of schedule|not (?:yet )?due|early repeat|a bit early|a little early)\b/,
   /\b(?:is|are) not (?:quite )?(?:ready|available)\b/,
   /\bnot (?:quite |just )?ready\b/,

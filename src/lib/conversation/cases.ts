@@ -11,13 +11,16 @@ import { refineConversationCases } from "./refine-cases";
 // "I'll hang on to this", "let me ring the doctor"), so the wording is shared
 // here rather than re-listed — and re-listed inconsistently — per case.
 const HOLD_SUPPLY_PATTERN =
-  "\\b(?:hold(?:ing)?|holding on|hang on|cannot|can't|can not|won't|will not|unable to|not)\\b.*\\b(?:supply|dispense|give|hand (?:it|this) over|hand over|sell|provide)\\b"
-  + "|\\b(?:hold|keep)\\b.*\\b(?:script|prescription|supply)\\b"
+  "\\b(?:hold(?:ing)?|holding on|hang on|cannot|can't|can not|won't|will not|unable to|not)\\b.*\\b(?:supply|supplying|supplied|dispense|dispensing|dispensed|give|giving|given|hand (?:it|this) over|hand over|handed over|sell|provide)\\b"
+  // "This can't be supplied", "the prescription is being held"
+  + "|\\b(?:being|be|is|was) (?:held|withheld)\\b"
+  + "|\\b(?:hold|holding|keep|keeping)\\b.*\\b(?:script|prescription|supply|patch|medicine)\\b"
   + "|\\bhold (?:on to |onto )?(?:this|it|these|them|your script|your prescription|the script|the prescription)\\b"
+  + "|\\bhold(?:ing)? off\\b|\\bholding (?:it|this|them|onto|on to)\\b|\\bwithhold\\w*\\b"
   + "|\\bbefore (?:i|we) (?:can )?(?:dispense|supply|give|hand)\\b";
 
 const CONTACT_PRESCRIBER_PATTERN =
-  "\\b(?:contact|call|calling|ring|ringing|phone|clarify|clarifying|speak|speaking|spoke|spoken|check|checking|confirm|confirming|verify|verifying|query|querying|review|reviewing|talk|talking)\\w*\\b";
+  "\\b(?:contact|call|calling|ring|ringing|phone|clarify|clarifying|speak|speaking|spoke|spoken|check|checking|confirm|confirming|verify|verifying|query|querying|review|reviewing|talk|talking|discuss|consult|liais)\\w*\\b";
 
 type ReplySpec = string | string[];
 
@@ -1691,7 +1694,8 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
     unsafeAdviceRules: withCommonUnsafe({
       id: "call_unverified_number",
       label: "Unsafe prescription authentication",
-      patterns: ["\\bcall\\b.*\\bnumber\\b.*\\b(?:on|written on)\\b.*\\bprescription\\b"],
+      // "…using the number we have on file, not the one on the prescription" is the safe plan.
+      patterns: ["\\bcall\\b(?!.*\\b(?:on file|our (?:own )?records|directory|verified|already (?:have|know)|genuine|rather than|instead of|not (?:the|that) (?:one|number))\\b).*\\bnumber\\b.*\\b(?:on|written on)\\b.*\\bprescription\\b"],
       detail: "The student proposed authenticating a suspicious S8 prescription through an unverified number on that prescription.",
     }),
   },
