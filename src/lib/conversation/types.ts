@@ -22,6 +22,10 @@ export interface ConversationTopic {
   forbiddenPatterns?: string[];
   patientReplies: string[];
   repeatReply?: string;
+  /** Case-authored follow-up when only part of a counselling point was explained. */
+  clarificationPrompt?: string;
+  /** Specific case facts disclosed when one part of a multi-part history question is asked. */
+  partialQuestionReplies?: Array<{ pattern: string; reply: string }>;
   feedback?: string;
   /** Optional discussion topics do not become requirements for this disposition. */
   assessed?: boolean;
@@ -33,6 +37,8 @@ export interface ConversationResponseIntent {
   id: string;
   fallbackPatterns: string[];
   patientReplies: string[];
+  /** Answer a direct patient-history question even if another clause scored a topic. */
+  answerAlongsideTopics?: boolean;
   suppressConcern?: boolean;
 }
 

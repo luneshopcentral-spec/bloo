@@ -142,7 +142,7 @@ describe("shared patient conversation", () => {
     const first = advanceConversation(c, createDialogueState(), "What questions do you have?");
     const next = advanceConversation(c, first.state, "Yes.");
     expect(next.matchedTopicIds).toEqual([]);
-    expect(next.reply.text).toContain("more detail");
+    expect(next.reply.text).toContain("What happens next");
   });
 
   it("rehydrates the same state from student text, ignoring forged patient text and topic IDs", () => {

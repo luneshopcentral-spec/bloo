@@ -1,17 +1,40 @@
 import type { ConversationCase } from "./types";
 import { STATIC_CASES } from "@/lib/cases/static-cases";
 
+const PATIENT_QUESTION_TOPICS: Record<string, string> = {
+  "case-1": "next_steps", "case-2": "bleeding_safety", "case-3": "storage",
+  "case-4": "next_steps_empathy", "case-5": "next_steps", "case-6": "sun_precautions",
+  "case-7": "respiratory_red_flags", "case-8": "interim_plan", "case-9": "independent_contact",
+  "case-10": "explain_hold", "case-11": "urgent_plan", "case-12": "bleeding_interaction",
+  "case-13": "hypo_advice",
+};
+
+const HOLD_CLARIFICATIONS: Record<string, string> = {
+  "case-5": "Is the concern about my other medicines or kidney results? What happens while you check?",
+  "case-8": "Is there a safety concern with this patch? What will you check with my doctor?",
+  "case-9": "Is there a problem with the prescriber details? How will you verify them?",
+  "case-10": "Is the daily direction the concern? I normally take this once a week.",
+};
+
 /** Authored dialogue fixes, applied once so browser and server use identical cases. */
 export function refineConversationCases(cases: Record<string, ConversationCase>) {
   for (const c of Object.values(cases)) {
     const address = STATIC_CASES.find(item => item.id === c.caseId)?.patientLookup.prescriptionPatient.address;
     if (address) c.responseIntents.push({
       id: "patient_address",
+      answerAlongsideTopics: true,
       fallbackPatterns: [String.raw`\b(?:what|which|confirm|check|tell me|give me|verify)\b.{0,30}\b(?:your|patient'?s)?\s*address\b`, String.raw`\b(?:where do you live|what is your home address)\b`],
       patientReplies: [`My address is ${address.toLowerCase().replace(/\b\w/g, letter => letter.toUpperCase())}.`],
     });
     c.disposition = [1, 4, 5, 8, 9, 10, 11, 12].includes(Number(c.caseId.slice(5)))
       ? "hold_contact_prescriber" : "dispense";
+    c.patientQuestionTopicId = PATIENT_QUESTION_TOPICS[c.caseId];
+    if (c.disposition === "hold_contact_prescriber") c.responseIntents.unshift({
+      id: "hold_readiness",
+      answerAlongsideTopics: true,
+      fallbackPatterns: [String.raw`\b(?:when|how long)\b.{0,40}\b(?:ready|collect|pick up|receive|have it)\b`],
+      patientReplies: ["I'm not sure yet. Will you let me know after you've checked what happens next?"],
+    });
     const topic = (id: string) => c.topics.find(t => t.id === id)!;
     topic("confirm_identity").fallbackPatterns.push(String.raw`\b(?:what (?:you are|you re|you'?re|are you) called|who am i (?:speaking|talking) (?:to|with)|name (?:please|for the prescription))\b`);
     topic("confirm_identity").fallbackPatterns.push(String.raw`\b(?:what should i call you|may i have your name|who is (?:the prescription|the medicine|this) for)\b`);
@@ -44,6 +67,12 @@ export function refineConversationCases(cases: Record<string, ConversationCase>)
       ];
     }
     if (c.caseId === "case-1") {
+      c.responseIntents.unshift({
+        id: "early_repeat_reason",
+        answerAlongsideTopics: true,
+        fallbackPatterns: [String.raw`\bwhy\b.{0,30}\b(?:early|soon|repeat|here again)\b`, String.raw`\b(?:when|how long ago)\b.{0,30}\b(?:last|previously)\b.{0,20}\b(?:collect|pick up|dispens)\w*\b`],
+        patientReplies: ["I collected my last supply four days ago. I came in because I thought this repeat might be ready."],
+      });
       c.handoverGoal = "Explain the early repeat, hold supply while contacting the prescriber, and agree what happens next.";
       c.concernTopicId = "explain_hold";
       c.concernPrompt = "But I have come in for the repeat. Why can't I collect it today?";
@@ -84,6 +113,7 @@ export function refineConversationCases(cases: Record<string, ConversationCase>)
       });
     }
     if (c.caseId === "case-4") {
+      topic("explain_hold").clarificationPrompt = "What do you need to check with my doctor before I can collect it?";
       topic("current_medicines").patientReplies = ["I take sertraline for anxiety. I also sometimes try things to help me sleep.", "Sertraline is my regular prescription medicine, for anxiety."];
       topic("current_medicines").repeatReply = topic("current_medicines").patientReplies[0];
       topic("sedative_alcohol_history").patientReplies = ["My record says I had stopped drinking, but I've started again recently. I have a few drinks most nights when I can't sleep.", "I was in remission, but recently I've been drinking most evenings again. I haven't updated the pharmacy about that yet."];
@@ -92,15 +122,60 @@ export function refineConversationCases(cases: Record<string, ConversationCase>)
       topic("next_steps_empathy").teachBackReply = "You will let me know the outcome after speaking with my doctor.";
     }
     if (c.caseId === "case-2") {
+      c.responseIntents.unshift({
+        id: "ibuprofen_use",
+        answerAlongsideTopics: true,
+        fallbackPatterns: [String.raw`\b(?:do|did|have|are) you\b.{0,35}\b(?:take|taking|use|using|taken|used)\b.{0,15}\b(?:ibuprofen|nurofen)\b`],
+        patientReplies: ["Yes, I sometimes take ibuprofen for headaches. Is it safe with my warfarin?"],
+      });
       topic("interactions").requiredPatternGroups![0].push(String.raw`\b(?:starting|stopping|start|stop) medicine\b`);
       topic("interactions").fallbackPatterns.push(String.raw`\bcheck\b.*\bpharmacist\b.*\b(?:starting|stopping) medicine\b`);
     }
-    if (c.caseId === "case-11") c.responseIntents.push({
+    if (HOLD_CLARIFICATIONS[c.caseId]) topic("explain_hold").clarificationPrompt = HOLD_CLARIFICATIONS[c.caseId];
+    if (c.caseId === "case-9") topic("explain_hold").fallbackPatterns.push(
+      String.raw`\b(?:verify|authenticate|check)\b.*\b(?:prescriber|doctor)\b`
+    );
+    if (c.caseId === "case-10") topic("explain_hold").fallbackPatterns.push(
+      String.raw`\b(?:cannot|hold|not)\b.*\b(?:give|supply|dispense)\b`
+    );
+    if (c.caseId === "case-3") c.responseIntents.find(i => i.id === "diagnosis_question")?.fallbackPatterns.push(
+      String.raw`\bwhat\b.{0,20}\b(?:he|liam)\b.{0,25}\b(?:treated for|taking (?:this|it) for)\b`,
+      String.raw`\bwhy\b.{0,20}\b(?:he|liam)\b.{0,25}\b(?:prescribed|given)\b`
+    );
+    if (c.caseId === "case-3") c.responseIntents.unshift({
+      id: "illness_duration_uncertain",
+      answerAlongsideTopics: true,
+      fallbackPatterns: [String.raw`\bhow long\b.{0,40}\b(?:he|liam)\b.{0,20}\b(?:ill|sick|unwell)\b`],
+      patientReplies: ["I'm not sure of the exact number of days. The doctor has seen him about this infection."],
+    });
+    if (c.caseId === "case-11") c.responseIntents.unshift({
       id: "illness_duration",
+      answerAlongsideTopics: true,
       fallbackPatterns: [String.raw`\bhow long\b.{0,45}\b(?:stomach bug|ill|sick|vomit|diarrh)\w*\b`, String.raw`\bwhen did\b.{0,35}\b(?:stomach bug|vomit|diarrh)\w*\b`],
       patientReplies: ["It started two days ago. I've had vomiting and diarrhoea since then."],
     });
+    if (c.caseId === "case-11") topic("toxicity_assessment").partialQuestionReplies = [
+      { pattern: String.raw`\b(?:ibuprofen|nurofen|naproxen|nsaid)\b`, reply: "Yes, I've taken ibuprofen for the aches during this stomach bug." },
+      { pattern: String.raw`\b(?:tremor|shak|unsteady|balance|confus)\w*\b`, reply: "My hands are shakier than usual and I feel unsteady." },
+      { pattern: String.raw`\b(?:vomit|diarrh|dehydrat|fluid|drink)\w*\b`, reply: "I've had vomiting and diarrhoea and can barely keep fluids down." },
+    ];
+    if (c.caseId === "case-12") c.responseIntents.unshift({
+      id: "previous_apixaban_dose",
+      answerAlongsideTopics: true,
+      fallbackPatterns: [String.raw`\b(?:what|which|how much)\b.{0,30}\b(?:previous|old|last|usual|before)\b.{0,15}\b(?:dose|strength|tablet)\b`, String.raw`\b(?:what|which) dose\b.{0,15}\b(?:before|previously)\b`],
+      patientReplies: ["My previous Eliquis box was 2.5 milligrams, taken twice a day."],
+    });
+    if (c.caseId === "case-12") topic("dose_factors").partialQuestionReplies = [
+      { pattern: String.raw`\b(?:weight|weigh|kilograms?|kg)\b`, reply: "I weigh 54 kilograms." },
+      { pattern: String.raw`\b(?:kidney|renal|creatinine|egfr)\b`, reply: "My kidney function is reduced. The last creatinine number I was given was 168." },
+      { pattern: String.raw`\b(?:atrial fibrillation|af|what.*for|why.*(?:take|on))\b`, reply: "I take Eliquis for atrial fibrillation." },
+    ];
+    if (c.caseId === "case-12") topic("dose_factors").fallbackPatterns.push(
+      String.raw`\bwhy (?:do|are) you (?:take|taking)\b`,
+      String.raw`\bwhat is (?:the |this |your )?(?:eliquis|apixaban|blood thinner) (?:for|treating)\b`
+    );
     if (c.caseId === "case-6") {
+      c.concernPrompt = "Can I take the doxycycline and my antacid together?";
       // Keep the water requirement; correct the incomplete example instead of
       // giving full credit for only half of this safety-critical instruction.
       topic("water_upright").examples[1] = "Use a full glass of water and do not lie down for 30 minutes after taking doxycycline.";

@@ -73,4 +73,10 @@ describe("student pilot wording", () => {
     expect(turns[9].matchedTopicIds).toContain("teach_back");
     expect(turns[9].reply.text).toMatch(/hold|check/i);
   });
+
+  it("does not mistake a supply hold followed by a doctor check for refusing to check", () => {
+    const turn = conversation("case-12", ["I cannot supply the new dose before I check it with your doctor."])[0];
+    expect(turn.matchedTopicIds).toContain("explain_hold");
+    expect(turn.reply.text).toMatch(/doctor|check|dose/i);
+  });
 });

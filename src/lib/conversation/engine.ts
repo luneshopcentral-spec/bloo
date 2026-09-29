@@ -129,10 +129,12 @@ function clarifyPartial(c: ConversationCase, state: DialogueState, id: string): 
     if (c.caseId === "case-12") return missing[0]
       ? "Is the change from 2.5 to 5 milligrams the reason you're checking?"
       : "Will you check this dose with my doctor before I take the stronger tablet?";
+    if (topic.clarificationPrompt) return topic.clarificationPrompt;
     if (missing[0]) return "Why does this repeat need checking before I can collect it?";
     if (missing[1]) return "Does that mean I need to wait before I can collect the medicine?";
     if (missing[2]) return "Who will you check with to sort out the repeat?";
   }
+  if (topic.clarificationPrompt) return topic.clarificationPrompt;
   return "Could you explain the rest of that for me? I want to be clear about the whole plan.";
 }
 
@@ -158,6 +160,14 @@ function fallbackReply(c: ConversationCase, text: string, state: DialogueState, 
   if (previousReply?.includes(line)) line = pickLine(pool, state.fallbackCount + 1);
   state.fallbackCount += 1;
   return line;
+}
+
+function pendingPatientQuestion(c: ConversationCase, state: DialogueState): string | null {
+  const invited = state.addressed.has("invite_questions") && state.pendingTopicId === c.patientQuestionTopicId;
+  const prompt = invited ? c.patientQuestion
+    : state.pendingTopicId === c.concernTopicId ? c.concernPrompt : null;
+  if (!prompt) return null;
+  return state.lastReply?.includes(prompt) ? `Could we come back to my question? ${prompt}` : prompt;
 }
 
 /** One pure transition shared by live dialogue, resumed drafts and server grading. */
@@ -240,6 +250,11 @@ export function advanceConversation(c: ConversationCase, previous: DialogueState
     push(greetingReply(state.studentName, previous.turns, acts.howAreYou));
     state.greeted = true;
   }
+  const question = normalizeLanguage(text);
+  if ((isQuestion(text) || text.trim().endsWith("?"))
+    && /(?:\b(?:is|are)\b.{0,40}\bready\b|\bcan i\b.{0,30}\b(?:give|supply|hand)\b.{0,30}\btoday\b)/.test(question)) {
+    push("I was hoping you could tell me whether it's ready to collect.");
+  }
   // React naturally to being told the medicine is ready. In a hold case the
   // unsafe promise is recorded above; the patient never hints at it.
   if (state.supplyPromised && !previous.supplyPromised) {
@@ -248,7 +263,8 @@ export function advanceConversation(c: ConversationCase, previous: DialogueState
   // A new question or a complete topic takes precedence over an unfinished
   // counselling point from an earlier turn. Keep the fragments for later.
   if (!findings.length && partialIds.length && matchedTopicIds.length === 0 && !isQuestion(text)) {
-    const id = partialIds[0];
+    const id = state.pendingTopicId && partialIds.includes(state.pendingTopicId)
+      ? state.pendingTopicId : partialIds[0];
     state.pendingTopicId = id;
     push(clarifyPartial(c, state, id));
   }
@@ -283,11 +299,23 @@ export function advanceConversation(c: ConversationCase, previous: DialogueState
     if (isMetaStatement(clause)) continue;
     const normalized = normalizeLanguage(clause);
     const historyIntent = isQuestion(clause) ? c.responseIntents.find(i =>
-      ["previous_use", "medical_conditions", "current_symptoms", "diagnosis_question", "patient_address", "illness_duration"].includes(i.id)
-      && i.fallbackPatterns.some(p => new RegExp(p, "i").test(normalized))) : null;
+      i.answerAlongsideTopics && i.fallbackPatterns.some(p => new RegExp(p, "i").test(normalized))) : null;
+    if (c.caseId === "case-11" && historyIntent?.id === "current_symptoms"
+      && partialIds.includes("toxicity_assessment")) continue;
     if (historyIntent && !answeredIntents.has(historyIntent.id)) {
       push(historyIntent.patientReplies[0]);
       answeredIntents.add(historyIntent.id);
+    }
+  }
+  if (isQuestion(text) && !findings.length) {
+    for (const id of partialIds) {
+      const topic = c.topics.find(item => item.id === id);
+      if (topic?.category !== "information_gathering") continue;
+      if (id === "toxicity_assessment" && answeredIntents.has("illness_duration")) continue;
+      if (id === "dose_factors" && answeredIntents.has("previous_apixaban_dose")) continue;
+      for (const answer of topic.partialQuestionReplies ?? []) {
+        if (new RegExp(answer.pattern, "i").test(question)) push(answer.reply);
+      }
     }
   }
   // True only when the patient fell through to the generic "I didn't follow"
@@ -295,7 +323,13 @@ export function advanceConversation(c: ConversationCase, previous: DialogueState
   // Used to capture real student wording that needs a pattern (pilot corpus).
   let unrecognised = false;
   if (responses.length === 0 && state.pendingTopicId && /^(?:yes|no|sure|okay|ok|with a meal)[.! ]*$/.test(normalizeLanguage(text))) {
-    push("Could you explain what you mean for my medicine and what I should do? I need a little more detail.");
+    push(pendingPatientQuestion(c, state) ?? "Could you explain what you mean for my medicine and what I should do? I need a little more detail.");
+  }
+  if (responses.length === 0 && isHoldCase(c) && isQuestion(text)
+    && /\b(?:what happens next|what are the next steps)\b/.test(question)) {
+    push(state.holdSignalled
+      ? "I understand you're checking this, but I'm not sure when I'll hear back. Will you let me know?"
+      : "I'm not sure what happens next. Could you explain the plan to me?");
   }
   if (responses.length === 0 && c.caseId === "case-12" && !acts.holdSignal
     && /\b(?:yes|it is|this is)\b.{0,25}\b(?:higher|stronger) dose\b/.test(normalizeLanguage(text))) {
@@ -319,7 +353,9 @@ export function advanceConversation(c: ConversationCase, previous: DialogueState
       push(intent.patientReplies[state.turns % intent.patientReplies.length]);
     } else {
       unrecognised = !isMetaStatement(text);
-      push(fallbackReply(c, text, state, previous.lastReply));
+      push(!isQuestion(text) && !isMetaStatement(text)
+        ? pendingPatientQuestion(c, state) ?? fallbackReply(c, text, state, previous.lastReply)
+        : fallbackReply(c, text, state, previous.lastReply));
     }
   }
   if (state.pendingTopicId && matchedTopicIds.includes(state.pendingTopicId)) state.pendingTopicId = null;

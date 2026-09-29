@@ -162,6 +162,7 @@ function commonResponseIntents(facts: CommonResponseFacts): ConversationResponse
     },
     {
       id: "previous_use",
+      answerAlongsideTopics: true,
       fallbackPatterns: [
         "\\b(?:taken|used|had|been on)\\b.*\\b(?:before|previously|in the past)\\b",
         "\\bfirst time\\b.*\\b(?:medicine|medication|drug|antibiotic|tablet|capsule)\\b",
@@ -171,9 +172,12 @@ function commonResponseIntents(facts: CommonResponseFacts): ConversationResponse
     },
     {
       id: "medical_conditions",
+      answerAlongsideTopics: true,
       fallbackPatterns: [
         "\\b(?:medical|health) conditions?\\b",
         "\\bother conditions?\\b",
+        "\\bwhat (?:are )?(?:your|his|her|their) conditions?\\b",
+        "\\bwhat conditions? (?:do|does) (?:you|he|she|they) have\\b",
         "\\bmedical history\\b",
         "\\b(?:heart|kidney|renal|liver|breathing) (?:condition|conditions|problem|problems)\\b",
       ],
@@ -181,7 +185,10 @@ function commonResponseIntents(facts: CommonResponseFacts): ConversationResponse
     },
     {
       id: "current_symptoms",
+      answerAlongsideTopics: true,
       fallbackPatterns: [
+        "\\bwhat (?:are (?:your|his|her|their) symptoms?|symptoms? (?:are|have) (?:you|he|she|they) (?:having|experiencing)|symptoms? (?:do|does) (?:you|he|she|they) have)\\b",
+        "\\b(?:have|has) (?:you|he|she|they) (?:had|noticed|experienced) (?:any )?(?:side effects?|symptoms?)\\b",
         // Require a person after the auxiliary verb so counselling statements such as
         // "this medicine is for pain treatment" are not mistaken for symptom questions.
         "\\b(?:do|does|did|are|is|has|have) (?:you|your|he|she|they|the patient)\\b.*\\b(?:chest pain|symptom|symptoms|fever|cough|pain|vomit|vomiting|diarrh(?:ea|oea)|nausea)\\b",
@@ -314,6 +321,8 @@ function closingTopics(teachBackReply: string): ConversationTopic[] {
         "\\bin your own words\\b",
         "\\b(?:show|tell|explain|describe)\\b.*\\bhow\\b.*\\b(?:take|use|give|measure|store|follow)\\b",
         "\\bwhat will you do\\b.*\\b(?:medicine|dose|home|next)\\b",
+        "\\b(?:can|could|would) you (?:please )?repeat (?:the|our|your) plan\\b",
+        "\\b(?:can|could|would) you (?:please )?(?:tell|explain) (?:me )?what you (?:will|would|are going to) do (?:next|at home|when you get home)\\b",
         "\\b(?:can|could|would) you (?:please )?repeat what i (?:told|said|explained) (?:to )?you\\b",
       ],
       patientReplies: [teachBackReply],
@@ -333,6 +342,8 @@ function closingTopics(teachBackReply: string): ConversationTopic[] {
         "\\bwhat questions\\b",
         "\\bany (?:other )?(?:questions|concerns)\\b",
         "\\banything else\\b.*\\b(?:ask|know|concern)\\b",
+        "\\bwhat would you like to (?:know|ask)\\b",
+        "\\banything you (?:want|would like) to ask\\b",
       ],
       patientReplies: ["I do have one more question before I go."],
       repeatReply: "No, I think that covers everything. Thank you.",
@@ -696,6 +707,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
     responseIntents: [
       {
         id: "diagnosis_question",
+        answerAlongsideTopics: true,
         fallbackPatterns: [
           "\\bwhat (?:infection|condition|diagnosis)\\b",
           "\\bwhich infection\\b",

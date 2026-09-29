@@ -176,18 +176,24 @@ describe("conversation configuration", () => {
     expect(repeat.text).toBe(conversation.patientQuestion);
   });
 
-  it("does not reopen a concern that was already answered when closing the handover", () => {
+  it("does not reopen a patient question that was already answered when closing the handover", () => {
     const conversation = getConversationCase("case-6");
     const reply = buildPatientReply(
       conversation,
       ["invite_questions"],
-      new Set([conversation.concernTopicId]),
+      new Set([conversation.concernTopicId, conversation.patientQuestionTopicId!]),
       9,
       true,
       null
     );
 
     expect(reply.text).toBe("No, I think that covers everything. Thank you.");
+  });
+
+  it("still asks a distinct patient question after the earlier concern was answered", () => {
+    const conversation = getConversationCase("case-6");
+    const reply = buildPatientReply(conversation, ["invite_questions"], new Set([conversation.concernTopicId]), 9, true, null);
+    expect(reply.text).toBe(conversation.patientQuestion);
   });
 
   it("recognises teach-back only when the patient is asked to explain the plan", () => {

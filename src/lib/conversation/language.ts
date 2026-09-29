@@ -59,7 +59,7 @@ export function isQuestion(text: string): boolean {
 }
 
 export function declinesCheck(text: string): boolean {
-  return /\b(?:i|we)\s+(?:(?:am|are|will|do|would|can)\s+)?(?:not|never|cannot)\b.{0,35}\b(?:ask|check|confirm|discuss|explain|tell|review)\b|\b(?:skip|avoid|no need to|not going to)\b.{0,28}\b(?:ask|check|confirm|discuss|explain|name|birth|allerg|medicine)\w*|\b(?:checks? (?:were|was) not|not performed|checklist:)\b/.test(normalizeLanguage(text));
+  return /\b(?:i|we)\s+(?:(?:am|are|will|do|would|can)\s+)?(?:not|never|cannot)\s+(?:(?:going to|able to|bother to)\s+)?(?:ask|check|confirm|discuss|explain|tell|review)\b|\b(?:skip|avoid|no need to|not going to)\b.{0,28}\b(?:ask|check|confirm|discuss|explain|name|birth|allerg|medicine)\w*|\b(?:checks? (?:were|was) not|not performed|checklist:)\b/.test(normalizeLanguage(text));
 }
 
 /** Is the specific matched action prohibited, rather than endorsed? */
