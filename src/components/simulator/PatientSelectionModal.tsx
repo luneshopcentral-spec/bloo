@@ -120,7 +120,7 @@ export function PatientSelectionModal({
             autoComplete="off"
           />
           {loading && (
-            <span style={{ fontSize: "10px", color: "#888" }}>Searching…</span>
+            <span style={{ fontSize: "10px", color: "#475569" }}>Searching…</span>
           )}
         </div>
 

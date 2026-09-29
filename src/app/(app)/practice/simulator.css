@@ -2904,9 +2904,9 @@
 .fred-root .fred-prsel-empty,
 .fred-root .fred-prsel-error { padding: 12px; text-align: center; color: #64748b; }
 .fred-root .fred-prsel-error { color: #b91c1c; background: #fef2f2; }
-.fred-root .fred-prsel-footer { display: flex; justify-content: space-between; align-items: center; gap: 10px; border-top: 1px solid #c8d2e0; padding: 6px 8px; background: #eef2f7; color: #64748b; }
+.fred-root .fred-prsel-footer { display: flex; justify-content: space-between; align-items: center; gap: 10px; border-top: 1px solid #c8d2e0; padding: 6px 8px; background: #eef2f7; color: #475569; }
 .fred-root .fred-prsel-footer button { border: 1px solid #fff; padding: 3px 9px; background: #f2f5f9; font: inherit; cursor: pointer; }
-.fred-root .fred-prsel-footer button:disabled { color: #c8d2e0; cursor: not-allowed; }
+.fred-root .fred-prsel-footer button:disabled { color: #475569; cursor: not-allowed; }
 .fred-root .fred-prdtl-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; overflow-y: auto; padding: 14px; background: #f1f5f9; }
 .fred-root .fred-prdtl-field { min-width: 0; }
 .fred-root .fred-prdtl-field label { display: block; margin-bottom: 2px; font-weight: bold; }
@@ -2974,7 +2974,7 @@
 }
 .fred-root .fred-dsel-loading {
   font-size: 10px;
-  color: #c8d2e0;
+  color: #475569;
   font-family: var(--sim-font);
 }
 .fred-root .fred-dsel-col-headers {
@@ -3032,20 +3032,21 @@
 .fred-root .fred-dsel-kind.generic { background: #fef3c7; color: #78350f; }
 .fred-root .fred-dsel-row:hover,
 .fred-root .fred-dsel-row.selected {
-  background: #1d4ed8;
-  color: #fff;
+  background: #dbeafe;
+  color: #0f172a;
 }
+.fred-root .fred-dsel-row.selected { box-shadow: inset 3px 0 #2563eb; }
 .fred-root .fred-dsel-row:hover .fred-dsel-name,
 .fred-root .fred-dsel-row.selected .fred-dsel-name,
 .fred-root .fred-dsel-row:hover .fred-dsel-name small,
-.fred-root .fred-dsel-row.selected .fred-dsel-name small { color: #fff; }
+.fred-root .fred-dsel-row.selected .fred-dsel-name small { color: #0f172a; }
 .fred-root .fred-dsel-letter {
   color: #166534;
   font-weight: bold;
   font-size: 10px;
 }
 .fred-root .fred-dsel-row:hover .fred-dsel-letter,
-.fred-root .fred-dsel-row.selected .fred-dsel-letter { color: #86efac; }
+.fred-root .fred-dsel-row.selected .fred-dsel-letter { color: #166534; }
 .fred-root .fred-dsel-empty {
   padding: 14px;
   color: #64748b;
@@ -3072,7 +3073,7 @@
   padding: 4px 8px;
   border-top: 1px solid #c8d2e0;
   font-size: 10px;
-  color: #64748b;
+  color: #475569;
   font-family: var(--sim-font);
   background: #eef2f7;
   display: flex;
@@ -3093,7 +3094,7 @@
   cursor: pointer;
 }
 .fred-root .fred-dsel-confirm:disabled {
-  color: #c8d2e0;
+  color: #475569;
   cursor: not-allowed;
 }
 
@@ -3882,15 +3883,13 @@
   background: var(--header);
   padding: 8px 12px;
 }
-.fred-root .fred-dsel-row.selected,
 .fred-root .fred-psel-row.selected,
 .fred-root .fred-psel-row:hover {
   background: #dbeafe;
   color: var(--ink);
 }
 .fred-root .fred-psel-row:hover .fred-psel-letter,
-.fred-root .fred-psel-row.selected .fred-psel-letter { color: var(--ok); }
-.fred-root .fred-dsel-row:hover { background: #eff6ff; }
+.fred-root .fred-psel-row.selected .fred-psel-letter { color: #166534; }
 
 /* Scrollbars */
 .fred-root ::-webkit-scrollbar { width: 10px; height: 10px; }
