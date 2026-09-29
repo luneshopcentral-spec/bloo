@@ -112,14 +112,15 @@ export function promisesSupply(text: string): boolean {
 }
 
 /**
- * Read the dialogue acts in one student message. `isOpeningReply` is true for
- * the first student message, which answers the patient's "is it ready yet?".
+ * Read the dialogue acts in one student message. `answersReadyQuestion` is
+ * true when the patient's last line asked whether the medicine is ready (as
+ * their opening line does), so a bare "yes" or "not yet" answers it.
  */
-export function readDialogueActs(text: string, isOpeningReply: boolean): DialogueActs {
+export function readDialogueActs(text: string, answersReadyQuestion: boolean): DialogueActs {
   const n = normalizeLanguage(text);
   const holdSignal = signalsHold(text)
-    || (isOpeningReply && /^(?:(?:sorry|unfortunately|um|oh|well|ah)[, ]+)?(?:no|nope|not yet|not quite|not just yet|not quite yet)\b/.test(n));
-  const openingYes = isOpeningReply
+    || (answersReadyQuestion && /^(?:(?:sorry|unfortunately|um|oh|well|ah)[, ]+)?(?:no|nope|not yet|not quite|not just yet|not quite yet)\b/.test(n));
+  const readyYes = answersReadyQuestion
     && /^(?:yes|yep|yeah|yup|sure|of course|certainly)\b(?:[,.! ]+(?:it is|they are|they're|all ready|ready|here you go|here it is))?[.! ]*$/.test(n);
   return {
     greeting: /^(?:(?:oh|um|uh|so|well|and)[, ]+)?(?:hi|hello|hey|hiya|howdy|g'?day|good (?:morning|afternoon|evening|day))\b/.test(n),
@@ -132,7 +133,7 @@ export function readDialogueActs(text: string, isOpeningReply: boolean): Dialogu
     thanksOnly: /^(?:thanks|thank you|cheers|ta)(?: (?:so much|very much|heaps|for (?:that|letting me know|telling me|sharing that)))?[.! ]*$/.test(n),
     okayOnly: /^(?:okay|ok|alright|all right|i see|understood|right|got it|sure|great|good|perfect|no worries|no problem|lovely|awesome|cool)[.! ]*$/.test(n),
     sympathy: /^(?:oh[, ]+)?(?:i am )?sorry to hear (?:that|about that)[.! ]*$|^that (?:must be|sounds) (?:hard|difficult|tough|rough|frustrating)\b/.test(n),
-    supplyStatement: !holdSignal && (openingYes || promisesSupply(text)),
+    supplyStatement: !holdSignal && (readyYes || promisesSupply(text)),
     holdSignal,
   };
 }
@@ -164,6 +165,8 @@ export const PATIENT_LINES = {
   // The student said it isn't ready / is on hold, without explaining why yet.
   holdReactionHold: ["Oh — is there a problem with it?", "Oh, okay. Is something wrong?", "Oh, why's that?"],
   holdReactionDispense: ["Oh, okay. Will it be long?", "No worries. How long will it be?"],
+  // Told it was ready, then that it isn't: [0] alongside an explanation, [1] on its own.
+  readyRetracted: ["Oh — I thought you said it was ready.", "Oh — I thought you said it was ready. Is something wrong with it?"],
   questionFallback: [
     "Sorry, I'm not sure what you're asking. Could you put that another way?",
     "I'm not quite sure what you mean — what would you like to know?",

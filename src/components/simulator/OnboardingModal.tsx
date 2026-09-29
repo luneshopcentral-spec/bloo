@@ -27,7 +27,7 @@ const STEPS = [
   {
     title: "Directions, quantity, repeats and labels",
     detail:
-      "Transcribe the directions (abbreviations like tds are accepted), quantity and repeats for each item, then add the applicable warning labels. The label preview shows what the patient would receive.",
+      "Transcribe the directions — dispensing shorthand such as 1c tds pc x 7/7 is expanded into plain English — plus the quantity and repeats for each item, then add the applicable warning labels. The label preview shows what the patient would receive.",
   },
   {
     title: "Make the clinical decision and dispense",

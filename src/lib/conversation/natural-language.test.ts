@@ -27,10 +27,21 @@ describe("natural student wording", () => {
   });
 
   it("keeps an unanswered patient concern when questions are invited again", () => {
+    // Nothing has been said about a hold yet, so the patient's question is whether it's ready.
     const first = advanceConversation(c, createDialogueState(), "Do you have any questions?");
     const second = advanceConversation(c, first.state, "Do you have any questions?");
+    expect(first.reply.text).toMatch(/ready for me to take home/i);
     expect(second.reply.text).toBe(first.reply.text);
-    expect(second.state.pendingTopicId).toBe(c.patientQuestionTopicId ?? c.concernTopicId);
+    expect(second.state.pendingTopicId).toBe(c.concernTopicId);
+  });
+
+  it("keeps the unanswered follow-up question once the hold has been explained", () => {
+    const held = advanceConversation(c, createDialogueState(), "This repeat is too early, so I'm holding it until I've spoken to your doctor.");
+    const first = advanceConversation(c, held.state, "Do you have any questions?");
+    const second = advanceConversation(c, first.state, "Do you have any questions?");
+    expect(first.reply.text).toContain("What happens next");
+    expect(second.reply.text).toBe(first.reply.text);
+    expect(second.state.pendingTopicId).toBe(c.patientQuestionTopicId);
   });
 
   it("keeps history context over an acknowledgement", () => {

@@ -5,6 +5,7 @@ import { expandAbbrevs } from "@/lib/scoring/abbreviations";
 import type { FormState } from "@/components/simulator/state";
 import { ALL_WARNINGS } from "@/lib/cases/static-cases";
 import { assemblyItems, packOptionsFor } from "@/lib/assembly/all-cases";
+import { currentPackId, type ShelfProduct } from "@/lib/assembly/packs";
 import { MedicinesReferenceDesk } from "@/components/simulator/MedicinesReferenceDesk";
 import type { DispenseDecision, PracticeCase } from "@/lib/types/case";
 import {
@@ -25,6 +26,8 @@ import {
 
 interface AssemblyStageProps {
   caseData: PracticeCase;
+  /** The product dispensed for each item; its carton and lookalikes form the shelf. */
+  dispensedProducts: (ShelfProduct | null)[];
   formState: FormState;
   patientName: string;
   decision: DispenseDecision | null;
@@ -38,6 +41,7 @@ interface AssemblyStageProps {
 interface AssemblyItemBenchProps {
   caseData: PracticeCase;
   itemIndex: number;
+  dispensed: ShelfProduct | null;
   formState: FormState;
   patientName: string;
   decision: DispenseDecision | null;
@@ -177,7 +181,7 @@ function stickerPixelSize(kind: StickerKind): { width: number; height: number } 
 }
 
 export function AssemblyStage({
-  caseData, formState, patientName, decision, initialWarnings,
+  caseData, dispensedProducts, formState, patientName, decision, initialWarnings,
   onBack, initialAssembly, onDraftChange, onComplete,
 }: AssemblyStageProps) {
   const [activeItem, setActiveItem] = useState(0);
@@ -199,6 +203,7 @@ export function AssemblyStage({
       key={`${caseData.id}-${activeItem}`}
       caseData={caseData}
       itemIndex={activeItem}
+      dispensed={dispensedProducts[activeItem] ?? null}
       formState={formState}
       patientName={patientName}
       decision={decision}
@@ -220,6 +225,7 @@ export function AssemblyStage({
 function AssemblyItemBench({
   caseData,
   itemIndex,
+  dispensed,
   formState,
   patientName,
   decision,
@@ -229,14 +235,21 @@ function AssemblyItemBench({
   onDraftChange,
   onComplete,
 }: AssemblyItemBenchProps) {
-  const [selectedPackId, setSelectedPackId] = useState<string | null>(initialAssembly?.packId || null);
+  const packOptions = useMemo(() => packOptionsFor(caseData, itemIndex, dispensed), [caseData, itemIndex, dispensed]);
+  // A saved bench whose carton is no longer on this shelf — the student went
+  // back and dispensed a different product — starts again.
+  const [draft] = useState(() => {
+    const packId = initialAssembly?.packId ? currentPackId(initialAssembly.packId) : "";
+    return packId && packOptions.some((pack) => pack.id === packId) ? { ...initialAssembly!, packId } : null;
+  });
+  const [selectedPackId, setSelectedPackId] = useState<string | null>(draft?.packId || null);
   const [activeFace, setActiveFace] = useState<PackFace>("front");
   const [rotation, setRotation] = useState({ x: 0, y: 0 });
   const [isTurning, setIsTurning] = useState(false);
   const turnTimer = useRef<number | null>(null);
   const [armedSticker, setArmedSticker] = useState<StickerToken | null>(null);
-  const [mainLabelPlacement, setMainLabelPlacement] = useState<StickerPlacement | null>(initialAssembly?.mainLabelPlacement ?? null);
-  const [warningPlacements, setWarningPlacements] = useState<Record<string, StickerPlacement>>(() => initialAssembly?.warningPlacements ?? {});
+  const [mainLabelPlacement, setMainLabelPlacement] = useState<StickerPlacement | null>(draft?.mainLabelPlacement ?? null);
+  const [warningPlacements, setWarningPlacements] = useState<Record<string, StickerPlacement>>(() => draft?.warningPlacements ?? {});
   const [dragToken, setDragToken] = useState<StickerToken | null>(null);
   const [ghost, setGhost] = useState<{ x: number; y: number } | null>(null);
 
@@ -246,7 +259,6 @@ function AssemblyItemBench({
   const dragState = useRef<{ token: StickerToken; startX: number; startY: number; moved: boolean } | null>(null);
   const suppressClick = useRef(false);
 
-  const packOptions = useMemo(() => packOptionsFor(caseData, itemIndex), [caseData, itemIndex]);
   const selectedPack = packOptions.find((pack) => pack.id === selectedPackId) ?? null;
   const item = formState.items[itemIndex];
   const placedWarningCount = Object.keys(warningPlacements).length;

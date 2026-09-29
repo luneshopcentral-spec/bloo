@@ -3,8 +3,10 @@ import type {
   ConversationResponseIntent,
   PatientAudioSegment,
 } from "./types";
+import { groundedLine } from "./grounding";
 import {
   concernAudioSegment,
+  dynamicAudioSegment,
   noFurtherQuestionsAudioSegment,
   patientQuestionAudioSegment,
   responseIntentAudioSegment,
@@ -21,11 +23,43 @@ export interface PatientReplyResult {
   showConcern: boolean;
 }
 
+/** What the patient asks when the student invites questions. */
+export type PatientInvitation =
+  | { kind: "question" }
+  | { kind: "concern"; text: string }
+  | { kind: "none" };
+
+export interface PatientReplyContext {
+  /** The student's words for each topic matched in this turn. */
+  heard?: Record<string, string[]>;
+  /** Everything the student has said for each topic, for teach-back. */
+  evidence?: Record<string, string[]>;
+  invitation?: PatientInvitation;
+}
+
+/**
+ * A question that assumes supply is on hold ("What happens next?") is only
+ * asked once the student has said so. Before that the patient asks whether
+ * the medicine is ready; told (wrongly) that it is, they have nothing to ask.
+ */
+export function patientInvitation(
+  conversation: ConversationCase,
+  view: { supplyPromised: boolean; holdSignalled: boolean }
+): PatientInvitation {
+  if (!conversation.patientQuestionAssumesHold) return { kind: "question" };
+  if (view.supplyPromised) return { kind: "none" };
+  if (!view.holdSignalled) {
+    return { kind: "concern", text: conversation.concernPromptUninformed ?? conversation.concernPrompt };
+  }
+  return { kind: "question" };
+}
+
 // The teach-back reply must only repeat instructions the student has actually
 // given; a canned full-plan recital would hand the remaining answers to the student.
 function buildTeachBackSegments(
   conversation: ConversationCase,
-  addressedTopicIds: Set<string>
+  addressedTopicIds: Set<string>,
+  evidence: Record<string, string[]> | undefined
 ): PatientAudioSegment[] {
   const covered = conversation.topics.filter(
     (topic) =>
@@ -35,9 +69,15 @@ function buildTeachBackSegments(
   if (covered.length === 0) {
     return [teachBackNotReadyAudioSegment()];
   }
-  return covered.map((topic) => topic.teachBackReply
-    ? topicTeachBackAudioSegment(topic)
-    : topicAudioSegment(topic, 0));
+  const segments = covered.flatMap((topic) => {
+    const words = evidence?.[topic.id];
+    if (topic.grounded && words) {
+      const line = groundedLine(topic.grounded, words, false);
+      return line ? [dynamicAudioSegment(line)] : [];
+    }
+    return [topic.teachBackReply ? topicTeachBackAudioSegment(topic) : topicAudioSegment(topic, 0)];
+  });
+  return segments.length ? segments : [dynamicAudioSegment("I'll follow what you've explained.")];
 }
 
 export function buildPatientReply(
@@ -46,7 +86,8 @@ export function buildPatientReply(
   previouslyAddressed: Set<string>,
   studentTurns: number,
   concernShown: boolean,
-  responseIntent: ConversationResponseIntent | null
+  responseIntent: ConversationResponseIntent | null,
+  context: PatientReplyContext = {}
 ): PatientReplyResult {
   const topicById = new Map(conversation.topics.map((topic) => [topic.id, topic]));
   const selectedIds = matchedTopicIds;
@@ -60,17 +101,21 @@ export function buildPatientReply(
         if (selectedId === "teach_back") {
           const addressed = new Set([...previouslyAddressed, ...matchedTopicIds]);
           addressed.delete("teach_back");
-          return buildTeachBackSegments(conversation, addressed);
+          return buildTeachBackSegments(conversation, addressed, context.evidence);
         }
         if (selectedId === "invite_questions") {
+          const questionTopicId = conversation.patientQuestionTopicId ?? conversation.concernTopicId;
           const concernAlreadyResolved =
-            previouslyAddressed.has(conversation.patientQuestionTopicId ?? conversation.concernTopicId) ||
-            matchedTopicIds.includes(conversation.patientQuestionTopicId ?? conversation.concernTopicId);
-          return [
-            concernAlreadyResolved
-              ? noFurtherQuestionsAudioSegment()
-              : patientQuestionAudioSegment(conversation),
-          ];
+            previouslyAddressed.has(questionTopicId) || matchedTopicIds.includes(questionTopicId);
+          const invitation = context.invitation ?? { kind: "question" };
+          if (concernAlreadyResolved || invitation.kind === "none") return [noFurtherQuestionsAudioSegment()];
+          if (invitation.kind === "concern") return [dynamicAudioSegment(invitation.text)];
+          return [patientQuestionAudioSegment(conversation)];
+        }
+        const heard = context.heard?.[selectedId];
+        if (selectedTopic.grounded && heard) {
+          const line = groundedLine(selectedTopic.grounded, heard, true);
+          if (line) return [dynamicAudioSegment(line)];
         }
         if (previouslyAddressed.has(selectedId) && selectedTopic.repeatReply) {
           return [topicRepeatAudioSegment(selectedTopic)];

@@ -24,9 +24,13 @@ Copy `.env.example` to `.env.local`. Configure the Supabase project URL, public 
 
 ### Database
 
-- **New database:** apply every SQL file in `supabase/migrations/` in filename order, once. Then seed the patient and medicine directories with the commands below.
-- **Existing database with 0001–0005:** back up first, then apply `supabase/setup_release_hardening.sql` as one transaction in the Supabase SQL Editor. This bundle includes the later migrations and can be reapplied.
-- The former duplicate `0011_remove_anon_directory_access.sql` is now `0015_remove_anon_directory_access.sql`. Check the remote migration ledger before using `supabase db push`; the manual upgrade bundle does not reconcile that ledger.
+Migrations are applied automatically. Add a new file to `supabase/migrations/` named with the next number (for example `0021_describe_change.sql`) and push it to `main`. The **Apply database migrations** GitHub Action tests the whole chain on an empty database, then applies only the new files to Supabase. Each runs in one transaction with its entry in the migration ledger (`supabase_migrations.schema_migrations`, the same one the Supabase CLI uses). A failed migration leaves nothing half-applied, and an applied one never runs again.
+
+- **One-time setup:** add a repository secret named `SUPABASE_DB_URL` (GitHub → Settings → Secrets and variables → Actions). Its value is the **Session pooler** connection string from the Supabase dashboard (**Connect**), with the database password filled in. The direct connection is IPv6-only and does not work from GitHub Actions. To apply migrations immediately, run the workflow from the Actions tab.
+- Migrations 0001–0020 were applied by hand before automation. `supabase/migration-baseline.json` records them as applied instead of running them again.
+- Write migrations to run inside a transaction: no `CREATE INDEX CONCURRENTLY` or other statements that refuse one. A file's own top-level `begin;`/`commit;` lines are fine; the runner supplies the transaction.
+- To apply from your own machine instead: `SUPABASE_DB_URL=… npm run db:migrate` (needs `psql`; add `-- --dry-run` to preview).
+- **New database:** the same command applies every migration. Set `MIGRATION_BASELINE=none` so none are treated as hand-applied, then seed the patient and medicine directories with the commands below.
 - Confirm `select public.launch_schema_ready();` returns `true` as an administrator. The application health route must return HTTP 200 after deployment.
 
 ```sh

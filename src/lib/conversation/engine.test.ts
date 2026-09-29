@@ -139,10 +139,20 @@ describe("shared patient conversation", () => {
 
   it("asks for clarification instead of treating a bare yes as completed advice", () => {
     const c = getConversationCase("case-1");
-    const first = advanceConversation(c, createDialogueState(), "What questions do you have?");
+    const held = advanceConversation(c, createDialogueState(), "This repeat is too early, so I'm holding it until I've spoken to your doctor.");
+    const first = advanceConversation(c, held.state, "What questions do you have?");
     const next = advanceConversation(c, first.state, "Yes.");
     expect(next.matchedTopicIds).toEqual([]);
     expect(next.reply.text).toContain("What happens next");
+  });
+
+  it("hears a bare yes to 'is my repeat ready?' as saying it's ready", () => {
+    const c = getConversationCase("case-1");
+    const first = advanceConversation(c, createDialogueState(), "What questions do you have?");
+    expect(first.reply.text).toMatch(/ready for me to take home/i);
+    const next = advanceConversation(c, first.state, "Yes.");
+    expect(next.state.unsafeAdvice.map(f => f.id)).toContain("supply_before_clarification");
+    expect(next.reply.text).toMatch(/thank/i);
   });
 
   it("rehydrates the same state from student text, ignoring forged patient text and topic IDs", () => {

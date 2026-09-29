@@ -940,6 +940,7 @@ export default function PracticePage() {
           <AssemblyStage
             key={`${current.id}-${attemptResetCounter}`}
             caseData={current}
+            dispensedProducts={selectedDrugs}
             formState={formState}
             patientName={patientName}
             decision={clinicalDecision}

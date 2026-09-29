@@ -1,0 +1,49 @@
+name: Apply database migrations
+# New files in supabase/migrations/ reach the Supabase database automatically
+# once they are on main. The chain is first tested on an empty database; only
+# then are the new migrations applied, each in its own transaction.
+on:
+  push:
+    branches: [main]
+    paths: ["supabase/migrations/**"]
+  # Also runnable from the Actions tab, e.g. to confirm the secret works.
+  workflow_dispatch:
+concurrency:
+  group: supabase-production-migrations
+  cancel-in-progress: false
+permissions:
+  contents: read
+jobs:
+  test:
+    name: Test the migration chain on an empty database
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: local-test-only
+          POSTGRES_DB: launch_audit
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 10s
+          --health-timeout 5s --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/test-database.mjs
+        env:
+          TEST_DATABASE_URL: postgresql://postgres:local-test-only@localhost:5432/launch_audit
+  migrate:
+    name: Apply new migrations to Supabase
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/migrate-remote.mjs
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}

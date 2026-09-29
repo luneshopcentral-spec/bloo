@@ -846,26 +846,3 @@ export const ALL_WARNINGS: WarningLabel[] = [
   { lbl: "U", sig: "FLS", text: "Maintain normal fluid and salt intake", aliases: ["keep fluid and salt intake stable", "drink normally", "avoid dehydration"] },
   { lbl: "V", sig: "BLD", text: "Report unusual bleeding urgently", aliases: ["report bleeding", "seek help for bleeding", "unusual bleeding"] },
 ];
-
-export const ABBREVS: Record<string, string> = {
-  od:    "once daily",
-  bd:    "twice daily",
-  tds:   "three times daily",
-  qid:   "four times daily",
-  mane:  "in the morning",
-  nocte: "at night",
-  prn:   "as needed",
-  sos:   "when required",
-  pc:    "after meals",
-  ac:    "before meals",
-  cc:    "with food",
-  stat:  "immediately",
-  cap:   "capsule",
-  caps:  "capsules",
-  tab:   "tablet",
-  tabs:  "tablets",
-  susp:  "suspension",
-  ml:    "mL",
-  mcg:   "micrograms",
-  mg:    "milligrams",
-};

@@ -50,6 +50,15 @@ export function patientQuestionAudioSegment(
   return { cueId: "patient-question-01", text: normalisePatientUtterance(conversation.patientQuestion) };
 }
 
+/**
+ * Speech composed at runtime from what was said. It deliberately has no
+ * recorded cue, so it can never play an older, different fact; the voice
+ * fallback reads it instead.
+ */
+export function dynamicAudioSegment(text: string): PatientAudioSegment {
+  return { cueId: "dialogue-dynamic", text };
+}
+
 export function noFurtherQuestionsAudioSegment(): PatientAudioSegment {
   return {
     cueId: "no-further-questions-01",

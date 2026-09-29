@@ -39,3 +39,41 @@ jobs:
       - run: node scripts/test-database.mjs
         env:
           TEST_DATABASE_URL: postgresql://postgres:local-test-only@localhost:5432/launch_audit
+      # Like production: every migration applied by hand, no ledger yet. The
+      # runner must record them all without running any again.
+      - name: Migration runner adopts a hand-migrated database
+        run: node scripts/migrate-remote.mjs --expect-applied=0
+        env:
+          SUPABASE_DB_URL: postgresql://postgres:local-test-only@localhost:5432/launch_audit
+          MIGRATION_BASELINE: latest
+  migration-runner:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: local-test-only
+          POSTGRES_DB: runner_audit
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 10s
+          --health-timeout 5s --health-retries 5
+    env:
+      SUPABASE_DB_URL: postgresql://postgres:local-test-only@localhost:5432/runner_audit
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f supabase/tests/bootstrap.sql
+      # The runner applies the whole chain itself, then finds nothing left to do,
+      # and the access boundaries it produced pass the same security tests.
+      - run: node scripts/migrate-remote.mjs
+        env:
+          MIGRATION_BASELINE: none
+      - run: node scripts/migrate-remote.mjs --expect-applied=0
+        env:
+          MIGRATION_BASELINE: none
+      - run: |
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f supabase/tests/security.sql
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f supabase/tests/admin.sql

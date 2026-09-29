@@ -27,10 +27,10 @@ begin
  begin perform public.redeem_access_code_for_user('TWO-HOURS',second_user); raise exception 'capacity exceeded'; exception when others then if sqlerrm<>'code fully redeemed' then raise; end if; end;
  perform public.admin_manage_access(operator_id,jsonb_build_object('action','grant_comp','userId',learner,'minutes',14400));
  perform public.admin_manage_access(operator_id,jsonb_build_object('action','grant_comp','userId',learner,'minutes',60));
- if (select comp_access_until from public.profiles where id=learner)<>now()+interval '10 days' then raise exception 'Short manual grant shortened access'; end if;
+ if (select comp_access_until from public.profiles where id=learner)<>now()+make_interval(mins=>14400) then raise exception 'Short manual grant shortened access'; end if;
  perform public.admin_manage_access(operator_id,'{"action":"create","code":"LONGER-EXISTING","grantsMinutes":60}'::jsonb);
  until_at:=public.redeem_access_code_for_user('LONGER-EXISTING',learner);
- if until_at<>now()+interval '10 days' then raise exception 'Redemption returned wrong effective expiry'; end if;
+ if until_at<>now()+make_interval(mins=>14400) then raise exception 'Redemption returned wrong effective expiry'; end if;
  perform public.admin_manage_access(operator_id,'{"action":"create","code":"EMAIL-ONLY","grantsMinutes":1440,"assignedEmail":"learner@example.invalid"}'::jsonb);
  begin perform public.redeem_access_code_for_user('EMAIL-ONLY',second_user); raise exception 'Email restriction bypassed'; exception when others then if sqlerrm<>'invalid code' then raise; end if; end;
  perform public.admin_manage_access(operator_id,'{"action":"set_active","code":"EMAIL-ONLY","active":false}'::jsonb);

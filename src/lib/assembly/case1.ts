@@ -35,55 +35,8 @@ export interface AssemblySubmission {
   items: Case1AssemblySubmission[];
 }
 
-export const CASE1_CORRECT_PACK_ID = "erythromycin-mayne-250-cap-25";
-
-export const CASE1_PACK_OPTIONS: MedicinePackOption[] = [
-  {
-    id: CASE1_CORRECT_PACK_ID,
-    brand: "Mayne Pharma",
-    generic: "Erythromycin",
-    strength: "250 mg",
-    form: "Capsules",
-    packSize: "25 capsules",
-    colour: "blue",
-  },
-  {
-    id: "erythromycin-mayne-500-tab-20",
-    brand: "Mayne Pharma",
-    generic: "Erythromycin",
-    strength: "500 mg",
-    form: "Tablets",
-    packSize: "20 tablets",
-    colour: "coral",
-  },
-  {
-    id: "erythromycin-generic-250-cap-25",
-    brand: "Generic Health",
-    generic: "Erythromycin",
-    strength: "250 mg",
-    form: "Capsules",
-    packSize: "25 capsules",
-    colour: "green",
-  },
-  {
-    id: "amoxicillin-250-cap-20",
-    brand: "Mayne Pharma",
-    generic: "Amoxicillin",
-    strength: "250 mg",
-    form: "Capsules",
-    packSize: "20 capsules",
-    colour: "purple",
-  },
-  {
-    id: "erythromycin-250-suspension-100",
-    brand: "Erythrocare",
-    generic: "Erythromycin",
-    strength: "250 mg / 5 mL",
-    form: "Oral liquid",
-    packSize: "100 mL",
-    colour: "amber",
-  },
-];
+/** The prescribed Case 1 product, as its directory id. */
+export const CASE1_CORRECT_PACK_ID = "erythromycin-mayne-cap-250";
 
 /**
  * The prototype treats the broad back and right panels as clear label panels.
@@ -242,13 +195,6 @@ export function evaluateStickerPlacement(
   }
 
   return { safe: true };
-}
-
-export function addCase1AssemblyChecks(
-  result: DispenseResult,
-  submission: Case1AssemblySubmission
-): DispenseResult {
-  return addPackAssemblyChecks(result, submission, CASE1_CORRECT_PACK_ID, CASE1_PACK_OPTIONS);
 }
 
 export function addPackAssemblyChecks(

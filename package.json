@@ -12,7 +12,8 @@
     "voice:manifest": "tsx scripts/patient-audio-manifest.mts",
     "voice:check": "tsx scripts/patient-audio-manifest.mts --check",
     "seed:patients": "tsx --env-file=.env.local supabase/seeds/seed-patients.ts",
-    "seed:drugs": "tsx --env-file=.env.local supabase/seeds/seed-drugs.ts"
+    "seed:drugs": "tsx --env-file=.env.local supabase/seeds/seed-drugs.ts",
+    "db:migrate": "node scripts/migrate-remote.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",

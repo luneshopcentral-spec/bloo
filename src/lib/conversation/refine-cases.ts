@@ -1,3 +1,4 @@
+import { GROUNDED_TOPICS } from "./grounded-replies";
 import type { ConversationCase } from "./types";
 import { STATIC_CASES } from "@/lib/cases/static-cases";
 
@@ -196,6 +197,28 @@ export function refineConversationCases(cases: Record<string, ConversationCase>)
       c.concernAboutCollecting = true;
       const uninformed = collectingConcerns[c.caseId];
       if (uninformed) c.concernPromptUninformed = uninformed;
+    }
+    // These questions only make sense once supply is on hold ("while you contact
+    // the doctor"), so they are never asked before the hold or after "it's ready".
+    if (["case-1", "case-4", "case-5", "case-8", "case-9", "case-10"].includes(c.caseId)) c.patientQuestionAssumesHold = true;
+    if (c.caseId === "case-1") {
+      c.rephrasings = {
+        "What happens next, and how will I hear back?": "I mean — what happens with my repeat now? Will you let me know once you've spoken to the doctor?",
+        "Why can't I collect it today?": "I mean — I came in specially for this repeat. What's stopping me from taking it home today?",
+        "So is my repeat ready for me to take home today?": "I mean — can I take my repeat home with me today?",
+      };
+    }
+    if (c.caseId === "case-3") {
+      // "The full ten days" was said back even when only "finish the course" was heard.
+      topic("complete_course").patientReplies[1] = "Okay, we’ll keep going until it’s all finished, even if he seems better.";
+    }
+    // Counselling given in parts is repeated back point by point — only the
+    // points the student made. The authored lines stated the whole model answer.
+    for (const [id, spec] of Object.entries(GROUNDED_TOPICS[c.caseId] ?? {})) {
+      const grounded = topic(id);
+      grounded.grounded = spec.grounded;
+      grounded.patientReplies = spec.neutral;
+      delete grounded.repeatReply;
     }
     if (c.caseId === "case-3") c.doseRules = [{ topicId: "directions", amountPattern: String.raw`\b(?:ten|10)\s*ml\b`, frequencyPattern: String.raw`\b(?:three times (?:a|per) day|three times daily|every (?:eight|8) hours|tds)\b` }];
     if (c.caseId === "case-7") c.doseRules = [{ topicId: "directions_mr", amountPattern: String.raw`\b(?:one|1) (?:20 (?:mg|milligram) )?tablet`, frequencyPattern: String.raw`\b(?:twice (?:a|per) day|twice daily|every (?:twelve|12) hours|bd)\b` }];

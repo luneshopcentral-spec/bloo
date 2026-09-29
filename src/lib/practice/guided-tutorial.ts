@@ -2,6 +2,7 @@ import { getConversationCase } from "@/lib/conversation/cases";
 import { replayConversation } from "@/lib/conversation/engine";
 import type { ConversationMessage } from "@/lib/conversation/types";
 import { CASE1_CORRECT_PACK_ID, evaluateStickerPlacement, stickerOverlapIssues, type Case1AssemblySubmission } from "@/lib/assembly/case1";
+import { currentPackId } from "@/lib/assembly/packs";
 
 export const GUIDED_TUTORIAL_STEPS = [
   "welcome", "prescription", "patient", "prescriber", "medicine", "label-entry", "select-warnings",
@@ -16,7 +17,7 @@ export function isGuidedTutorialStep(value: unknown): value is GuidedTutorialSte
 
 /** Recheck the current bench, including edits to previously completed steps. */
 export function guidedAssemblyStep(assembly: Case1AssemblySubmission | null, expectedWarnings: string[]): GuidedTutorialStep {
-  if (assembly?.packId !== CASE1_CORRECT_PACK_ID) return "pack";
+  if (!assembly || currentPackId(assembly.packId) !== CASE1_CORRECT_PACK_ID) return "pack";
   if (!evaluateStickerPlacement(assembly.mainLabelPlacement, "main").safe) return "main-label";
   const placedWarnings = Object.keys(assembly.warningPlacements);
   const warningsReady = placedWarnings.length === expectedWarnings.length

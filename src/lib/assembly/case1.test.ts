@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
-import {
-  addCase1AssemblyChecks,
-  CASE1_CORRECT_PACK_ID,
-  evaluateStickerPlacement,
-} from "./case1";
+import { addAssemblyChecks } from "./all-cases";
+import { CASE1_CORRECT_PACK_ID, evaluateStickerPlacement, type Case1AssemblySubmission } from "./case1";
+import { STATIC_CASES } from "@/lib/cases/static-cases";
 import type { DispenseResult } from "@/lib/scoring/types";
+
+const CASE1 = STATIC_CASES.find((c) => c.id === "case-1")!;
+const addCase1AssemblyChecks = (result: DispenseResult, submission: Case1AssemblySubmission) =>
+  addAssemblyChecks(result, CASE1, submission);
 
 const BASE_RESULT: DispenseResult = {
   checks: [],

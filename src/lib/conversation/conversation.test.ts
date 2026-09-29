@@ -321,11 +321,25 @@ describe("reported test-run conversation regressions", () => {
       new Set(["secure_storage"]),
       6,
       true,
-      null
+      null,
+      { evidence: { secure_storage: ["Keep them locked away from the grandchildren."] } }
     );
     expect(storageOnly.text.toLowerCase()).toContain("locked away");
     expect(storageOnly.text).not.toContain("12 hours");
     expect(storageOnly.text.toLowerCase()).not.toContain("alcohol");
+
+    // Only the storage point the student made — not the rest of the model answer.
+    const sharingOnly = buildPatientReply(
+      conversation,
+      ["teach_back"],
+      new Set(["secure_storage"]),
+      6,
+      true,
+      null,
+      { evidence: { secure_storage: ["Never share these tablets with anyone."] } }
+    );
+    expect(sharingOnly.text).toMatch(/won't share them/i);
+    expect(sharingOnly.text.toLowerCase()).not.toContain("locked");
   });
 });
 

@@ -1,0 +1,4 @@
+{
+  "note": "Migrations up to and including appliedThrough were applied by hand in the Supabase SQL editor before automatic migrations were set up (confirmed against the live database on 2026-09-29). scripts/migrate-remote.mjs records them as applied instead of running them again; every later migration is applied automatically.",
+  "appliedThrough": "0020"
+}

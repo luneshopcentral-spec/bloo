@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { STATIC_CASES } from "@/lib/cases/static-cases";
 import type { DispenseResult } from "@/lib/scoring/types";
+import { DRUG_LIBRARY } from "../../../supabase/seeds/drug-library";
 import { addAssemblyChecks, correctPackIdFor, packOptionsFor } from "./all-cases";
 import type { Case1AssemblySubmission } from "./case1";
+import { allPacks } from "./packs";
 
 const BASE: DispenseResult = {
   checks: [], pointsEarned: 0, pointsTotal: 0, passThreshold: 0,
@@ -51,6 +53,37 @@ describe("pack assembly across the case library", () => {
     const result = addAssemblyChecks(BASE, c, { items: [omitted] }, [selected]);
     expect(result.checks.find((check) => check.category === "label_placement")?.detail).toContain("Selected warning labels are missing");
     expect(result.criticalFailures).toContain("label_placement");
+  });
+
+  it("builds the shelf from the product the student dispensed, not the case answer", () => {
+    const case1 = STATIC_CASES.find((item) => item.id === "case-1")!;
+    const case2 = STATIC_CASES.find((item) => item.id === "case-2")!;
+    const wrongProduct = DRUG_LIBRARY.find((drug) => drug.generic_name === "AMOXYCILLIN" && drug.form === "CAP")!;
+    const shelf = packOptionsFor(case1, 0, wrongProduct);
+    expect(shelf.map((pack) => pack.id)).toContain(wrongProduct.seed_id);
+    expect(shelf.length).toBeGreaterThan(1);
+    // The same dispensed product gives the same shelf in any case: it carries no hint of the answer.
+    expect(packOptionsFor(case2, 0, wrongProduct)).toEqual(shelf);
+    // Taking the carton that matches the wrong product still fails the pack check.
+    const wrongPack = { ...assembled(case1.id, 0, []), packId: wrongProduct.seed_id };
+    expect(addAssemblyChecks(BASE, case1, wrongPack).criticalFailures).toContain("assembly_pack");
+  });
+
+  it("prints every carton in plain words, not directory codes", () => {
+    for (const pack of allPacks()) {
+      expect(pack.form, pack.id).not.toMatch(/^(?:CAP|TAB|SUSP|PATCH|MR TAB|ER TAB|SR TAB)$/);
+      expect(pack.strength, pack.id).not.toMatch(/\d(?:MG|MCG|ML)/);
+      expect(pack.generic, pack.id).not.toMatch(/^[A-Z]{4,}$/);
+    }
+    expect(allPacks().find((pack) => pack.id === "erythromycin-mayne-cap-250")).toMatchObject({
+      brand: "Mayne Pharma", generic: "Erythromycin", strength: "250 mg", form: "Capsules", packSize: "25 capsules",
+    });
+  });
+
+  it("still grades a Case 1 pack saved under its original id", () => {
+    const case1 = STATIC_CASES.find((item) => item.id === "case-1")!;
+    const legacy = { ...assembled(case1.id, 0, []), packId: "erythromycin-mayne-250-cap-25" };
+    expect(addAssemblyChecks(BASE, case1, legacy).criticalFailures).not.toContain("assembly_pack");
   });
 
   it("does not accept an unselected sticker smuggled into the pack submission", () => {

@@ -31,6 +31,42 @@ export interface ConversationTopic {
   assessed?: boolean;
   /** A recap of this point only, used after the student has explained it. */
   teachBackReply?: string;
+  /**
+   * For counselling that can be given in parts: the patient's reply and
+   * teach-back say only the points the student actually made, never the rest
+   * of the model answer. `patientReplies` are then neutral acknowledgements,
+   * used when the wording matched the topic but none of its points.
+   */
+  grounded?: GroundedReply;
+}
+
+/** One point a student may make, and how the patient puts it in their own words. */
+export interface HeardPoint {
+  /** Pattern over one clause of the student's words (lower-cased, typos corrected). */
+  heard: string;
+  /** The patient's words for this point, written to fit its sentence template. */
+  says: string;
+  /**
+   * Which mentions count: "either" (default), "affirmed" (ignores "don't…",
+   * "avoid…" mentions) or "negated" (only those).
+   */
+  polarity?: "affirmed" | "negated" | "either";
+  /** When several points in one group are heard, only the first is said. */
+  group?: string;
+}
+
+export interface PatientSentence {
+  /** The patient's sentence with a {points} placeholder. */
+  template: string;
+  /** "and" joins instructions; "or" joins warning signs. Defaults to "and". */
+  joiner?: "and" | "or";
+  points: HeardPoint[];
+}
+
+export interface GroundedReply {
+  /** Opening words for a live reply, e.g. "Okay —". Not used in teach-back. */
+  leadIn?: string;
+  sentences: PatientSentence[];
 }
 
 export interface ConversationResponseIntent {
@@ -75,6 +111,14 @@ export interface ConversationCase {
    */
   concernAboutCollecting?: boolean;
   patientQuestion: string;
+  /**
+   * The patient's question only makes sense once the student has put supply
+   * on hold ("What happens next?"). Before that the patient asks whether the
+   * medicine is ready; after being told (wrongly) that it is, they have none.
+   */
+  patientQuestionAssumesHold?: boolean;
+  /** How the patient rewords one of their own prompts when asked "what do you mean?". */
+  rephrasings?: Record<string, string>;
   unknownReplies: string[];
   responseIntents: ConversationResponseIntent[];
   topics: ConversationTopic[];

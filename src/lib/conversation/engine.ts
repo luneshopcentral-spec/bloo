@@ -2,8 +2,9 @@ import { classifyWithRules, findUnsafeAdvice, matchResponseIntent } from "./matc
 import { conversationClauses, isMetaStatement, isQuestion, negatedAction, normalizeLanguage } from "./language";
 import { correctTypos } from "./spelling";
 import { greetingReply, PATIENT_LINES, pickLine, readDialogueActs, type DialogueActs } from "./dialogue";
-import { buildPatientReply } from "./reply";
+import { buildPatientReply, patientInvitation } from "./reply";
 import { scoreCounselling } from "./score";
+import { dynamicAudioSegment as dynamicSegment } from "@/lib/voice/patient-audio-library";
 import type { ConversationCase, ConversationMessage, PatientAudioSegment, UnsafeAdviceFinding } from "./types";
 
 export const MAX_CONVERSATION_MESSAGE = 2000;
@@ -46,12 +47,6 @@ const SUPPLY_PROMISE: Omit<UnsafeAdviceFinding, "excerpt"> = {
   detail: "This case requires supply to remain on hold until the prescribing concern is resolved.",
 };
 
-function dynamicSegment(text: string): PatientAudioSegment {
-  // Dynamic lines deliberately have no recorded cue identity to accidentally
-  // play a different, older fact. Existing voice fallback handles this cue.
-  return { cueId: "dialogue-dynamic", text };
-}
-
 function isHoldCase(c: ConversationCase): boolean {
   return Boolean(c.disposition) && c.disposition !== "dispense";
 }
@@ -90,7 +85,8 @@ function additionalSafety(c: ConversationCase, raw: string, acts: DialogueActs):
     if (wrongDose) {
       findings.push({ id: "unverified_dose", label: "Dose does not match the case plan", detail: "A specific dose was given without matching the case's dose and frequency. Clarify the instruction before the patient follows it.", excerpt: raw });
     }
-    if (c.disposition === "hold_contact_prescriber") {
+    // "It's too early, but you can collect it next week" keeps the hold.
+    if (c.disposition === "hold_contact_prescriber" && !acts.holdSignal) {
       const supply = /\b(?:i will|we will|we can|you can)\s+(?:now )?(?:supply|dispense|give you|collect|start taking)\b/.exec(text);
       if (supply && !/\b(?:if|after|once|until|before|confirmed|confirms)\b/.test(text)) {
         findings.push({ ...SUPPLY_PROMISE, excerpt: raw });
@@ -130,9 +126,11 @@ function clarifyPartial(c: ConversationCase, state: DialogueState, id: string): 
       ? "Is the change from 2.5 to 5 milligrams the reason you're checking?"
       : "Will you check this dose with my doctor before I take the stronger tablet?";
     if (topic.clarificationPrompt) return topic.clarificationPrompt;
-    if (missing[0]) return "Why does this repeat need checking before I can collect it?";
+    // Only case 1 is a repeat; the other held prescriptions are not.
+    const repeat = c.caseId === "case-1";
+    if (missing[0]) return repeat ? "Why does this repeat need checking before I can collect it?" : "Why does it need checking before I can have it?";
     if (missing[1]) return "Does that mean I need to wait before I can collect the medicine?";
-    if (missing[2]) return "Who will you check with to sort out the repeat?";
+    if (missing[2]) return repeat ? "Who will you check with to sort out the repeat?" : "Who will you check with about it?";
   }
   if (topic.clarificationPrompt) return topic.clarificationPrompt;
   return "Could you explain the rest of that for me? I want to be clear about the whole plan.";
@@ -164,10 +162,27 @@ function fallbackReply(c: ConversationCase, text: string, state: DialogueState, 
 
 function pendingPatientQuestion(c: ConversationCase, state: DialogueState): string | null {
   const invited = state.addressed.has("invite_questions") && state.pendingTopicId === c.patientQuestionTopicId;
+  const concern = !state.holdSignalled && c.concernPromptUninformed ? c.concernPromptUninformed : c.concernPrompt;
   const prompt = invited ? c.patientQuestion
-    : state.pendingTopicId === c.concernTopicId ? c.concernPrompt : null;
+    : state.pendingTopicId === c.concernTopicId ? concern : null;
   if (!prompt) return null;
   return state.lastReply?.includes(prompt) ? `Could we come back to my question? ${prompt}` : prompt;
+}
+
+/** The patient's last reply asked whether the medicine is ready, so "yes" means it is. */
+function askedIfReady(lastReply: string | null): boolean {
+  return /\b(?:is|are)\b[^.?!]*\bready\b[^.?!]*\?|\bcan i\b[^.?!]*\bhome\b[^.?!]*\?/i.test(lastReply ?? "");
+}
+
+/** "What do you mean?" after the patient asked something: they reword their own question. */
+function rephraseOwnQuestion(c: ConversationCase, lastReply: string | null): string | null {
+  const straight = (value: string) => value.replace(/[’‘]/g, "'").trim();
+  const asked = straight(lastReply ?? "").split(/(?<=[.!?])\s+/).filter(sentence => sentence.endsWith("?")).at(-1);
+  if (!asked) return null;
+  for (const [prompt, rephrased] of Object.entries(c.rephrasings ?? {})) {
+    if (straight(prompt) === asked) return rephrased;
+  }
+  return `I just mean — ${/^I\b/.test(asked) ? asked : asked.charAt(0).toLowerCase() + asked.slice(1)}`;
 }
 
 /** One pure transition shared by live dialogue, resumed drafts and server grading. */
@@ -181,9 +196,13 @@ export function advanceConversation(c: ConversationCase, previous: DialogueState
   // unsafe-advice excerpts keep the student's exact words.
   const spelled = correctTypos(raw);
   const text = contextText(c, previous, spelled);
-  const acts = readDialogueActs(spelled, previous.turns === 0);
+  const acts = readDialogueActs(spelled, previous.turns === 0 || askedIfReady(previous.lastReply));
   if (acts.name && !state.studentName) state.studentName = acts.name;
   if (acts.holdSignal) state.holdSignalled = true;
+  // Told it was ready, then that it isn't: the patient notices, and their
+  // concern about taking it home applies again.
+  const retracted = acts.holdSignal && previous.supplyPromised;
+  if (retracted) state.supplyPromised = false;
 
   let matchedTopicIds = classifyWithRules(c, text).map(m => m.topicId);
   const findings = [...findUnsafeAdvice(c, spelled), ...additionalSafety(c, spelled, acts)]
@@ -280,15 +299,24 @@ export function advanceConversation(c: ConversationCase, previous: DialogueState
     ? "Before I repeat the plan, I still need you to clear up the conflicting advice. What exactly should I follow?"
     : "Could you explain the plan first? Then I can tell you how I understand it.");
   const safeTopicIds = findings.length ? facts : matchedTopicIds;
+  const invitation = patientInvitation(c, {
+    supplyPromised: state.supplyPromised,
+    holdSignalled: state.holdSignalled || state.addressed.has(c.concernTopicId),
+  });
   if (safeTopicIds.length) {
     const unresolvedAdvice = state.unresolvedAdviceIds.length > 0 && safeTopicIds.includes("teach_back");
     if (unresolvedAdvice) push("Before I repeat the plan, I still need you to clear up the conflicting advice. What exactly should I follow?");
     // The greeting already answers a spoken introduction.
     const replyIds = safeTopicIds.filter(id => !(unresolvedAdvice && id === "teach_back") && !(greets && id === "introduction"));
-    if (replyIds.length) responses.push(...buildPatientReply(c, replyIds, previous.addressed, state.turns, true, null).audioSegments);
+    // The patient repeats back only what the student said for each topic.
+    const heard = Object.fromEntries(replyIds.map(id => [id, [...new Set([...(state.fragments[id] ?? []), raw])]]));
+    if (replyIds.length) responses.push(...buildPatientReply(c, replyIds, previous.addressed, state.turns, true, null, { heard, evidence: state.evidence, invitation }).audioSegments);
     if (safeTopicIds.includes("invite_questions")) {
       const questionTopic = c.patientQuestionTopicId ?? c.concernTopicId;
-      if (!state.addressed.has(questionTopic)) state.pendingTopicId = questionTopic;
+      if (invitation.kind === "concern" && !state.addressed.has(c.concernTopicId)) {
+        state.pendingTopicId = c.concernTopicId;
+        state.concernShown = true;
+      } else if (invitation.kind === "question" && !state.addressed.has(questionTopic)) state.pendingTopicId = questionTopic;
     }
   }
 
@@ -318,10 +346,23 @@ export function advanceConversation(c: ConversationCase, previous: DialogueState
       }
     }
   }
+  // Told it was ready, then that it isn't. Alongside an explanation the patient
+  // just notices the change; on its own they ask what's wrong.
+  if (retracted) {
+    if (responses.length) responses.unshift(dynamicSegment(PATIENT_LINES.readyRetracted[0]));
+    else {
+      push(PATIENT_LINES.readyRetracted[1]);
+      if (c.concernTopicId === "explain_hold" && !state.addressed.has("explain_hold")) state.pendingTopicId = "explain_hold";
+    }
+  }
   // True only when the patient fell through to the generic "I didn't follow"
   // reply — the matcher recognised nothing in this turn, not even small talk.
   // Used to capture real student wording that needs a pattern (pilot corpus).
   let unrecognised = false;
+  if (responses.length === 0 && /^(?:sorry[, ]*)?(?:what do you mean|what did you mean|what are you asking|what do you want to know|what exactly (?:do you mean|are you asking)|(?:can|could) you (?:explain|clarify) what you mean|(?:can|could) you clarify)\b/.test(question)) {
+    const rephrased = rephraseOwnQuestion(c, previous.lastReply);
+    if (rephrased) push(rephrased);
+  }
   if (responses.length === 0 && state.pendingTopicId && /^(?:yes|no|sure|okay|ok|with a meal)[.! ]*$/.test(normalizeLanguage(text))) {
     push(pendingPatientQuestion(c, state) ?? "Could you explain what you mean for my medicine and what I should do? I need a little more detail.");
   }
@@ -329,7 +370,9 @@ export function advanceConversation(c: ConversationCase, previous: DialogueState
     && /\b(?:what happens next|what are the next steps)\b/.test(question)) {
     push(state.holdSignalled
       ? "I understand you're checking this, but I'm not sure when I'll hear back. Will you let me know?"
-      : "I'm not sure what happens next. Could you explain the plan to me?");
+      : state.supplyPromised
+        ? "I thought I could just take it home today — is that not right?"
+        : "I'm not sure what happens next. Could you explain the plan to me?");
   }
   if (responses.length === 0 && c.caseId === "case-12" && !acts.holdSignal
     && /\b(?:yes|it is|this is)\b.{0,25}\b(?:higher|stronger) dose\b/.test(normalizeLanguage(text))) {
@@ -359,13 +402,14 @@ export function advanceConversation(c: ConversationCase, previous: DialogueState
     }
   }
   if (state.pendingTopicId && matchedTopicIds.includes(state.pendingTopicId)) state.pendingTopicId = null;
-  const alreadyAsksQuestion = responses.some(s => s.text.includes("?"));
+  // "No, that covers everything" is never followed by a fresh concern.
+  const concernWaits = responses.some(s => s.text.includes("?")) || invitation.kind === "none" && safeTopicIds.includes("invite_questions");
   // The patient raises their concern from what has actually been said, not on
   // a timer: never "why can't I collect it?" before being told they can't, and
   // not at all once told (wrongly) that it's ready.
   const concernMoot = state.supplyPromised && Boolean(c.concernAboutCollecting);
   if (!findings.length && !state.concernShown && state.turns >= c.concernAfterTurns
-    && !state.addressed.has(c.concernTopicId) && !alreadyAsksQuestion
+    && !state.addressed.has(c.concernTopicId) && !concernWaits
     && !matchedTopicIds.includes("teach_back") && !concernMoot
     && !(c.caseId === "case-11" && answeredIntents.has("current_symptoms"))) {
     push(!state.holdSignalled && c.concernPromptUninformed ? c.concernPromptUninformed : c.concernPrompt);
