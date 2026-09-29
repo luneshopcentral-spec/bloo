@@ -12,6 +12,7 @@ interface ToolbarProps {
   onOpenHelp: () => void;
   onStartGuidedTutorial: () => void;
   guidedTutorialActive: boolean;
+  transitioning: boolean;
   entitlement: CaseEntitlement | null;
 }
 
@@ -25,6 +26,7 @@ export function Toolbar({
   onOpenHelp,
   onStartGuidedTutorial,
   guidedTutorialActive,
+  transitioning,
   entitlement,
 }: ToolbarProps) {
   return (
@@ -36,7 +38,7 @@ export function Toolbar({
         value={mode}
         onChange={(event) => onModeChange(event.target.value as PracticeMode)}
         title={PRACTICE_MODE_COPY[mode].description}
-        disabled={guidedTutorialActive}
+        disabled={guidedTutorialActive || transitioning}
       >
         {(Object.keys(PRACTICE_MODE_COPY) as PracticeMode[]).map((value) => (
           <option key={value} value={value}>{PRACTICE_MODE_COPY[value].label}</option>
@@ -60,7 +62,7 @@ export function Toolbar({
         className="fred-case-select"
         value={currentCase}
         onChange={(e) => onCaseChange(parseInt(e.target.value, 10))}
-        disabled={guidedTutorialActive}
+        disabled={guidedTutorialActive || transitioning}
       >
         {cases.map((c, i) => {
           const locked = !canPlayCase(c, entitlement);
@@ -78,7 +80,7 @@ export function Toolbar({
         className="fred-toolbar-help"
         onClick={onOpenHelp}
         title="Reopen the case walkthrough"
-        disabled={guidedTutorialActive}
+        disabled={guidedTutorialActive || transitioning}
       >
         ? How it works
       </button>
@@ -87,7 +89,7 @@ export function Toolbar({
         type="button"
         className={`fred-toolbar-tutorial${guidedTutorialActive ? " active" : ""}`}
         onClick={onStartGuidedTutorial}
-        disabled={guidedTutorialActive}
+        disabled={guidedTutorialActive || transitioning}
         data-tour="guided-tutorial-button"
         title="Complete a guided version of Case 1 using the real simulator controls"
       >

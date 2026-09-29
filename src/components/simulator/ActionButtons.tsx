@@ -8,6 +8,7 @@ interface ActionButtonsProps {
   decision: DispenseDecision | null;
   answersRevealed: boolean;
   submitted: boolean;
+  transitioning: boolean;
   allowAnswerReveal: boolean;
   readinessIssues: string[];
   hasProgress: boolean;
@@ -23,6 +24,7 @@ export function ActionButtons({
   decision,
   answersRevealed,
   submitted,
+  transitioning,
   allowAnswerReveal,
   readinessIssues,
   hasProgress,
@@ -73,22 +75,22 @@ export function ActionButtons({
           </span>
         </div>
       </div>
-      <div className="fred-btn-row">
+      <div className="fred-btn-row" aria-busy={transitioning}>
         <button
           type="button"
-          className="fred-main-btn btn-green"
+          className={`fred-main-btn btn-green${transitioning ? " fred-transitioning" : ""}`}
           onClick={onDispense}
-          disabled={submitted}
+          disabled={submitted || transitioning}
           data-tour="dispense-submit"
         >
-          {submitted ? "Dispensing stage submitted" : submitLabel}
+          {transitioning ? <><span className="fred-transition-spinner" aria-hidden="true" />Opening pack assembly…</> : submitted ? "Dispensing stage submitted" : submitLabel}
         </button>
         {allowAnswerReveal && !guidedTutorial && (
           <button
             type="button"
             className="fred-main-btn fred-answer-btn"
             onClick={handleRevealAnswers}
-            disabled={answersRevealed}
+            disabled={answersRevealed || transitioning}
             title="Revealing answers makes this an assisted attempt"
           >
             {answersRevealed ? "Answers revealed · Assisted" : "Reveal answers"}
@@ -96,15 +98,16 @@ export function ActionButtons({
         )}
         {!guidedTutorial && (
           <>
-            <button type="button" className="fred-main-btn btn-red" onClick={handleReset}>
+            <button type="button" className="fred-main-btn btn-red" onClick={handleReset} disabled={transitioning}>
               Reset case
             </button>
-            <button type="button" className="fred-main-btn fred-main-btn-next" onClick={handleSkip}>
+            <button type="button" className="fred-main-btn fred-main-btn-next" onClick={handleSkip} disabled={transitioning}>
               Skip case →
             </button>
           </>
         )}
       </div>
+      {transitioning && <div className="fred-transition-status" role="status" aria-live="polite">Preparing pack assembly. Please wait.</div>}
     </>
   );
 }

@@ -3742,6 +3742,32 @@
   color: #b91c1c;
 }
 .fred-root .fred-main-btn.btn-red:hover { background: #fee2e2; }
+.fred-root .fred-main-btn.fred-transitioning:disabled {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  opacity: 1;
+  cursor: progress;
+}
+.fred-root .fred-transition-spinner {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+  border: 2px solid rgba(255, 255, 255, .45);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: fred-transition-spin .75s linear infinite;
+}
+.fred-root .fred-transition-status {
+  padding: 0 8px 8px;
+  color: #334155;
+  font-size: 11px;
+  font-weight: 600;
+}
+@keyframes fred-transition-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .fred-root .fred-transition-spinner { animation: none; }
+}
 
 /* Item switcher — segmented control */
 .fred-root .fred-item-tabs { padding: 6px 6px 0; gap: 4px; }

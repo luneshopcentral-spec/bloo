@@ -86,6 +86,8 @@ export default function PracticePage() {
   const updateAssemblyDraft = useCallback((value: AssemblySubmission) => { assemblyRef.current = value; setAssemblyDraft(value); }, []);
   const [queuedAttempt, setQueuedAttempt] = useState<AttemptSubmission | null>(null);
   const [saving, setSaving] = useState(false);
+  const dispenseTransitionRef = useRef(false);
+  const [dispenseTransitioning, setDispenseTransitioning] = useState(false);
   const [resultVerified, setResultVerified] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [restoring, setRestoring] = useState<PracticeDraft | null>(null);
@@ -476,9 +478,9 @@ export default function PracticePage() {
   }
 
   async function handleDispense() {
+    if (stage !== "dispensing" || attemptSubmitted || dispenseTransitionRef.current) return;
     if (guidedTutorialActive && guidedTutorialStep !== "dispense-submit") { showStatus("Complete the current tutorial step before continuing to assembly.", "info"); return; }
     if (queuedAttempt) { showStatus("Save the pending attempt before starting another.", "error"); return; }
-    if (!await ensureSession()) { showStatus("Practice tracking is unavailable. Your form is kept; retry shortly.", "error"); return; }
     if (formState.pharmacistInitials.trim().length < 2) {
       setInitialsError(true);
       showStatus("Pharmacist initials required before dispensing.", "error");
@@ -503,10 +505,24 @@ export default function PracticePage() {
       return;
     }
 
-    setAttemptSubmitted(true);
-    setDrawerOpen(false);
-    showStatus("Dispensing entry complete. Check each physical pack and place the selected warning labels.");
-    setStage("assembly");
+    const caseKey = activeSessionKey;
+    dispenseTransitionRef.current = true;
+    setDispenseTransitioning(true);
+    try {
+      const session = await ensureSession();
+      if (activeSessionKeyRef.current !== caseKey) return;
+      if (!session) {
+        showStatus("Practice tracking is unavailable. Your form is kept; retry shortly.", "error");
+        return;
+      }
+      setAttemptSubmitted(true);
+      setDrawerOpen(false);
+      showStatus("Dispensing entry complete. Check each physical pack and place the selected warning labels.");
+      setStage("assembly");
+    } finally {
+      dispenseTransitionRef.current = false;
+      setDispenseTransitioning(false);
+    }
   }
 
   function handleAssemblyBack() {
@@ -809,6 +825,7 @@ export default function PracticePage() {
               onOpenHelp={() => setOnboardingOpen(true)}
               onStartGuidedTutorial={startGuidedTutorial}
               guidedTutorialActive={guidedTutorialActive}
+              transitioning={dispenseTransitioning}
               entitlement={entitlement}
             />
             <LockedCasePanel caseData={current} freeCaseCount={FREE_CASE_COUNT} />
@@ -825,6 +842,7 @@ export default function PracticePage() {
               onOpenHelp={() => setOnboardingOpen(true)}
               onStartGuidedTutorial={startGuidedTutorial}
               guidedTutorialActive={guidedTutorialActive}
+              transitioning={dispenseTransitioning}
               entitlement={entitlement}
             />
 
@@ -891,6 +909,7 @@ export default function PracticePage() {
 
                 <ActionButtons
                   onDispense={handleDispense}
+                  transitioning={dispenseTransitioning}
                   onShowAnswers={handleShowAnswers}
                   onClear={handleClear}
                   onNext={handleNext}
