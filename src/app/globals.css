@@ -103,6 +103,22 @@ input:focus-visible,
   50% { transform: translateY(-8px); }
 }
 
+/* Marketing hero walkthrough (src/components/marketing/hero-demo.tsx). */
+.demo-caret { animation: demo-caret 1s steps(1) infinite; }
+@keyframes demo-caret { 50% { opacity: 0; } }
+
+.demo-pop { animation: demo-pop 280ms ease-out both; transform-origin: bottom; }
+@keyframes demo-pop {
+  from { opacity: 0; transform: translateY(6px) scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+
+.demo-scene { animation: demo-scene 380ms ease-out both; }
+@keyframes demo-scene {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   *, *::before, *::after {
