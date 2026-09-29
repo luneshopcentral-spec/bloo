@@ -17,6 +17,7 @@ import type { DispenseResult } from "@/lib/scoring/types";
 import type { AttemptResult, CounsellingResult } from "@/lib/conversation/types";
 import { combineAttemptResults } from "@/lib/conversation/score";
 import { getConversationCase } from "@/lib/conversation/cases";
+import { chooseConsultationStarter } from "@/lib/conversation/opening";
 import { MAX_CONVERSATION_MESSAGE } from "@/lib/conversation/engine";
 import type { DispenseDecision } from "@/lib/types/case";
 import type { Patient, PatientScript } from "@/lib/types/patient";
@@ -93,6 +94,7 @@ export default function PracticePage() {
   const [restoring, setRestoring] = useState<PracticeDraft | null>(null);
   const [transcript, setTranscript] = useState<ConversationMessage[]>([]);
   const [initialTranscript, setInitialTranscript] = useState<ConversationMessage[]>([]);
+  const [studentStarts, setStudentStarts] = useState(false);
   const [conversationInput, setConversationInput] = useState("");
   const countedSessions = useRef(new Set<string>());
   const [stage, setStage]                         = useState<"dispensing" | "assembly" | "counselling">("dispensing");
@@ -312,6 +314,7 @@ export default function PracticePage() {
     setSessionId(null);
     setTranscript([]);
     setInitialTranscript([]);
+    setStudentStarts(false);
     setConversationInput("");
     assemblyRef.current = null; setAssemblyDraft(null);
 
@@ -435,6 +438,7 @@ export default function PracticePage() {
     setSessionId(null);
     setTranscript([]);
     setInitialTranscript([]);
+    setStudentStarts(false);
     showStatus("Form cleared. A fresh attempt with new script details has started.");
     setConversationInput("");
   }
@@ -550,6 +554,7 @@ export default function PracticePage() {
     setPendingDispenseResult(result);
     setAttemptSubmitted(true);
     setDrawerOpen(false);
+    setStudentStarts(chooseConsultationStarter() === "student");
     showStatus("Pack assembly submitted. Complete the patient interaction to receive your result.");
     setStage("counselling");
   }
@@ -676,7 +681,7 @@ export default function PracticePage() {
   const draft = useLocalDraft<PracticeDraft>({
     storageKey: userId ? "dispenserx-draft-v3:" + userId : null,
     enabled: (hasAttemptProgress || guidedTutorialActive) && !lastResult && !restoring,
-    value: { tutorialStep: guidedTutorialActive ? guidedTutorialStep : undefined, caseIndex: currentCaseIndex, caseVersion: editorialRecord.version, seed: attemptSeed, mode: practiceMode, stage, assisted: answersRevealed, sessionId, formState, patient: selectedPatient, drugSeedIds: selectedDrugs.map((drug) => drug?.seed_id ?? null), prescriberNumber: selectedPrescriber?.prescriber_number ?? null, prescriber: selectedPrescriber, warnings: selectedWarnings.map((w) => [...w]), decision: clinicalDecision, assembly: assemblyDraft, transcript, conversationInput },
+    value: { tutorialStep: guidedTutorialActive ? guidedTutorialStep : undefined, caseIndex: currentCaseIndex, caseVersion: editorialRecord.version, seed: attemptSeed, mode: practiceMode, stage, assisted: answersRevealed, sessionId, formState, patient: selectedPatient, drugSeedIds: selectedDrugs.map((drug) => drug?.seed_id ?? null), prescriberNumber: selectedPrescriber?.prescriber_number ?? null, prescriber: selectedPrescriber, warnings: selectedWarnings.map((w) => [...w]), decision: clinicalDecision, assembly: assemblyDraft, transcript, studentStarts, conversationInput },
   });
 
   function resumeDraft() {
@@ -701,6 +706,7 @@ export default function PracticePage() {
     assemblyRef.current = restoredAssembly; setAssemblyDraft(restoredAssembly); setSessionId(saved.sessionId);
     sessionRef.current = saved.sessionId ? { key: JSON.stringify([c.id, saved.seed, saved.mode]), promise: Promise.resolve(saved.sessionId) } : null;
     setTranscript(saved.transcript); setInitialTranscript(saved.transcript);
+    setStudentStarts(saved.studentStarts === true);
     setConversationInput(typeof saved.conversationInput === "string" ? saved.conversationInput.slice(0, MAX_CONVERSATION_MESSAGE) : "");
     if (saved.caseIndex === 0 && saved.mode === "learn" && isGuidedTutorialStep(saved.tutorialStep)) {
       setGuidedTutorialStep(saved.tutorialStep); setGuidedTutorialActive(true);
@@ -954,6 +960,7 @@ export default function PracticePage() {
           <CounsellingStage
             key={current.id}
             initialTranscript={initialTranscript}
+            studentStarts={studentStarts}
             onTranscriptChange={setTranscript}
             responseDraft={conversationInput}
             onResponseDraftChange={setConversationInput}

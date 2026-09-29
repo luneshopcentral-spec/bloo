@@ -75,9 +75,9 @@ function buildTeachBackSegments(
       const line = groundedLine(topic.grounded, words, false);
       return line ? [dynamicAudioSegment(line)] : [];
     }
-    return [topic.teachBackReply ? topicTeachBackAudioSegment(topic) : topicAudioSegment(topic, 0)];
+    return topic.teachBackReply ? [topicTeachBackAudioSegment(topic)] : [];
   });
-  return segments.length ? segments : [dynamicAudioSegment("I'll follow what you've explained.")];
+  return segments.length ? segments : [teachBackNotReadyAudioSegment()];
 }
 
 export function buildPatientReply(

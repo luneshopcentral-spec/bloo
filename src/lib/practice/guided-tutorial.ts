@@ -28,7 +28,7 @@ export function guidedAssemblyStep(assembly: Case1AssemblySubmission | null, exp
 }
 
 const OBJECTIVES: Partial<Record<GuidedTutorialStep, Array<[string, string]>>> = {
-  "patient-question": [["introduction", "Introduce yourself as the pharmacist"], ["confirm_identity", "Ask the patient's name"], ["confirm_age", "Confirm their date of birth or age"]],
+  "patient-question": [["introduction", "Introduce yourself as the pharmacist"], ["privacy_offer", "Offer a private space for this conversation"], ["confirm_identity", "Ask the patient's name"], ["confirm_age", "Confirm their date of birth or age"]],
   "patient-history": [["allergies", "Ask about allergies or previous reactions"], ["current_medicines", "Check other medicines and products"]],
   "patient-explanation": [["purpose", "Explain what the antibiotic is for"], ["explain_hold", "Explain the early repeat, hold supply and contact the prescriber"], ["next_steps", "Tell the patient how you will follow up"]],
   "patient-safety-close": [["allergic_reaction_safety", "Explain urgent warning signs and what to do"]],
@@ -47,7 +47,7 @@ export function guidedConversationStepComplete(step: GuidedTutorialStep, transcr
 }
 
 export const GUIDED_TUTORIAL_OPENING_MESSAGE =
-  "Hello, I am the pharmacist looking after you today. Could I confirm your full name? What is your date of birth? Do you have any medicine allergies?";
+  "Hello, I am the pharmacist looking after you today. Would you like to talk in our private consultation room? Could I confirm your full name? What is your date of birth? Do you have any medicine allergies?";
 
 export const GUIDED_TUTORIAL_EXPLANATION_MESSAGE =
   "What other medicines do you take, including vitamins or supplements? This erythromycin is an antibiotic for your infection. The repeat is too early, so I cannot supply it today. I will contact your prescriber and update you before it can be given. If the prescriber confirms it, take one capsule four times a day. Finish the full course even if you feel better.";

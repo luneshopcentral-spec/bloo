@@ -10,5 +10,7 @@ export interface PracticeDraft {
   prescriber?: import("@/lib/types/prescriber").Prescriber | null;
   warnings: string[][]; decision: AttemptSubmission["decision"];
   assembly: AttemptSubmission["assembly"]; transcript: ConversationMessage[];
+  /** The opening order is chosen once on entering the consultation and restored with the draft. */
+  studentStarts?: boolean;
   conversationInput?: string;
 }

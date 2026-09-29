@@ -4,7 +4,7 @@ import { correctTypos } from "./spelling";
 import { greetingReply, PATIENT_LINES, pickLine, readDialogueActs, type DialogueActs } from "./dialogue";
 import { buildPatientReply, patientInvitation } from "./reply";
 import { scoreCounselling } from "./score";
-import { dynamicAudioSegment as dynamicSegment } from "@/lib/voice/patient-audio-library";
+import { dynamicAudioSegment as dynamicSegment, openingAudioSegment } from "@/lib/voice/patient-audio-library";
 import type { ConversationCase, ConversationMessage, PatientAudioSegment, UnsafeAdviceFinding } from "./types";
 
 export const MAX_CONVERSATION_MESSAGE = 2000;
@@ -31,13 +31,17 @@ export interface DialogueState {
   holdSignalled: boolean;
   /** Rotates "I didn't follow" lines so the patient never repeats one verbatim. */
   fallbackCount: number;
+  /** Whether the patient actually asked the opening readiness question. */
+  patientStarted: boolean;
+  privacySetting: "counter" | "private";
 }
 
-export function createDialogueState(): DialogueState {
+export function createDialogueState(patientStarted = true): DialogueState {
   return {
     lastReply: null, unresolvedAdviceIds: [], turns: 0, addressed: new Set(), evidence: {}, fragments: {},
     unsafeAdvice: [], concernShown: false, pendingTopicId: null, lastFactTopicId: null,
-    studentName: null, greeted: false, supplyPromised: false, holdSignalled: false, fallbackCount: 0,
+    studentName: null, greeted: false, supplyPromised: false, holdSignalled: false, fallbackCount: 0, patientStarted,
+    privacySetting: "counter",
   };
 }
 
@@ -196,7 +200,7 @@ export function advanceConversation(c: ConversationCase, previous: DialogueState
   // unsafe-advice excerpts keep the student's exact words.
   const spelled = correctTypos(raw);
   const text = contextText(c, previous, spelled);
-  const acts = readDialogueActs(spelled, previous.turns === 0 || askedIfReady(previous.lastReply));
+  const acts = readDialogueActs(spelled, (previous.turns === 0 && previous.patientStarted) || askedIfReady(previous.lastReply));
   if (acts.name && !state.studentName) state.studentName = acts.name;
   if (acts.holdSignal) state.holdSignalled = true;
   // Told it was ready, then that it isn't: the patient notices, and their
@@ -209,7 +213,7 @@ export function advanceConversation(c: ConversationCase, previous: DialogueState
     .map(finding => ({ ...finding, excerpt: raw }));
   const partialIds: string[] = [];
   if (!findings.length && !isMetaStatement(text)) {
-    for (const topic of c.topics.filter(t => t.requiredPatternGroups?.length && !matchedTopicIds.includes(t.id))) {
+    for (const topic of c.topics.filter(t => t.id !== "privacy_offer" && t.requiredPatternGroups?.length && !matchedTopicIds.includes(t.id))) {
       const partialCase = { ...c, topics: [{ ...topic, requiredPatternGroups: [] }] };
       const normal = normalizeLanguage(text);
       const answersPending = state.pendingTopicId === topic.id && topic.requiredPatternGroups!.some(group => group.some(p => new RegExp(p, "i").test(normal)));
@@ -263,8 +267,21 @@ export function advanceConversation(c: ConversationCase, previous: DialogueState
   const push = (reply: string) => {
     if (!responses.some(s => s.text === reply)) responses.push(dynamicSegment(reply));
   };
+  // A pharmacist-led greeting or open question lets the patient explain why
+  // they came in. Specific first questions are answered directly instead.
+  const studentLedFirstTurn = !previous.patientStarted && previous.turns === 0;
+  const openEndedGreeting = /\b(?:how can i help|what can i (?:do|help) (?:for|with)|what brings you (?:in|here|today)|how may i help|what are you here for|how can we help)\b/.test(normalizeLanguage(spelled));
+  const patientExplainsVisit = studentLedFirstTurn
+    && !matchedTopicIds.some(id => id !== "introduction")
+    && partialIds.length === 0
+    && !acts.supplyStatement && !acts.holdSignal
+    && (acts.greeting || acts.name !== null || openEndedGreeting);
+  if (patientExplainsVisit) {
+    responses.push(openingAudioSegment(c));
+    state.greeted = true;
+  }
   // Greet the student back — once, and by name when they gave it.
-  const greets = (acts.greeting || acts.name !== null) && !previous.greeted;
+  const greets = (acts.greeting || acts.name !== null) && !previous.greeted && !patientExplainsVisit;
   if (greets) {
     push(greetingReply(state.studentName, previous.turns, acts.howAreYou));
     state.greeted = true;
@@ -307,10 +324,16 @@ export function advanceConversation(c: ConversationCase, previous: DialogueState
     const unresolvedAdvice = state.unresolvedAdviceIds.length > 0 && safeTopicIds.includes("teach_back");
     if (unresolvedAdvice) push("Before I repeat the plan, I still need you to clear up the conflicting advice. What exactly should I follow?");
     // The greeting already answers a spoken introduction.
-    const replyIds = safeTopicIds.filter(id => !(unresolvedAdvice && id === "teach_back") && !(greets && id === "introduction"));
+    const replyIds = safeTopicIds.filter(id => !(unresolvedAdvice && id === "teach_back") && !((greets || patientExplainsVisit) && id === "introduction"));
     // The patient repeats back only what the student said for each topic.
     const heard = Object.fromEntries(replyIds.map(id => [id, [...new Set([...(state.fragments[id] ?? []), raw])]]));
-    if (replyIds.length) responses.push(...buildPatientReply(c, replyIds, previous.addressed, state.turns, true, null, { heard, evidence: state.evidence, invitation }).audioSegments);
+    if (replyIds.length) {
+      const patientReplies = buildPatientReply(c, replyIds, previous.addressed, state.turns, true, null, { heard, evidence: state.evidence, invitation }).audioSegments;
+      responses.push(...patientReplies);
+      if (replyIds.includes("privacy_offer") && patientReplies.some(segment => /^Yes please\./i.test(segment.text))) {
+        state.privacySetting = "private";
+      }
+    }
     if (safeTopicIds.includes("invite_questions")) {
       const questionTopic = c.patientQuestionTopicId ?? c.concernTopicId;
       if (invitation.kind === "concern" && !state.addressed.has(c.concernTopicId)) {
@@ -422,7 +445,8 @@ export function advanceConversation(c: ConversationCase, previous: DialogueState
 
 export function replayConversation(c: ConversationCase, transcript: ConversationMessage[]): DialogueState {
   // Submitted patient text, matched IDs and numeric scores are untrusted.
-  return transcript.filter(m => m.role === "student").reduce((state, m) => advanceConversation(c, state, m.text).state, createDialogueState());
+  const patientStarted = transcript[0]?.role === "patient" && transcript[0].text === openingAudioSegment(c).text;
+  return transcript.filter(m => m.role === "student").reduce((state, m) => advanceConversation(c, state, m.text).state, createDialogueState(patientStarted));
 }
 
 export function evaluateConversation(c: ConversationCase, transcript: ConversationMessage[]) {

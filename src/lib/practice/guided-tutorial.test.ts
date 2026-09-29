@@ -35,11 +35,11 @@ describe("tutorial bench recovery", () => {
 
 describe("guided case objectives", () => {
   it("accepts identity checks across several natural messages", () => {
-    expect(guidedConversationStepComplete("patient-question", messages("Hi, I'm your pharmacist today.", "Your name?", "And your birthday?"))).toBe(true);
+    expect(guidedConversationStepComplete("patient-question", messages("Hi, I'm your pharmacist today.", "Would you like to talk in our private consultation room?", "Your name?", "And your birthday?"))).toBe(true);
   });
   it("shows exactly what is still missing instead of requiring a pasted script", () => {
     const progress = guidedConversationProgress("patient-question", messages("Hi, I'm the pharmacist.", "What should I call you?"));
-    expect(progress.objectives.filter(o => !o.done).map(o => o.id)).toEqual(["confirm_age"]);
+    expect(progress.objectives.filter(o => !o.done).map(o => o.id)).toEqual(["privacy_offer", "confirm_age"]);
   });
   it("allows students to explain a held supply in separate turns", () => {
     expect(guidedConversationStepComplete("patient-explanation", messages(

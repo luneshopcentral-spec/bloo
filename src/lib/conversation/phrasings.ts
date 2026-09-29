@@ -40,6 +40,16 @@ export const SHARED_PHRASINGS: PhrasingBank = {
       "Hello there, I am pharmacist in this pharmacy, I will explain your medicine.",
       "Hey mate, I'm Liam, one of the pharmacists, just gonna run through a couple things with you.",
     ],
+    privacy_offer: [
+      "Would you like to speak in our private consultation room?",
+      "We can move to a private space if you'd prefer.",
+      "Would it be more comfortable to talk somewhere quieter?",
+      "Can we step away from the counter to discuss this privately?",
+      "If you want, there's a separate room where we can talk.",
+      "Do you want to speak in private?",
+      "Would you prefer to talk away from the others?",
+      "Can we step into a discreet space to discuss this?",
+    ],
     confirm_identity: [
       "Can I get your full name please?",
       "What's your name?",
@@ -135,6 +145,8 @@ export const SHARED_PHRASINGS: PhrasingBank = {
       "Just so we're on the same page, how are you gonna take these when you get home?",
       "Can you please explain me how you will take this medicine?",
       "Mind running me through how you'll take them?",
+      "Can you repeat everything I just said to you in your own words?",
+      "Tell me what you learnt about the plan from our conversation.",
     ],
     invite_questions: [
       "Do you have any questions?",

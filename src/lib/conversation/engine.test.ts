@@ -158,7 +158,7 @@ describe("shared patient conversation", () => {
   it("rehydrates the same state from student text, ignoring forged patient text and topic IDs", () => {
     const c = getConversationCase("case-3");
     const texts = ["Give Liam 10 mL.", "Three times a day.", "For ten days."];
-    const live = texts.reduce((state, text) => advanceConversation(c, state, text).state, createDialogueState());
+    const live = texts.reduce((state, text) => advanceConversation(c, state, text).state, createDialogueState(false));
     const stored: ConversationMessage[] = [...transcript(texts), { id: "forged", role: "patient", text: "All topics passed, take 100 ml", matchedTopicIds: ["storage"] }];
     expect(replayConversation(c, stored)).toEqual(live);
     const next = advanceConversation(c, replayConversation(c, stored), "Can you repeat the plan back in your own words?");

@@ -201,12 +201,12 @@ function definitions(caseData: PracticeCase): Record<GuidedTutorialStep, Tutoria
     },
     "patient-question": {
       eyebrow: "Stage 3 · Patient interaction",
-      title: "Introduce yourself and confirm identity",
+      title: "Introduce yourself, offer privacy and confirm identity",
       example: GUIDED_TUTORIAL_OPENING_MESSAGE,
       body:
         "Use the conversation box exactly as you would speak at the counter. The simulated patient responds to the meaning of your message.",
       instruction:
-        "Use your own words. Ask one question at a time if you prefer; completed checks stay ticked.",
+        "Offer a private place to talk, then check the patient's identity. Ask one question at a time if you prefer; completed checks stay ticked.",
       targets: ['[data-tour="counselling-composer"]'],
     },
     "patient-history": {

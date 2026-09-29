@@ -5,9 +5,9 @@ import { readDialogueActs } from "./dialogue";
 import { correctTypos } from "./spelling";
 import type { ConversationMessage } from "./types";
 
-function talk(caseId: string, lines: string[]) {
+function talk(caseId: string, lines: string[], patientStarted = true) {
   const c = getConversationCase(caseId);
-  let state: DialogueState = createDialogueState();
+  let state: DialogueState = createDialogueState(patientStarted);
   const turns = lines.map((text) => {
     const turn = advanceConversation(c, state, text);
     state = turn.state;
@@ -213,7 +213,7 @@ describe("fallback lines never give away a case's teaching point", () => {
 describe("determinism", () => {
   it("replays the same dialogue state from the transcript alone", () => {
     const lines = ["Hi My name is Hiranya", "Your Antibitoics are ready", "What is your name and age", "blah", "Thanks!"];
-    const { c, state } = talk("case-1", lines);
+    const { c, state } = talk("case-1", lines, false);
     expect(replayConversation(c, asTranscript(lines))).toEqual(state);
   });
 

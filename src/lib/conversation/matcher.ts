@@ -29,6 +29,10 @@ const DISMISSAL = /\b(?:nothing to worry about|perfectly safe|(?:will|would) not
 export function topicEvidenceIsValid(topic: ConversationTopic, text: string): boolean {
   const normalized = normalizeConversationText(text);
   if (isMetaStatement(text)) return false;
+  // An opening "How can I help?" invites the reason for the visit; it is not
+  // the end-of-consultation check for unanswered medicine questions.
+  if (topic.id === "invite_questions" && /\b(?:how (?:can|may) (?:i|we) help|what can i (?:do|help) (?:for|with)|what brings you (?:in|here|today)|what are you here for)\b/.test(normalized)) return false;
+  if (topic.id === "privacy_offer" && !/\b(?:talk|speak|discuss|chat|consultation|conversation|room|space|area|counter|somewhere|move|step|go)\b/.test(normalized)) return false;
   if ((topic.category === "clinical_counselling" || topic.category === "safety_netting") && DISMISSAL.test(normalized)) return false;
   if (/directions|dose|admin/.test(topic.id)
     && /\b(?:do not|never|should not|must not) (?:take|give|use) (?:one|two|three|four|\d+)\b/.test(normalized)) return false;

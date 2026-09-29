@@ -18,9 +18,68 @@ const HOLD_CLARIFICATIONS: Record<string, string> = {
   "case-10": "Is the daily direction the concern? I normally take this once a week.",
 };
 
+/** A teach-back must describe the plan, not reuse a topic's "okay" acknowledgement. */
+const TEACH_BACK_RECAPS: Record<string, Record<string, string>> = {
+  "case-1": {
+    directions: "If this repeat can be supplied after the check, you said one capsule four times a day.",
+    complete_course: "If it is supplied, I need to finish the full antibiotic course even if I feel better.",
+  },
+  "case-2": {
+    dose_plan: "I'll follow the current dose sheet from my anticoagulation clinic rather than guessing my warfarin dose.",
+    inr_monitoring: "I'll keep my INR blood tests and follow-up appointments.",
+    interactions: "I'll check before taking ibuprofen, aspirin or other anti-inflammatories with my warfarin.",
+  },
+  "case-3": {
+    purpose: "The amoxicillin is for Liam's infection.",
+    directions: "I'll give Liam 10 mL three times a day for ten days.",
+    complete_course: "I'll finish Liam's full course even if he seems better.",
+  },
+  "case-4": {
+    explain_risk: "Alcohol and the sleeping tablet can add to drowsiness and breathing problems, so the plan needs checking.",
+  },
+  "case-5": {
+    explain_hold: "You'll hold this prescription and check the interaction and my kidney function with the prescriber before supplying it.",
+    explain_concern: "Cimetidine may raise my metformin exposure, and my reduced kidney function adds to the risk.",
+    next_steps: "You'll contact my prescriber and update me; I should not change my usual medicines unless my treating clinician advises it.",
+  },
+  "case-6": {
+    directions: "I'll take one doxycycline tablet twice a day as prescribed.",
+  },
+  "case-7": {
+    directions_mr: "I'll take one 20 milligram tablet every 12 hours and swallow it whole, without crushing or chewing it.",
+  },
+  "case-8": {
+    explain_hold: "You can't supply this patch until you've urgently checked with my doctor because I haven't been taking opioids regularly.",
+    interim_plan: "I won't start the patch; I'll keep to the treatment already agreed with my clinician while you check and update me.",
+  },
+  "case-9": {
+    independent_contact: "You'll use the clinic details your pharmacy already trusts, rather than the number on this prescription.",
+    follow_up: "You'll document what the clinic says and update me once the prescription has been confirmed or replaced.",
+  },
+  "case-10": {
+    explain_hold: "The daily methotrexate direction could be dangerous; you won't supply it until the doctor confirms the correct weekly plan.",
+  },
+  "case-11": {
+    urgent_plan: "My symptoms could mean lithium toxicity, so I need urgent medical assessment now rather than treating this as a routine refill.",
+  },
+  "case-12": {
+    explain_hold: "I won't change from 2.5 to 5 milligrams until you check the dose with my doctor, taking my age, weight and kidney result into account.",
+  },
+  "case-13": {
+    metformin_xr_admin: "I'll take the extended-release metformin tablets whole, without crushing, chewing or halving them.",
+    sitagliptin_dose: "I'll take one sitagliptin tablet once a day, with or without food.",
+    two_item_orientation: "The metformin and sitagliptin are two different medicines with different instructions.",
+  },
+};
+
 /** Authored dialogue fixes, applied once so browser and server use identical cases. */
 export function refineConversationCases(cases: Record<string, ConversationCase>) {
   for (const c of Object.values(cases)) {
+    for (const topic of c.topics) {
+      if (!topic.grounded && !topic.teachBackReply && TEACH_BACK_RECAPS[c.caseId]?.[topic.id]) {
+        topic.teachBackReply = TEACH_BACK_RECAPS[c.caseId][topic.id];
+      }
+    }
     const address = STATIC_CASES.find(item => item.id === c.caseId)?.patientLookup.prescriptionPatient.address;
     if (address) c.responseIntents.push({
       id: "patient_address",

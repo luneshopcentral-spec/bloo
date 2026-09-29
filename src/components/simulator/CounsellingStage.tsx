@@ -10,12 +10,13 @@ import type {
 import { advanceConversation, evaluateConversation, replayConversation, MAX_CONVERSATION_MESSAGE, MAX_CONVERSATION_TURNS, MAX_CONVERSATION_CHARACTERS } from "@/lib/conversation/engine";
 import { useVoiceConversation } from "@/hooks/useVoiceConversation";
 import { KOKORO_MODEL_DOWNLOAD_MB } from "@/lib/voice/kokoro-config";
-import { openingAudioSegment } from "@/lib/voice/patient-audio-library";
+import { initialConversationMessages } from "@/lib/conversation/opening";
 import type { PracticeMode } from "@/lib/practice/modes";
 
 interface CounsellingStageProps {
   conversation: ConversationCase;
   initialTranscript?: ConversationMessage[];
+  studentStarts?: boolean;
   onTranscriptChange?: (messages: ConversationMessage[]) => void;
   responseDraft: string;
   onResponseDraftChange: (value: string) => void;
@@ -38,6 +39,7 @@ function decisionLabel(decision: DispenseDecision | null): string {
 export function CounsellingStage({
   conversation,
   initialTranscript,
+  studentStarts = false,
   onTranscriptChange,
   responseDraft: input,
   onResponseDraftChange: setInput,
@@ -49,14 +51,8 @@ export function CounsellingStage({
   guidedCanFinish = true,
   stageLabel = "Stage 2 of 2 · Patient consultation",
 }: CounsellingStageProps) {
-  const [messages, setMessages] = useState<ConversationMessage[]>(initialTranscript?.length ? initialTranscript : [
-    {
-      id: "patient-opening",
-      role: "patient",
-      text: openingAudioSegment(conversation).text,
-      patientAudio: [openingAudioSegment(conversation)],
-    },
-  ]);
+  const [messages, setMessages] = useState<ConversationMessage[]>(() => initialTranscript?.length
+    ? initialTranscript : initialConversationMessages(conversation, studentStarts));
   const [pending, setPending] = useState(false);
   const [complete, setComplete] = useState(false);
   const [interactionMode, setInteractionMode] = useState<"text" | "voice">("text");
@@ -116,7 +112,7 @@ export function CounsellingStage({
     ? "Consultation completed"
     : studentTurns > 0
       ? "Consultation in progress"
-      : "Awaiting your first response";
+      : studentStarts ? "Your turn to begin" : "Awaiting your first response";
 
   function selectTextMode() {
     if (interactionMode === "text") return;
@@ -254,7 +250,9 @@ export function CounsellingStage({
             <span id="patient-conversation-title">Consultation transcript</span>
             <span>{consultationStatus}</span>
           </div>
-
+          <div className="fred-chat-setting" aria-live="polite">
+            {dialogue.privacySetting === "private" ? "Private consultation room" : "At the pharmacy counter"}
+          </div>
           <div
             ref={transcriptRef}
             className={`fred-chat-transcript ${hideCompletedTranscript ? "voice-exam" : ""}`}
@@ -265,6 +263,12 @@ export function CounsellingStage({
             aria-relevant="additions"
           >
             <div className="fred-chat-thread">
+              {messages.length === 0 && studentStarts && (
+                <div className="fred-chat-empty" role="status">
+                  <strong>You begin this consultation</strong>
+                  <p>Greet the patient and start in your own words. They will reply to what you say.</p>
+                </div>
+              )}
               {messages.map((message) => (
                 <div key={message.id} className={`fred-chat-message ${message.role}`}>
                   <span className="fred-chat-speaker">
@@ -441,7 +445,7 @@ export function CounsellingStage({
                 {input.trim()
                   ? "Send or clear your draft before finishing. Unsent text is not assessed."
                   : studentTurns < 1
-                  ? "Send at least one response before finishing the consultation."
+                  ? studentStarts ? "You begin this consultation. Send your opening before finishing." : "Send at least one response before finishing the consultation."
                   : interactionMode === "voice"
                     ? "Check the transcript before sending · Enter to send, Shift+Enter for a new line"
                     : "Enter to send, Shift+Enter for a new line"}
@@ -492,6 +496,7 @@ export function CounsellingStage({
                 <summary>Open communication guide</summary>
                 <ul>
                   <li>Gather information before making assumptions.</li>
+                  <li>Offer the patient a private place to discuss their medicine.</li>
                   <li>Use patient-friendly language.</li>
                   <li>Give exact, safe instructions.</li>
                   <li>Use teach-back: ask the patient to explain the plan back in their own words.</li>

@@ -58,6 +58,30 @@ function commonTopics(facts: CommonTopicFacts): ConversationTopic[] {
       repeatReply: "Yes, I’m still with you.",
     },
     {
+      id: "privacy_offer",
+      label: "Offer to discuss the medicine in a private space",
+      category: "communication",
+      critical: true,
+      examples: [
+        "Would you like to discuss this in our private consultation room?",
+        "If you prefer, we can talk somewhere private away from the counter.",
+      ],
+      fallbackPatterns: [
+        "\\b(?:private|privately|privacy|confidential|discreet|quiet|consultation room|away from the counter|away from others|out of earshot)\\b",
+      ],
+      requiredPatternGroups: [
+        ["\\b(?:private|privately|privacy|confidential|discreet|quiet(?:er)?|consultation room|away from (?:the counter|(?:the )?others|other people)|out of earshot|separate room)\\b"],
+        ["\\b(?:would you (?:like|prefer|feel)|would it be|do you (?:want|prefer)|would you rather|shall we|should we|can we|could we|can i|could i|may i|if you (?:would like|prefer|want)|if you(?:'d)? (?:like|prefer|want)|we can|i can|happy to|option (?:of|to))\\b"],
+      ],
+      forbiddenPatterns: ["\\b(?:no|not|never|cannot|can't|do not|don't)\\b.{0,30}\\b(?:private|privacy|consultation room|separate room)\\b"],
+      patientReplies: [
+        "Yes please. Let's step into the consultation room to discuss my medicine.",
+        "No thanks, I'm comfortable speaking here at the counter.",
+      ],
+      repeatReply: "Thanks for offering me the choice.",
+      feedback: "Give the patient a choice, for example: ‘Would you like to discuss this in our private consultation space?’",
+    },
+    {
       id: "confirm_identity",
       label: "Confirm the patient's full name",
       category: "information_gathering",
@@ -327,6 +351,8 @@ function closingTopics(teachBackReply: string): ConversationTopic[] {
         "\\b(?:can|could|would) you (?:please )?repeat (?:the|our|your) plan\\b",
         "\\b(?:can|could|would) you (?:please )?(?:tell|explain) (?:me )?what you (?:will|would|are going to) do (?:next|at home|when you get home)\\b",
         "\\b(?:can|could|would) you (?:please )?repeat what i (?:told|said|explained) (?:to )?you\\b",
+        "\\b(?:can|could|would) you (?:please )?(?:repeat|tell me|explain|summarise|summarize)\\b.*\\b(?:everything|all|what)\\b.*\\b(?:i (?:just )?(?:said|told|explained)|we (?:discussed|talked about))\\b",
+        "\\b(?:what (?:did|have) you (?:learn(?:t|ed)|underst(?:and|ood))|tell me what you (?:learn(?:t|ed)|underst(?:and|ood)))\\b.*\\b(?:conversation|discussion|medicine|plan|today|talked about)\\b",
       ],
       patientReplies: [teachBackReply],
       repeatReply: teachBackReply,
