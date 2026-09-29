@@ -314,6 +314,7 @@ function closingTopics(teachBackReply: string): ConversationTopic[] {
         "\\bin your own words\\b",
         "\\b(?:show|tell|explain|describe)\\b.*\\bhow\\b.*\\b(?:take|use|give|measure|store|follow)\\b",
         "\\bwhat will you do\\b.*\\b(?:medicine|dose|home|next)\\b",
+        "\\b(?:can|could|would) you (?:please )?repeat what i (?:told|said|explained) (?:to )?you\\b",
       ],
       patientReplies: [teachBackReply],
       repeatReply: teachBackReply,
@@ -1960,11 +1961,12 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
         ],
         requiredPatternGroups: [
           ["\\b(?:dose|strength|milligram|mg)\\b"],
-          [CONTACT_PRESCRIBER_PATTERN, HOLD_SUPPLY_PATTERN],
+          [HOLD_SUPPLY_PATTERN],
+          [`${CONTACT_PRESCRIBER_PATTERN}.*\\b(?:doctor|prescriber|gp)\\b`],
         ],
         patientReplies: [
           "Please check it. I won’t switch to the stronger tablet until the doctor reviews the dose.",
-          "I did wonder about the bigger tablet. I'll stay on my old ones until you hear from the doctor.",
+          "I did wonder about the bigger tablet. Please tell me what to do with my current tablets after you speak with the doctor.",
         ],
       },
       {

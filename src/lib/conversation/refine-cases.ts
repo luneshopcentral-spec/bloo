@@ -1,8 +1,15 @@
 import type { ConversationCase } from "./types";
+import { STATIC_CASES } from "@/lib/cases/static-cases";
 
 /** Authored dialogue fixes, applied once so browser and server use identical cases. */
 export function refineConversationCases(cases: Record<string, ConversationCase>) {
   for (const c of Object.values(cases)) {
+    const address = STATIC_CASES.find(item => item.id === c.caseId)?.patientLookup.prescriptionPatient.address;
+    if (address) c.responseIntents.push({
+      id: "patient_address",
+      fallbackPatterns: [String.raw`\b(?:what|which|confirm|check|tell me|give me|verify)\b.{0,30}\b(?:your|patient'?s)?\s*address\b`, String.raw`\b(?:where do you live|what is your home address)\b`],
+      patientReplies: [`My address is ${address.toLowerCase().replace(/\b\w/g, letter => letter.toUpperCase())}.`],
+    });
     c.disposition = [1, 4, 5, 8, 9, 10, 11, 12].includes(Number(c.caseId.slice(5)))
       ? "hold_contact_prescriber" : "dispense";
     const topic = (id: string) => c.topics.find(t => t.id === id)!;
@@ -88,6 +95,11 @@ export function refineConversationCases(cases: Record<string, ConversationCase>)
       topic("interactions").requiredPatternGroups![0].push(String.raw`\b(?:starting|stopping|start|stop) medicine\b`);
       topic("interactions").fallbackPatterns.push(String.raw`\bcheck\b.*\bpharmacist\b.*\b(?:starting|stopping) medicine\b`);
     }
+    if (c.caseId === "case-11") c.responseIntents.push({
+      id: "illness_duration",
+      fallbackPatterns: [String.raw`\bhow long\b.{0,45}\b(?:stomach bug|ill|sick|vomit|diarrh)\w*\b`, String.raw`\bwhen did\b.{0,35}\b(?:stomach bug|vomit|diarrh)\w*\b`],
+      patientReplies: ["It started two days ago. I've had vomiting and diarrhoea since then."],
+    });
     if (c.caseId === "case-6") {
       // Keep the water requirement; correct the incomplete example instead of
       // giving full credit for only half of this safety-critical instruction.

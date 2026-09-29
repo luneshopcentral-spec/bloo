@@ -119,7 +119,16 @@ function clarifyPartial(c: ConversationCase, state: DialogueState, id: string): 
   if (id === "water_upright") return missing[0]
     ? "How much water should I take it with?"
     : "Is there anything I need to do after swallowing it?";
+  if (id === "interactions" && c.caseId === "case-2") {
+    if (/\bantibiotic\w*\b/.test(evidence)) return "Do you mean every antibiotic? What should I do if I need one, and what about my ibuprofen?";
+    return state.lastReply?.startsWith("I'm asking about the ibuprofen")
+      ? "Do you mean the ibuprofen I mentioned? What should I do before taking it?"
+      : "I'm asking about the ibuprofen I take for headaches. Should I check before using it?";
+  }
   if (id === "explain_hold") {
+    if (c.caseId === "case-12") return missing[0]
+      ? "Is the change from 2.5 to 5 milligrams the reason you're checking?"
+      : "Will you check this dose with my doctor before I take the stronger tablet?";
     if (missing[0]) return "Why does this repeat need checking before I can collect it?";
     if (missing[1]) return "Does that mean I need to wait before I can collect the medicine?";
     if (missing[2]) return "Who will you check with to sort out the repeat?";
@@ -236,7 +245,9 @@ export function advanceConversation(c: ConversationCase, previous: DialogueState
   if (state.supplyPromised && !previous.supplyPromised) {
     push(pickLine(greets ? PATIENT_LINES.supplyReactionAfterGreeting : PATIENT_LINES.supplyReaction, state.turns));
   }
-  if (!findings.length && partialIds.length) {
+  // A new question or a complete topic takes precedence over an unfinished
+  // counselling point from an earlier turn. Keep the fragments for later.
+  if (!findings.length && partialIds.length && matchedTopicIds.length === 0 && !isQuestion(text)) {
     const id = partialIds[0];
     state.pendingTopicId = id;
     push(clarifyPartial(c, state, id));
@@ -272,7 +283,7 @@ export function advanceConversation(c: ConversationCase, previous: DialogueState
     if (isMetaStatement(clause)) continue;
     const normalized = normalizeLanguage(clause);
     const historyIntent = isQuestion(clause) ? c.responseIntents.find(i =>
-      ["previous_use", "medical_conditions", "current_symptoms", "diagnosis_question"].includes(i.id)
+      ["previous_use", "medical_conditions", "current_symptoms", "diagnosis_question", "patient_address", "illness_duration"].includes(i.id)
       && i.fallbackPatterns.some(p => new RegExp(p, "i").test(normalized))) : null;
     if (historyIntent && !answeredIntents.has(historyIntent.id)) {
       push(historyIntent.patientReplies[0]);
@@ -285,6 +296,14 @@ export function advanceConversation(c: ConversationCase, previous: DialogueState
   let unrecognised = false;
   if (responses.length === 0 && state.pendingTopicId && /^(?:yes|no|sure|okay|ok|with a meal)[.! ]*$/.test(normalizeLanguage(text))) {
     push("Could you explain what you mean for my medicine and what I should do? I need a little more detail.");
+  }
+  if (responses.length === 0 && c.caseId === "case-12" && !acts.holdSignal
+    && /\b(?:yes|it is|this is)\b.{0,25}\b(?:higher|stronger) dose\b/.test(normalizeLanguage(text))) {
+    push("My old box was 2.5 milligrams. Could you check whether the 5 milligram dose is right before I take it?");
+  }
+  if (responses.length === 0 && c.caseId === "case-12" && state.holdSignalled
+    && /^(?:yes|okay|ok|sure)[, ]+(?:i|we) will (?:check|review|confirm) (?:it|that|the dose)[.! ]*$/.test(normalizeLanguage(text))) {
+    push("Thank you. Please let me know once you've checked the dose with my doctor.");
   }
   if (responses.length === 0) {
     const social = socialReply(c, acts, state.turns);
@@ -311,7 +330,8 @@ export function advanceConversation(c: ConversationCase, previous: DialogueState
   const concernMoot = state.supplyPromised && Boolean(c.concernAboutCollecting);
   if (!findings.length && !state.concernShown && state.turns >= c.concernAfterTurns
     && !state.addressed.has(c.concernTopicId) && !alreadyAsksQuestion
-    && !matchedTopicIds.includes("teach_back") && !concernMoot) {
+    && !matchedTopicIds.includes("teach_back") && !concernMoot
+    && !(c.caseId === "case-11" && answeredIntents.has("current_symptoms"))) {
     push(!state.holdSignalled && c.concernPromptUninformed ? c.concernPromptUninformed : c.concernPrompt);
     state.concernShown = true;
     state.pendingTopicId = c.concernTopicId;

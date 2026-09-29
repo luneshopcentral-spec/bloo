@@ -1,6 +1,7 @@
 /** Shared text interpretation. Never rewrite medicine names or dose numbers fuzzily. */
 export function normalizeLanguage(value: string): string {
   return value.toLowerCase().replace(/[’‘]/g, "'")
+    .replace(/\bcant\b/g, "cannot").replace(/\bwont\b/g, "will not")
     .replace(/\bcan't\b/g, "cannot").replace(/\bwon't\b/g, "will not")
     .replace(/\bdon't\b/g, "do not").replace(/\bdoesn't\b/g, "does not")
     .replace(/\bshouldn't\b/g, "should not").replace(/\bmustn't\b/g, "must not")
@@ -16,6 +17,7 @@ export function normalizeLanguage(value: string): string {
     .replace(/\b(?:allergys|alergies|allergie)\b/g, "allergies")
     .replace(/\b(two|2)-hours?\b/g, "$1 hours")
     .replace(/\b(?:opoids?|opiods?)\b/g, "opioid")
+    .replace(/\bdoese\b/g, "dose")
     .replace(/\b(?:physician|gp)\b/g, "doctor")
     .replace(/(\d)([a-z])/g, "$1 $2").replace(/([a-z])(\d)/g, "$1 $2")
     .replace(/\b(?:mls|millilitres?|milliliters?)\b/g, "ml")
@@ -43,7 +45,9 @@ export function conversationClauses(text: string): string[] {
 }
 
 export function isQuestion(text: string): boolean {
-  const s = normalizeLanguage(text).replace(/^(?:and|also|so)[, ]+/, "");
+  const s = normalizeLanguage(text)
+    .replace(/^(?:(?:hi|hello|hey|hiya|good morning|good afternoon|good evening|g'day|yes|yep|yeah)[, ]+)+/, "")
+    .replace(/^(?:and|also|so)[, ]+/, "");
   return /\b(?:i (?:was |am )?wonder(?:ing)? (?:if|whether|what)|i would like to (?:ask|check|confirm)|let me (?:check|confirm)|may i (?:know|have))\b/.test(s)
     || /^(?:your (?:full )?name|(?:your )?(?:date of birth|birthday|dob)|any (?:allergies|medicine)|allergic to anything)(?: please)?[?.!]*$/.test(s)
     || /^(?:(?:please|and|so) )?(?:what (?!this does)|which|who|whose|when (?:did|do|was|were)|where|how|any chance)\b/.test(s)
