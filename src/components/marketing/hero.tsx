@@ -7,21 +7,26 @@ const FREE_CASES = STATIC_CASES.filter((c) => c.isFree).length;
 
 export function Hero() {
   return (
-    <section className="bg-white pb-16 pt-28 sm:pb-24 lg:pt-36">
+    <section className="bg-white pb-14 pt-28 sm:pb-20 lg:pt-32">
       <div className="container">
-        <div className="grid gap-8 lg:grid-cols-[1.35fr_1fr] lg:items-end lg:gap-16">
-          <div>
+        <div className="grid items-center gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:gap-12">
+          <div className="max-w-xl">
             <p className="flex items-center gap-2 text-sm font-medium text-slate-500">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" aria-hidden="true" />
               Independent Australian training simulator
             </p>
 
-            <h1 className="mt-5 text-balance text-[2.6rem] font-semibold leading-[1.03] tracking-[-0.035em] text-slate-950 sm:text-6xl lg:text-[4.4rem]">
+            <h1 className="mt-5 text-balance text-[2.5rem] font-semibold leading-[1.05] tracking-[-0.03em] text-slate-950 sm:text-5xl lg:text-[3.25rem]">
               Practise dispensing{" "}
               <span className="text-emerald-700">before placement.</span>
             </h1>
 
-            <div className="mt-9 flex flex-wrap items-center gap-x-6 gap-y-4">
+            <p className="mt-6 max-w-lg text-lg leading-8 text-slate-600">
+              Enter realistic Australian prescriptions in a full dispensing workflow, assemble the pack, counsel a
+              simulated patient, then see exactly which safety checks you passed.
+            </p>
+
+            <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4">
               <Link
                 href="/sign-up"
                 className="group inline-flex items-center rounded-full bg-slate-950 px-7 py-3.5 text-[15px] font-semibold text-white transition hover:bg-slate-800"
@@ -38,13 +43,6 @@ export function Hero() {
             </p>
           </div>
 
-          <p className="max-w-md text-lg leading-8 text-slate-600 lg:pb-20">
-            Enter realistic Australian prescriptions in a full dispensing workflow, assemble the pack, counsel a
-            simulated patient, then see exactly which safety checks you passed.
-          </p>
-        </div>
-
-        <div className="mt-12 lg:mt-16">
           <HeroDemo />
         </div>
       </div>
