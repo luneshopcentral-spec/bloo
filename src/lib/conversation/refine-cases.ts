@@ -62,7 +62,8 @@ export function refineConversationCases(cases: Record<string, ConversationCase>)
         category: "clinical_counselling", critical: true,
         examples: ["The repeat is too early. I cannot supply it today until I contact your prescriber.", "I need to hold this supply and speak with your doctor because it was dispensed four days ago."],
         fallbackPatterns: [String.raw`\b(?:early|too soon|ahead of schedule|recent|four days|4 days)\b`],
-        requiredPatternGroups: [[String.raw`\b(?:early|too soon|ahead of schedule|recent|four days|4 days)\b`], [String.raw`\b(?:hold|cannot (?:supply|hand (?:it|this) over)|not supply|before.{0,20}(?:supply|dispense|dispensing))\b`], [String.raw`\b(?:contact|speak|spoken|call|ring|phone|check|clarify)\b.*\b(?:doctor|prescriber)\b`]],
+        // Contact verbs take any inflection: "called", "phoned", "spoke", "checking".
+        requiredPatternGroups: [[String.raw`\b(?:early|too soon|ahead of schedule|recent|four days|4 days)\b`], [String.raw`\b(?:hold|cannot (?:supply|hand (?:it|this) over)|not supply|before.{0,20}(?:supply|dispense|dispensing))\b`], [String.raw`\b(?:contact|speak|spoke|spoken|call|ring|rang|phone|check|clarify|talk|confirm|verify|query)\w*\b.*\b(?:doctor|prescriber)\b`]],
         patientReplies: ["I didn't realise the repeat was too early. I understand you need to check with my doctor before supplying it.", "Okay, please check the recent supply with my doctor first."],
         teachBackReply: "The repeat is too early, so you are holding it while you check with my doctor.",
       }, {
@@ -92,6 +93,22 @@ export function refineConversationCases(cases: Record<string, ConversationCase>)
       // giving full credit for only half of this safety-critical instruction.
       topic("water_upright").examples[1] = "Use a full glass of water and do not lie down for 30 minutes after taking doxycycline.";
       c.doseRules = [{ topicId: "directions", amountPattern: String.raw`\b(?:one|1) tablet`, frequencyPattern: String.raw`\b(?:twice (?:a|per) day|twice daily|every (?:twelve|12) hours|bd|morning and (?:night|evening))\b` }];
+    }
+    // Hold cases whose concern is about taking the medicine home today. Before
+    // the student has mentioned any hold, the patient asks whether it is ready;
+    // "why can't I…?" only follows once they've been told. If the student
+    // (wrongly) says it's ready, the concern is dropped — the patient believes it.
+    const collectingConcerns: Record<string, string | undefined> = {
+      "case-1": "So is my repeat ready for me to take home today?",
+      "case-4": "So can I take the sleeping tablets home with me today?",
+      "case-5": undefined,
+      "case-8": "So is the patch ready for me to take home now?",
+      "case-9": "So is Noah's medicine ready to take home today?",
+    };
+    if (c.caseId in collectingConcerns) {
+      c.concernAboutCollecting = true;
+      const uninformed = collectingConcerns[c.caseId];
+      if (uninformed) c.concernPromptUninformed = uninformed;
     }
     if (c.caseId === "case-3") c.doseRules = [{ topicId: "directions", amountPattern: String.raw`\b(?:ten|10)\s*ml\b`, frequencyPattern: String.raw`\b(?:three times (?:a|per) day|three times daily|every (?:eight|8) hours|tds)\b` }];
     if (c.caseId === "case-7") c.doseRules = [{ topicId: "directions_mr", amountPattern: String.raw`\b(?:one|1) (?:20 (?:mg|milligram) )?tablet`, frequencyPattern: String.raw`\b(?:twice (?:a|per) day|twice daily|every (?:twelve|12) hours|bd)\b` }];

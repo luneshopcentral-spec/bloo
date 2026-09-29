@@ -87,6 +87,8 @@ function commonTopics(facts: CommonTopicFacts): ConversationTopic[] {
         "\\bhow old\\b",
         "\\b(?:your|patient'?s|child'?s|son'?s|daughter'?s) age\\b",
         "\\bconfirm\\b.*\\bage\\b",
+        // "What is your name and age?" — only ever counted inside a question.
+        "\\bage\\b",
       ],
       patientReplies: asReplies(facts.ageReply),
       repeatReply: asReplies(facts.ageReply)[0],
@@ -1595,7 +1597,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
     concernTopicId: "explain_hold",
     concernPrompt: "It looks like his usual medicine. Why is there a delay?",
     patientQuestion: "Will you call the clinic using the number on the prescription?",
-    unknownReplies: variedUnknownReplies("Could you explain what detail on the prescription is concerning?"),
+    unknownReplies: variedUnknownReplies("Sorry, I'm not sure what you mean about Noah's medicine. Could you explain?"),
     responseIntents: commonResponseIntents({
       previousUseReplies: [
         "Noah has used dexamfetamine for several months.",
@@ -1689,7 +1691,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
     concernTopicId: "explain_hold",
     concernPrompt: "The label says daily, but I thought I took it once a week. Which is right?",
     patientQuestion: "Should I take today’s tablet while you check?",
-    unknownReplies: variedUnknownReplies("Could you explain what you are checking about my weekly medicine?"),
+    unknownReplies: variedUnknownReplies("Sorry, I'm not sure what you mean about my methotrexate. Could you explain?"),
     responseIntents: commonResponseIntents({
       previousUseReplies: [
         "I have taken 10 milligrams every Sunday for rheumatoid arthritis.",
@@ -1791,7 +1793,7 @@ export const CONVERSATION_CASES: Record<string, ConversationCase> = {
     concernTopicId: "urgent_plan",
     concernPrompt: "My hands are shakier and I feel unsteady. Is that just the stomach bug?",
     patientQuestion: "Can I keep taking lithium and ibuprofen tonight?",
-    unknownReplies: variedUnknownReplies("Could you explain what that has to do with dehydration or lithium?"),
+    unknownReplies: variedUnknownReplies("Sorry, I'm not sure how that relates to my lithium. Could you explain?"),
     responseIntents: commonResponseIntents({
       previousUseReplies: [
         "I have taken Quilonum SR for several years.",

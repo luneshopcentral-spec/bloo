@@ -57,6 +57,17 @@ export interface ConversationCase {
   concernAfterTurns: number;
   concernTopicId: string;
   concernPrompt: string;
+  /**
+   * What the patient asks instead, when the student has not yet said anything
+   * about a hold or delay — so "Why can't I collect it today?" is never asked
+   * before the patient has been told they can't.
+   */
+  concernPromptUninformed?: string;
+  /**
+   * The concern is about getting the medicine today. It is dropped once the
+   * student has (wrongly) told the patient the medicine is ready.
+   */
+  concernAboutCollecting?: boolean;
   patientQuestion: string;
   unknownReplies: string[];
   responseIntents: ConversationResponseIntent[];
