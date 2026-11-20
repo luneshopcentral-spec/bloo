@@ -14,11 +14,12 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm test -- --run
-      - run: npm audit --audit-level=moderate
       - run: npm run build
         env:
           NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder
+      # Last, so an advisory with no safe fix yet still lets every other check run.
+      - run: npm audit --audit-level=moderate
   database:
     runs-on: ubuntu-latest
     services:
