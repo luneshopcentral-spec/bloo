@@ -73,7 +73,7 @@ const SUPPLY_PATTERNS = [
 ];
 
 // A statement that the supply depends on something first is not a promise.
-const CONDITIONAL = /\b(?:if|after|once|until|before|when|unless|confirm(?:s|ed)?)\b/;
+const CONDITIONAL = /\b(?:if|whether|after|once|until|before|when|unless|confirm(?:s|ed)?)\b/;
 
 const HOLD_PATTERNS = [
   /\b(?:cannot|can not|unable to|not able to|will not|not going to|not allowed to)\s+(?:be able to\s+)?(?:give|supply|dispense|hand|release|let you (?:have|take))\b/,
@@ -89,24 +89,36 @@ const HOLD_PATTERNS = [
   /\b(?:problem|issue|concern) with (?:the|your|this|his|her) (?:prescription|script|repeat|dose|medicine)\b/,
 ];
 
-function statementClauses(text: string): string[] {
-  return conversationClauses(text).filter(clause => !isQuestion(clause) && !clause.trim().endsWith("?") && !isMetaStatement(clause));
+/**
+ * Clauses that can carry a statement. A question the student marked with "?"
+ * cannot; an unpunctuated one still can, past its opening words — spoken
+ * "do you have any allergies it's ready" tells the patient it's ready.
+ */
+function statementClauses(text: string): Array<{ text: string; from: number }> {
+  return conversationClauses(text)
+    .filter(clause => !clause.trim().endsWith("?") && !isMetaStatement(clause))
+    .map(clause => ({ text: normalizeLanguage(clause), from: isQuestion(clause) ? 1 : 0 }));
+}
+
+// "Let me check your medicine is ready" asks rather than tells.
+const INDIRECT_QUESTION = /\b(?:check|see|find out|know|wonder\w*|sure|ask\w*|tell me)\b/;
+
+function statedIn(clause: { text: string; from: number }, pattern: RegExp): RegExpExecArray | null {
+  const match = pattern.exec(clause.text);
+  if (!match || match.index < clause.from) return null;
+  return clause.from && INDIRECT_QUESTION.test(clause.text.slice(0, match.index)) ? null : match;
 }
 
 export function signalsHold(text: string): boolean {
-  return statementClauses(text).some(clause => {
-    const n = normalizeLanguage(clause);
-    return HOLD_PATTERNS.some(pattern => pattern.test(n));
-  });
+  return statementClauses(text).some(clause => HOLD_PATTERNS.some(pattern => statedIn(clause, pattern)));
 }
 
 export function promisesSupply(text: string): boolean {
   return statementClauses(text).some(clause => {
-    const n = normalizeLanguage(clause);
-    if (CONDITIONAL.test(n)) return false;
+    if (CONDITIONAL.test(clause.text)) return false;
     return SUPPLY_PATTERNS.some(pattern => {
-      const match = pattern.exec(n);
-      return Boolean(match) && !negatedAction(n, match!.index);
+      const match = statedIn(clause, pattern);
+      return Boolean(match) && !negatedAction(clause.text, match!.index);
     });
   });
 }

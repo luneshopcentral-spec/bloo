@@ -83,6 +83,7 @@ export function CounsellingStage({
   const limitReached = dialogue.turns >= MAX_CONVERSATION_TURNS || usedCharacters >= MAX_CONVERSATION_CHARACTERS - MAX_CONVERSATION_MESSAGE;
   const voice = useVoiceConversation({
     patientKey: conversation.caseId,
+    draft: input,
     onTranscript: setInput,
   });
 
@@ -133,7 +134,7 @@ export function CounsellingStage({
   function replayPatient() {
     if (!latestPatientMessage) return;
     setPatientAudioEnabled(true);
-    voice.speak(latestPatientMessage.patientAudio ?? []);
+    voice.replay(latestPatientMessage.patientAudio ?? []);
   }
 
   function togglePatientAudio() {
@@ -149,13 +150,13 @@ export function CounsellingStage({
 
   const voiceStatus = voice.errorMessage
     ?? (voice.activity === "loading"
-      ? `Loading the Kokoro safety voice locally${voice.kokoroProgress === null ? "" : ` ${Math.round(voice.kokoroProgress)}%`}. The recorded library is preferred.`
+      ? `Preparing the patient voice on this device${voice.kokoroProgress === null ? "" : ` ${Math.round(voice.kokoroProgress)}%`}. The first time takes longer while it downloads.`
       : voice.activity === "generating"
-        ? `Kokoro is generating ${conversation.patientRole}'s missing recorded line on this laptop.`
+        ? `${conversation.patientRole} is about to reply.`
         : voice.activity === "starting"
       ? "Waiting for microphone permission or the browser speech service."
       : voice.activity === "listening"
-      ? "Listening now. Speak naturally, then select Stop listening."
+      ? "Listening now. Pause as you need to, then select Stop listening. New speech is added to your draft."
       : isPatientSpeaking
         ? `${conversation.patientRole} is speaking.`
         : voice.activity === "review" && input.trim()
@@ -180,7 +181,8 @@ export function CounsellingStage({
     if (turn.unrecognised && !guidedTutorial) {
       unmatchedRef.current.push({
         caseId: conversation.caseId,
-        stage: "counselling",
+        // Spoken misses are worth reviewing separately: they show what the speech recogniser wrote.
+        stage: interactionMode === "voice" ? "counselling · voice" : "counselling",
         turnIndex: studentTurns,
         text,
         reply: turn.reply.text,
@@ -324,17 +326,14 @@ export function CounsellingStage({
                 <div className="fred-voice-controls-heading">
                   <p className="fred-voice-disclosure">Optional experimental voice: your browser may send microphone audio to its speech provider. Review the transcript before sending. Use text mode if you prefer.</p><strong id="voice-controls-title">Voice controls · experimental</strong>
                   <span>
-                    Patient voice: {voice.patientVoiceEngine === "prerecorded"
-                      ? "Recorded patient voice"
-                      : voice.patientVoiceEngine === "kokoro"
-                        ? `Kokoro safety fallback · ${voice.patientVoiceName}`
-                        : `System fallback · ${voice.patientVoiceName ?? "default voice"}`}
+                    Patient voice: {voice.patientVoiceEngine === "kokoro"
+                      ? "generated on this device"
+                      : `your computer's voice · ${voice.patientVoiceName ?? "default voice"}`}
                   </span>
                 </div>
                 {voice.patientVoiceEngine === "system" && voice.patientVoiceName && !voice.patientVoiceIsAustralian && (
                   <p className="fred-voice-quality-warning">
-                    The recorded line and Kokoro fallback are unavailable, and no Australian system voice is installed.
-                    The best available English system voice will be used.
+                    No Australian voice is installed on this computer, so the closest English voice is used.
                   </p>
                 )}
                 {voice.patientVoiceNotice && (
@@ -392,10 +391,10 @@ export function CounsellingStage({
                 <details className="fred-voice-details">
                   <summary>How voice works</summary>
                   <p className="fred-voice-disclosure">
-                    Approved pre-recorded MP3 files are used first, with no API call or per-conversation charge. Missing
-                    recordings use the Apache-2.0 Kokoro-82M q8 safety voice locally; its first use downloads about {KOKORO_MODEL_DOWNLOAD_MB} MB
-                    plus voice and browser runtime files. If that cannot run, the operating-system voice is used. Student
-                    speech recognition may use the browser or operating-system service. Text mode is always available.
+                    The patient&apos;s voice is generated on this device by the open-source Kokoro model, with no per-conversation
+                    charge. The first time, it downloads about {KOKORO_MODEL_DOWNLOAD_MB} MB, which the browser then keeps for later visits. If it
+                    cannot run, your computer&apos;s own voice is used. Your speech is turned into text by the browser&apos;s speech
+                    service (Chrome, Edge or Safari); check the transcript before sending. Text mode is always available.
                   </p>
                 </details>
                 {hideCompletedTranscript && (

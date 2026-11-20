@@ -6,6 +6,8 @@ import type { PatientAudioSegment } from "@/lib/conversation/types";
 import { getKokoroVoice } from "@/lib/voice/kokoro-config";
 import {
   getSpeechRecognitionConstructor,
+  joinTranscript,
+  keepsListeningThroughPauses,
   patientSpeechRate,
   preparePatientSpeech,
   selectPatientVoice,
@@ -23,13 +25,19 @@ export type VoiceActivity =
   | "speaking"
   | "error";
 
+/** Once the student has spoken, this much silence ends the recording. */
+export const SILENCE_STOP_MS = 5_000;
+
 interface UseVoiceConversationOptions {
   patientKey: string;
+  /** The current response box, which new speech is added to. */
+  draft: string;
   onTranscript: (transcript: string) => void;
 }
 
 export function useVoiceConversation({
   patientKey,
+  draft,
   onTranscript,
 }: UseVoiceConversationOptions) {
   const [recognitionSupported, setRecognitionSupported] = useState<boolean | null>(null);
@@ -38,18 +46,29 @@ export function useVoiceConversation({
   const [activity, setActivity] = useState<VoiceActivity>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const transcriptCallbackRef = useRef(onTranscript);
+  const draftRef = useRef(draft);
 
   useEffect(() => {
     transcriptCallbackRef.current = onTranscript;
   }, [onTranscript]);
 
   useEffect(() => {
+    draftRef.current = draft;
+  }, [draft]);
+
+  const clearSilenceTimer = useCallback(() => {
+    if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+    silenceTimerRef.current = null;
+  }, []);
+
+  useEffect(() => {
     const recognitionConstructor = getSpeechRecognitionConstructor(window);
     const canUseSystemSpeech = "speechSynthesis" in window && "SpeechSynthesisUtterance" in window;
-    const canUseRecordedOrKokoro = Boolean(window.Audio && window.Worker);
+    const canUseGeneratedVoice = Boolean(window.Audio && window.Worker);
     setRecognitionSupported(Boolean(recognitionConstructor));
-    setSynthesisSupported(canUseRecordedOrKokoro || canUseSystemSpeech);
+    setSynthesisSupported(canUseGeneratedVoice || canUseSystemSpeech);
 
     const loadVoices = () => setVoices(window.speechSynthesis.getVoices());
     if (canUseSystemSpeech) {
@@ -69,6 +88,7 @@ export function useVoiceConversation({
         recognitionRef.current.abort();
       }
       recognitionRef.current = null;
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
     };
   }, []);
 
@@ -78,6 +98,7 @@ export function useVoiceConversation({
   );
 
   const abortListening = useCallback(() => {
+    clearSilenceTimer();
     if (recognitionRef.current) {
       recognitionRef.current.onresult = null;
       recognitionRef.current.onerror = null;
@@ -88,7 +109,7 @@ export function useVoiceConversation({
     setActivity((current) => (
       current === "starting" || current === "listening" ? "idle" : current
     ));
-  }, []);
+  }, [clearSilenceTimer]);
 
   const speakWithSystemVoice = useCallback((text: string, reason: string): Promise<void> => {
     return new Promise((resolve) => {
@@ -149,18 +170,19 @@ export function useVoiceConversation({
   }, [patientVoice]);
 
   const stopListening = useCallback(() => {
+    clearSilenceTimer();
     try {
       recognitionRef.current?.stop();
     } catch {
       abortListening();
     }
-  }, [abortListening]);
+  }, [abortListening, clearSilenceTimer]);
 
   const startListening = useCallback(() => {
     const RecognitionConstructor = getSpeechRecognitionConstructor(window);
     if (!RecognitionConstructor) {
       setRecognitionSupported(false);
-      setErrorMessage("Voice recognition is unavailable in this browser. Continue by typing.");
+      setErrorMessage("Voice input is unavailable in this browser. Use Chrome, Edge or Safari, or continue by typing.");
       setActivity("error");
       return;
     }
@@ -168,14 +190,26 @@ export function useVoiceConversation({
     cancelSpeech();
     abortListening();
     setErrorMessage(null);
-    transcriptCallbackRef.current("");
 
+    // Whatever is already in the box stays; new speech is added after it.
+    const before = draftRef.current;
     const recognition = new RecognitionConstructor();
     let recognisedText = "";
     recognition.lang = "en-AU";
-    recognition.continuous = false;
+    recognition.continuous = keepsListeningThroughPauses(navigator.userAgent);
     recognition.interimResults = true;
-    recognition.maxAlternatives = 3;
+    recognition.maxAlternatives = 1;
+    const armSilenceTimer = () => {
+      if (!recognition.continuous) return;
+      clearSilenceTimer();
+      silenceTimerRef.current = setTimeout(() => {
+        try {
+          recognition.stop();
+        } catch {
+          // Already ended.
+        }
+      }, SILENCE_STOP_MS);
+    };
     recognition.onstart = () => setActivity("listening");
     recognition.onresult = (event) => {
       const parts: string[] = [];
@@ -188,18 +222,22 @@ export function useVoiceConversation({
       }
 
       recognisedText = parts.join(" ").trim();
-      transcriptCallbackRef.current(recognisedText);
-      if (hasFinalResult) setActivity("review");
+      transcriptCallbackRef.current(joinTranscript(before, recognisedText));
+      armSilenceTimer();
+      // A continuous session keeps listening after each phrase.
+      if (hasFinalResult && !recognition.continuous) setActivity("review");
     };
     recognition.onerror = (event) => {
+      clearSilenceTimer();
       setErrorMessage(speechRecognitionErrorMessage(event.error));
       setActivity("error");
     };
     recognition.onend = () => {
+      clearSilenceTimer();
       recognitionRef.current = null;
       setActivity((current) => {
         if (current === "error") return current;
-        return recognisedText ? "review" : "idle";
+        return recognisedText || before.trim() ? "review" : "idle";
       });
     };
 
@@ -212,7 +250,7 @@ export function useVoiceConversation({
       setErrorMessage("The microphone could not start. Try again, or continue by typing.");
       setActivity("error");
     }
-  }, [abortListening, cancelSpeech]);
+  }, [abortListening, cancelSpeech, clearSilenceTimer]);
 
   const speak = useCallback((segments: PatientAudioSegment[]) => {
     abortListening();
@@ -223,23 +261,22 @@ export function useVoiceConversation({
     });
   }, [abortListening, patientVoice]);
 
+  /** Replay the patient, giving the generated voice another go if it failed. */
+  const replay = useCallback((segments: PatientAudioSegment[]) => {
+    patientVoice.retry();
+    speak(segments);
+  }, [patientVoice, speak]);
+
   const engine = patientVoice.engine;
   return {
     recognitionSupported,
     synthesisSupported,
-    patientVoiceName: engine === "prerecorded"
-      ? "Recorded patient library"
-      : engine === "kokoro"
-        ? `Kokoro ${getKokoroVoice(patientKey)}`
-        : systemPatientVoice?.name ?? "default voice",
-    patientVoiceLanguage: engine === "prerecorded"
-      ? "en-AU"
-      : engine === "kokoro"
-        ? "en-GB"
-        : systemPatientVoice?.lang ?? null,
-    patientVoiceIsAustralian: engine === "prerecorded"
-      || (engine === "system"
-        && (systemPatientVoice?.lang.toLowerCase().replace("_", "-").startsWith("en-au") ?? false)),
+    patientVoiceName: engine === "kokoro"
+      ? `Kokoro ${getKokoroVoice(patientKey)}`
+      : systemPatientVoice?.name ?? "default voice",
+    patientVoiceLanguage: engine === "kokoro" ? "en-GB" : systemPatientVoice?.lang ?? null,
+    patientVoiceIsAustralian: engine === "system"
+      && (systemPatientVoice?.lang.toLowerCase().replace("_", "-").startsWith("en-au") ?? false),
     patientVoiceEngine: engine,
     kokoroProgress: patientVoice.progress,
     patientVoiceDiagnostic: patientVoice.diagnostic,
@@ -250,6 +287,7 @@ export function useVoiceConversation({
     stopListening,
     abortListening,
     speak,
+    replay,
     cancelSpeech,
   };
 }

@@ -1,9 +1,7 @@
-export type KokoroWorkerRequest = {
-  type: "synthesize";
-  requestId: string;
-  text: string;
-  voice: string;
-};
+export type KokoroWorkerRequest =
+  | { type: "synthesize"; requestId: string; text: string; voice: string }
+  /** Drop queued requests that have not started. The model stays loaded. */
+  | { type: "cancel"; requestIds: string[] };
 
 export type KokoroWorkerResponse =
   | {

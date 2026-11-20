@@ -3,14 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { PatientAudioSegment } from "@/lib/conversation/types";
 import { getKokoroVoice } from "@/lib/voice/kokoro-config";
-import type {
-  KokoroWorkerRequest,
-  KokoroWorkerResponse,
-} from "@/lib/voice/kokoro-worker-messages";
-import { patientAudioPublicPath } from "@/lib/voice/patient-audio-library";
-import { preparePatientSpeech } from "@/lib/voice/web-speech";
+import { KokoroSession, PatientSpeechInterrupted, speechChunks, type VoiceWorker } from "@/lib/voice/kokoro-session";
+import { kokoroSpeech } from "@/lib/voice/web-speech";
 
-export type PatientVoiceEngine = "prerecorded" | "kokoro" | "system";
+export type PatientVoiceEngine = "kokoro" | "system";
 export type PatientVoiceActivity = "idle" | "loading" | "generating" | "speaking";
 
 interface UsePatientVoiceOptions {
@@ -19,32 +15,33 @@ interface UsePatientVoiceOptions {
   speakWithSystemVoice: (text: string, reason: string) => Promise<void>;
 }
 
-interface PendingSynthesis {
-  resolve: (audio: Blob) => void;
-  reject: (error: Error) => void;
-}
-
-const knownMissingAssets = new Set<string>();
-
 export function usePatientVoice({
   patientKey,
   onActivity,
   speakWithSystemVoice,
 }: UsePatientVoiceOptions) {
-  const [engine, setEngine] = useState<PatientVoiceEngine>(process.env.NEXT_PUBLIC_RECORDED_VOICE_ENABLED === "true" ? "prerecorded" : "kokoro");
+  const [engine, setEngine] = useState<PatientVoiceEngine>("kokoro");
   const [progress, setProgress] = useState<number | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [diagnostic, setDiagnostic] = useState<string | null>(null);
-  const workerRef = useRef<Worker | null>(null);
-  const pendingRef = useRef(new Map<string, PendingSynthesis>());
+  const sessionRef = useRef<KokoroSession | null>(null);
+  // After a failure the computer's voice is used for the rest of the session,
+  // so a blocked download is not retried (and waited on) every turn.
+  const kokoroFailedRef = useRef(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const objectUrlRef = useRef<string | null>(null);
   const operationRef = useRef(0);
 
   const stopAudio = useCallback(() => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.src = "";
+    const audio = audioRef.current;
+    if (audio) {
+      // Clearing the source fires a late "error" on this element; detached,
+      // it cannot stop the next sentence, which is already starting.
+      audio.onplay = null;
+      audio.onended = null;
+      audio.onerror = null;
+      audio.pause();
+      audio.removeAttribute("src");
       audioRef.current = null;
     }
     if (objectUrlRef.current) {
@@ -53,83 +50,44 @@ export function usePatientVoice({
     }
   }, []);
 
-  const closeWorker = useCallback(() => {
-    workerRef.current?.terminate();
-    workerRef.current = null;
-    for (const pending of pendingRef.current.values()) {
-      pending.reject(new Error("Patient voice generation was cancelled."));
-    }
-    pendingRef.current.clear();
+  const getSession = useCallback((): KokoroSession => {
+    sessionRef.current ??= new KokoroSession(
+      () => new Worker(
+        new URL("../workers/kokoro-patient-voice.worker.ts", import.meta.url),
+        { type: "module", name: "kokoro-patient-voice" }
+      ) as unknown as VoiceWorker,
+      setProgress,
+    );
+    return sessionRef.current;
   }, []);
 
+  /** Stop the current reply. The voice model stays loaded for the next one. */
   const cancel = useCallback(() => {
     operationRef.current += 1;
     stopAudio();
-    closeWorker();
+    sessionRef.current?.cancel();
     onActivity("idle");
-  }, [closeWorker, onActivity, stopAudio]);
+  }, [onActivity, stopAudio]);
+
+  /** Give the generated voice another go after it failed. */
+  const retry = useCallback(() => {
+    kokoroFailedRef.current = false;
+    setEngine("kokoro");
+    setNotice(null);
+    setDiagnostic(null);
+  }, []);
 
   useEffect(() => () => {
     operationRef.current += 1;
     stopAudio();
-    closeWorker();
-  }, [closeWorker, stopAudio]);
-
-  const getWorker = useCallback((): Worker => {
-    if (workerRef.current) return workerRef.current;
-
-    const worker = new Worker(
-      new URL("../workers/kokoro-patient-voice.worker.ts", import.meta.url),
-      { type: "module", name: "kokoro-patient-voice" }
-    );
-    worker.onmessage = (event: MessageEvent<KokoroWorkerResponse>) => {
-      const message = event.data;
-      if (message.type === "loading") {
-        setProgress(message.progress);
-        onActivity(message.progress === 100 ? "generating" : "loading");
-        return;
-      }
-      const pending = pendingRef.current.get(message.requestId);
-      if (!pending) return;
-      pendingRef.current.delete(message.requestId);
-      if (message.type === "audio") pending.resolve(message.audio);
-      else pending.reject(new Error(message.message));
-    };
-    worker.onerror = (event) => {
-      const error = new Error(event.message || "The Kokoro worker stopped unexpectedly.");
-      for (const pending of pendingRef.current.values()) pending.reject(error);
-      pendingRef.current.clear();
-      setDiagnostic(error.message);
-      worker.terminate();
-      if (workerRef.current === worker) workerRef.current = null;
-    };
-    workerRef.current = worker;
-    return worker;
-  }, [onActivity]);
-
-  const synthesize = useCallback((text: string): Promise<Blob> => {
-    const requestId = crypto.randomUUID();
-    return new Promise((resolve, reject) => {
-      pendingRef.current.set(requestId, { resolve, reject });
-      const request: KokoroWorkerRequest = {
-        type: "synthesize",
-        requestId,
-        text: preparePatientSpeech(text),
-        voice: getKokoroVoice(patientKey),
-      };
-      try {
-        getWorker().postMessage(request);
-      } catch (error) {
-        pendingRef.current.delete(requestId);
-        reject(error instanceof Error ? error : new Error("Kokoro could not start."));
-      }
-    });
-  }, [getWorker, patientKey]);
+    sessionRef.current?.dispose();
+    sessionRef.current = null;
+  }, [stopAudio]);
 
   const playBlob = useCallback((blob: Blob, operation: number): Promise<void> => {
     return new Promise((resolve, reject) => {
       if (operation !== operationRef.current) {
-        reject(new Error("Patient voice playback was cancelled."));
+        reject(new PatientSpeechInterrupted());
         return;
       }
       stopAudio();
@@ -144,87 +102,68 @@ export function usePatientVoice({
       };
       audio.onerror = () => {
         stopAudio();
-        reject(new Error("The patient audio file could not be decoded."));
+        reject(new Error("The patient audio could not be decoded."));
       };
-      audio.play().catch(reject);
+      audio.play().catch((error: unknown) => {
+        // Stopped on purpose (a newer reply or an interruption) is not a failure.
+        reject(audioRef.current === audio ? error : new PatientSpeechInterrupted());
+      });
     });
   }, [onActivity, stopAudio]);
-
-  const loadRecordedAsset = useCallback(async (segment: PatientAudioSegment): Promise<Blob | null> => {
-    if (process.env.NEXT_PUBLIC_RECORDED_VOICE_ENABLED !== "true") return null;
-    const path = patientAudioPublicPath(patientKey, segment.cueId);
-    if (knownMissingAssets.has(path)) return null;
-    try {
-      const response = await fetch(path, { cache: "force-cache" });
-      if (!response.ok) {
-        if (response.status === 404) knownMissingAssets.add(path);
-        return null;
-      }
-      const blob = await response.blob();
-      if (!blob.type.startsWith("audio/") && blob.size < 128) {
-        knownMissingAssets.add(path);
-        return null;
-      }
-      return blob;
-    } catch {
-      return null;
-    }
-  }, [patientKey]);
 
   const speak = useCallback(async (segments: PatientAudioSegment[]) => {
     const operation = operationRef.current + 1;
     operationRef.current = operation;
     stopAudio();
+    sessionRef.current?.cancel();
     setNotice(null);
+
+    const chunks = segments.flatMap((segment, index) => speechChunks(kokoroSpeech(segment.text)).map((text) => ({ text, segment: index })));
+    if (!chunks.length) {
+      onActivity("idle");
+      return;
+    }
+    if (kokoroFailedRef.current) {
+      await speakWithSystemVoice(segments.map((segment) => segment.text).join(" "), "generated voice unavailable");
+      return;
+    }
+
+    const session = getSession();
+    setEngine("kokoro");
     setDiagnostic(null);
+    onActivity(session.ready ? "generating" : "loading");
+    // Ask for every sentence now: the worker generates them in order, so the
+    // next one is being made while the current one plays.
+    const voice = getKokoroVoice(patientKey);
+    const clips = chunks.map((chunk) => {
+      const clip = session.synthesize(chunk.text, voice);
+      clip.catch(() => undefined);
+      return clip;
+    });
 
-    for (const segment of segments) {
-      if (operation !== operationRef.current) return;
-      const recorded = await loadRecordedAsset(segment);
-      if (recorded) {
-        try {
-          setEngine("prerecorded");
-          setProgress(null);
-          await playBlob(recorded, operation);
-          continue;
-        } catch (error) {
-          if (operation !== operationRef.current) return;
-          const reason = error instanceof Error ? error.message : "The recording could not be played.";
-          setDiagnostic(`Recorded asset ${patientAudioPublicPath(patientKey, segment.cueId)}: ${reason}`);
-        }
-      }
-
-      const missingPath = patientAudioPublicPath(patientKey, segment.cueId);
-      setNotice(
-        "Experimental voice is generated locally with Kokoro. Use text mode if audio is unavailable."
-      );
-      setDiagnostic((current) => current ?? `Missing recorded asset: ${missingPath}`);
+    for (let index = 0; index < clips.length; index += 1) {
       try {
-        setEngine("kokoro");
-        onActivity("loading");
-        const generated = await synthesize(segment.text);
+        const audio = await clips[index];
         if (operation !== operationRef.current) return;
-        await playBlob(generated, operation);
+        await playBlob(audio, operation);
       } catch (error) {
-        if (operation !== operationRef.current) return;
-        const reason = error instanceof Error ? error.message : "Kokoro could not generate audio.";
+        if (operation !== operationRef.current || error instanceof PatientSpeechInterrupted) return;
+        const reason = error instanceof Error ? error.message : "The generated voice could not play.";
+        kokoroFailedRef.current = true;
+        sessionRef.current?.dispose();
+        sessionRef.current = null;
         setEngine("system");
-        setDiagnostic(`${missingPath}; Kokoro: ${reason}`);
-        setNotice("Recorded audio and Kokoro were unavailable. The operating-system voice is being used.");
-        await speakWithSystemVoice(segment.text, reason);
+        setDiagnostic(reason);
+        setNotice("The generated patient voice could not run on this device, so your computer's voice is being used. Select Replay patient to try the generated voice again.");
+        // The rest of the reply in its written form: the computer's voice gets
+        // the medicine names right without Kokoro's respellings.
+        await speakWithSystemVoice(segments.slice(chunks[index].segment).map((segment) => segment.text).join(" "), reason);
+        return;
       }
     }
 
     if (operation === operationRef.current) onActivity("idle");
-  }, [
-    loadRecordedAsset,
-    onActivity,
-    patientKey,
-    playBlob,
-    speakWithSystemVoice,
-    stopAudio,
-    synthesize,
-  ]);
+  }, [getSession, onActivity, patientKey, playBlob, speakWithSystemVoice, stopAudio]);
 
   return {
     engine,
@@ -233,5 +172,6 @@ export function usePatientVoice({
     diagnostic,
     speak,
     cancel,
+    retry,
   };
 }

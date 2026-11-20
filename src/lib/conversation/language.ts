@@ -1,3 +1,5 @@
+const COUNT_WORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"];
+
 /** Shared text interpretation. Never rewrite medicine names or dose numbers fuzzily. */
 export function normalizeLanguage(value: string): string {
   return value.toLowerCase().replace(/[’‘]/g, "'")
@@ -46,6 +48,11 @@ export function normalizeLanguage(value: string): string {
     .replace(/\bdoese\b/g, "dose")
     .replace(/\b(?:physician|gp)\b/g, "doctor")
     .replace(/(\d)([a-z])/g, "$1 $2").replace(/([a-z])(\d)/g, "$1 $2")
+    // Speech recognisers write counts as digits: "take 1 capsule 4 times a
+    // day". The patterns name frequencies in words, and a correct dose must
+    // never read as a different one. Decimals, ranges and times stay as written.
+    .replace(/(?<![\d.\-/:])\b(\d{1,2}) times\b/g, (match, count: string) => `${COUNT_WORDS[Number(count)] ?? count} times`)
+    .replace(/(?<![\d.\-/:])\b1\b(?![\d.\-/:]| st\b)/g, "one")
     .replace(/\b(?:mls|mils?|millilitres?|milliliters?)\b/g, "ml")
     .replace(/\b(?:refrigerator|refrigerated|refrigeration)\b/g, "fridge")
     .replace(/\bover-the-counter\b/g, "over the counter")
@@ -71,7 +78,49 @@ export function normalizeLanguage(value: string): string {
  */
 export function conversationClauses(text: string): string[] {
   return text.split(/(?<!\d)[.!](?!\d)|(?<=\?)\s*|[;\n]+|\b(?:and also|finally|but|however)\b|,\s*also\b|,?\s+and\s+(?=(?:do|are|have|what|when|how|can|could|would|is)\s)/i)
-    .map(part => part.trim()).filter(Boolean);
+    .map(part => part.trim()).filter(Boolean)
+    .flatMap(part => (part.endsWith("?") ? [part] : segmentRunOn(part)));
+}
+
+// Speech recognisers return one unpunctuated run ("your medicine is ready do
+// you have any questions"), and hurried typists do much the same. Left whole, a
+// promise or an instruction hides inside what reads as a question, so the run
+// is cut where a new question plainly starts, and where a statement follows a
+// finished question ("any allergies your antibiotics are ready").
+const QUESTION_OPENER = /^(?:(?:do|does|did|are|is|have|has|can|could|would|will|may|should)\s+(?:you|your|there|anyone|anybody|anything|i|we)\b|any\s+(?:other\s+|more\s+|further\s+)?(?:questions|concerns|allergies|medicines?|meds|medications?|reactions?)\b|what\s+(?:is|are|was|were|do|did|does|else|other)\b|how\s+(?:are|do|did|old|long|often|many|much|have)\b|when\s+(?:did|do|was|were|is)\b)/i;
+// Words after which those openers continue the same sentence: "check if you
+// have", "tell me what else", "stop any other medicines".
+const CONTINUES_CLAUSE = new Set([
+  "if", "whether", "that", "what", "which", "who", "how", "when", "where", "why", "know", "ask", "asked", "asking",
+  "see", "check", "checking", "wonder", "wondering", "sure", "tell", "explain", "show", "and", "or", "but", "so",
+  "because", "to", "about", "than", "as", "i", "we", "you", "they", "he", "she", "it", "let", "that's", "it's",
+  "there's", "here's", "of", "for", "on", "in", "with", "me", "us", "start", "starting", "stop", "stopping", "take",
+  "taking", "use", "using", "have", "had", "has", "need", "avoid", "buy", "get", "try", "mix", "combine", "add",
+  "change", "without", "any",
+]);
+const QUESTION_END = /^(?:questions|concerns|allergies|today|okay|ok|alright|before|else|medicines?|meds|medications?|reactions?)$/;
+const STATEMENT_OPENER = /^(?:take|give|use|apply|avoid|keep|make sure|remember|don't|do not|never|please|you should|you need|you will|you'll|it's|it is|this is|that's|your|i'll|i will|i'm|i am|we'll|we will|so)\b/i;
+
+function segmentRunOn(part: string): string[] {
+  const words = [...part.matchAll(/\S+/g)];
+  // "Any signs of a reaction take him to hospital" is one piece of advice.
+  if (words.length < 5 || isConditionalAdvice(part)) return [part];
+  const pieces: string[] = [];
+  let start = 0;
+  for (let index = 2; index < words.length - 1; index += 1) {
+    if (index - start < 2) continue;
+    const previous = words[index - 1][0].toLowerCase().replace(/[^a-z']/g, "");
+    const rest = part.slice(words[index].index);
+    const startsQuestion = QUESTION_OPENER.test(rest) && !CONTINUES_CLAUSE.has(previous);
+    const endsQuestion = QUESTION_END.test(previous) && STATEMENT_OPENER.test(rest)
+      && isQuestion(part.slice(words[start].index, words[index].index));
+    if (startsQuestion || endsQuestion) {
+      pieces.push(part.slice(words[start].index, words[index].index).trim());
+      start = index;
+    }
+  }
+  pieces.push(part.slice(words[start].index).trim());
+  return pieces.filter(Boolean);
 }
 
 /**
@@ -82,7 +131,11 @@ export function isConditionalAdvice(text: string): boolean {
   return !text.trim().endsWith("?")
     && (/^\s*(?:any|if you (?:notice|get|have|see)|should you)\b[^?]*[,;:—–-]\s*(?:please\s+)?(?:get|seek|call|see|go|contact|tell|let|come|stop|take|ring|phone|use|keep|avoid|head|return|bring|throw|put|store|lock|give|drop|dispose|discard|wear|apply|have|drink)\b/i.test(text)
       // "Any unusual bruising should be checked urgently."
-      || /^\s*any\b[^?]*\b(?:should|must|needs? to|has to|have to) be\b/i.test(text));
+      || /^\s*any\b[^?]*\b(?:should|must|needs? to|has to|have to) be\b/i.test(text)
+      // Spoken, without the comma: "any swelling of your lips seek medical help".
+      // The action must be one with an object, so "any questions let me know"
+      // stays an invitation.
+      || /^\s*(?:any|if you (?:notice|get|have|see|feel|develop))\b(?:\s+\S+){1,14}?\s+(?:please\s+)?(?:(?:get|seek|call|see|go|contact|ring|phone|return|bring|stop|head)\s+(?:help|medical|urgent\w*|immediate\w*|emergency|an?|the|us|them|it|your|000|triple|straight|right)|take (?:him|her|them) to)\b/i.test(text));
 }
 
 /** "Just need your name for the records" asks as surely as "What's your name?". */
@@ -103,7 +156,11 @@ export function isQuestion(text: string): boolean {
     || /\b(?:i (?:was |am )?wonder(?:ing)? (?:if|whether|what)|i would like to (?:ask|check|confirm)|let me (?:check|confirm)|may i (?:know|have))\b/.test(s)
     || /^(?:your (?:full )?name|(?:your )?(?:date of birth|birthday|dob)|any (?:allergies|medicine)|allergic to anything)(?: is)?(?: please)?[?.!]*$/.test(s)
     // A yes/no question: "Is it for atrial fibrillation?", "Are these for your son?"
-    || /^(?:is|are|was|were|does|did|has|have|had|can|could|would|will|should|may)\s+(?:it|this|that|there|these|those|he|she|they|you|your|the|any|his|her)\b/.test(s)
+    || /^(?:is|are|was|were|does|did|has|have|had|can|could|would|will|should|may)\s+(?:it|this|that|there|these|those|he|she|they|you|your|the|any|his|her|anything|anyone|anybody|something|someone)\b/.test(s)
+    // Spoken shorthand with no question mark to go on: "you on any other
+    // meds", "been vomiting", "used opioids before".
+    || /^you (?:on|taking|using|currently|been|ever)\b/.test(s)
+    || /^(?:been|used|taken|tried|ever)\b/.test(s)
     || /^(?:(?:please|and|so) )?(?:what (?!this does)|which|who|whose|when (?:did|do|was|were)|where|how|any chance)\b/.test(s)
     || /\b(?:do|does|did|are|is|have|has|were|will|would|could|can) (?:a medicine|any medicine|you|your|he|she|they|the patient|there|liam|noah)\b/.test(s)
     || /\b(?:can|could|may|would) (?:i|we)\b/.test(s)

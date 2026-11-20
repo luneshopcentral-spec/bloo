@@ -1,4 +1,4 @@
-import { KOKORO_MODEL_ID } from "@/lib/voice/kokoro-config";
+import { KOKORO_DTYPE, KOKORO_MODEL_ID } from "@/lib/voice/kokoro-config";
 import type {
   KokoroWorkerRequest,
   KokoroWorkerResponse,
@@ -28,7 +28,7 @@ interface KokoroRuntime {
     from_pretrained: (
       modelId: string,
       options: {
-        dtype: "q8";
+        dtype: typeof KOKORO_DTYPE;
         device: "wasm";
         progress_callback: typeof progressMessage;
       }
@@ -39,6 +39,10 @@ interface KokoroRuntime {
 let runtimePromise: Promise<KokoroRuntime> | null = null;
 let modelPromise: Promise<KokoroModel> | null = null;
 let activeRequestId = "";
+// One generation at a time, in order. Cancelled requests that have not
+// started are skipped, so an interrupted reply never delays the next one.
+let queue: Promise<void> = Promise.resolve();
+const cancelled = new Set<string>();
 
 function post(message: KokoroWorkerResponse) {
   workerScope.postMessage(message);
@@ -51,8 +55,8 @@ function progressMessage(info: { status?: string; progress?: number }) {
     requestId: activeRequestId,
     progress,
     message: progress === null
-      ? "Preparing Kokoro safety voice…"
-      : `Downloading Kokoro safety voice… ${progress}%`,
+      ? "Preparing the patient voice…"
+      : `Downloading the patient voice… ${progress}%`,
   });
 }
 
@@ -72,34 +76,47 @@ function getModel(): Promise<KokoroModel> {
     modelPromise = getRuntime().then((runtime) => {
       runtime.env.wasmPaths = "/ort-kokoro/";
       return runtime.KokoroTTS.from_pretrained(KOKORO_MODEL_ID, {
-        dtype: "q8",
+        dtype: KOKORO_DTYPE,
         device: "wasm",
         progress_callback: progressMessage,
       });
+    }).catch((error: unknown) => {
+      // A failed download can be tried again on a later request.
+      modelPromise = null;
+      runtimePromise = null;
+      throw error;
     });
   }
   return modelPromise;
 }
 
-async function synthesize(request: KokoroWorkerRequest) {
+async function handle(request: Extract<KokoroWorkerRequest, { type: "synthesize" }>) {
+  if (cancelled.delete(request.requestId)) return;
   activeRequestId = request.requestId;
   const model = await getModel();
+  if (cancelled.delete(request.requestId)) return;
   post({
     type: "loading",
     requestId: request.requestId,
     progress: 100,
-    message: "Generating the local safety voice…",
+    message: "Generating the patient voice…",
   });
   const audio = await model.generate(request.text, {
     voice: request.voice,
     speed: 0.98,
   });
+  // Cancelled mid-generation: nobody is waiting for it.
+  if (cancelled.delete(request.requestId)) return;
   post({ type: "audio", requestId: request.requestId, audio: audio.toBlob() });
 }
 
 workerScope.onmessage = (event) => {
   const request = event.data;
-  synthesize(request).catch((error: unknown) => {
+  if (request.type === "cancel") {
+    for (const requestId of request.requestIds) cancelled.add(requestId);
+    return;
+  }
+  queue = queue.then(() => handle(request)).catch((error: unknown) => {
     post({
       type: "error",
       requestId: request.requestId,
